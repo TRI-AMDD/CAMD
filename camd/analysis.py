@@ -3,12 +3,54 @@
 import numpy as np
 from tqdm import tqdm
 from qmpy import PhaseSpace, Phase, PhaseData
+from abc import ABCMeta
 
 ELEMENTS = ["Pr", "Ru", "Th", "Pt", "Ni", "S", "Na", "Nb", "Nd", "C", "Li", "Pb", "Y", "Tl", "Lu", "Rb", "Ti", "Np",
             "Te", "Rh", "Tc", "La", "Ta", "Be", "Sr", "Sm", "Ba", "Tb", "Yb", "Bi", "Re", "Pu", "Fe", "Br", "Dy", "Pd",
             "Hf", "Hg", "Ho", "Mg", "B", "Pm", "P", "F", "I", "H", "K", "Mn", "Ac", "O", "N", "Eu", "Si", "U", "Sn",
             "W", "V", "Sc", "Sb", "Mo", "Os", "Se", "Zn", "Co", "Ge", "Ag", "Cl", "Ca", "Ir", "Al", "Ce", "Cd", "Pa",
             "As", "Gd", "Au", "Cu", "Ga", "In", "Cs", "Cr", "Tm", "Zr", "Er"]
+
+
+#TODO: Eval Performance = start / stop?
+
+class AnalysisBase:
+    __metaclass__ = ABCMeta
+
+    def hypotheses(self):
+        pass
+
+
+class AnalyzeStability(AnalysisBase):
+    def __init__(self, df, new_result_ids, hull_distance=None):
+        self.df = df
+        self.new_result_ids = new_result_ids
+        self.hull_distance = hull_distance if hull_distance else 0.05
+        super(AnalyzeStability, self).__init__()
+
+    def analysis(self):
+        phases = []
+        for data in self.df.iterrows():
+            phases.append(Phase(data[1]['Composition'], energy=data[1]['delta_e'], per_atom=True, description=data[0]))
+        for el in ELEMENTS:
+            phases.append(Phase(el, 0.0, per_atom=True))
+
+        pd = PhaseData()
+        pd.add_phases(phases)
+        space = PhaseSpaceAL(bounds=ELEMENTS, data=pd)
+        space.compute_stabilities_mod()
+
+        stabilities_of_space_uids = np.array([p.stability for p in space.phases]) <= self.hull_distance
+
+        stabilities_of_new = {}
+        for _p in space.phases:
+            if _p.description in self.new_result_ids:
+                stabilities_of_new[_p.description] = _p.stability
+
+        stabilities_of_new_uids = np.array([stabilities_of_new[uid] for uid in self.new_result_ids]) <= self.hull_distance
+
+        # array of bools for stable vs not for new uids, and all experiments, respectively
+        return stabilities_of_new_uids, stabilities_of_space_uids
 
 
 class PhaseSpaceAL(PhaseSpace):
@@ -52,26 +94,3 @@ class PhaseSpaceAL(PhaseSpace):
                     except:
                         print p
                         p.stability = np.nan
-
-
-def get_stabilities_from_data(df, uids, hull_distance=0.0):
-
-    phases = []
-    for data in df.iterrows():
-        phases.append(Phase(data[1]['Composition'], energy=data[1]['delta_e'], per_atom=True, description=data[0]))
-    for el in ELEMENTS:
-        phases.append(Phase(el, 0.0, per_atom=True))
-
-    pd = PhaseData()
-    pd.add_phases(phases)
-    space = PhaseSpaceAL(bounds=ELEMENTS, data=pd)
-    space.compute_stabilities_mod()
-    space_stabilities = np.array([p.stability for p in space.phases])
-    n_stable = np.sum(space_stabilities <= hull_distance)
-
-    stabilities_of_uids = {}
-    for _p in space.phases:
-        if _p.description in uids:
-            stabilities_of_uids[_p.description] = _p.stability
-
-    return stabilities_of_uids, space_stabilities, n_stable

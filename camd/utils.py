@@ -5,11 +5,11 @@ import pickle
 import json
 import numpy as np
 
-from camd.analysis import get_stabilities_from_data
+from camd.analysis import AnalyzeStability
 from camd.experiment import get_dft_calcs_aft
 
 
-def aft_loop(path, df, df_sub, N_seed, N_query, hull_distance, agent,  agent_params):
+def aft_loop(path, df, df_sub, N_seed, N_query, agent, agent_params, analyzer, analyzer_params):
     """
     After-the-fact execution iterator for stable material discovery.
     :param path:
@@ -20,6 +20,8 @@ def aft_loop(path, df, df_sub, N_seed, N_query, hull_distance, agent,  agent_par
     :param hull_distance:
     :param agent:
     :param agent_params:
+    :param analyzer:
+    :param analyzer_params:
     :return:
     """
 
@@ -49,31 +51,29 @@ def aft_loop(path, df, df_sub, N_seed, N_query, hull_distance, agent,  agent_par
             pickle.dump(seed_data, f)
 
     print "Analysis"
-    true_stabilities, ss, ns = get_stabilities_from_data(seed_data, new_experiment_requests, hull_distance)
-    sa = np.array([true_stabilities[uid] for uid in new_experiment_requests]) <= hull_distance
-    nd = np.sum(sa)
+    analyzer = analyzer(seed_data, new_experiment_requests, **analyzer_params)
+    results_new_uids, results_all_uids = analyzer.analysis()
+    with open(os.path.join(path, 'discovered_{}.json'.format(iteration)), 'w') as f:
+        json.dump(np.array(new_experiment_requests)[results_new_uids].tolist(), f)
 
-    # Learn and Hypothesize
+    # Learn
     candidate_space = list(set(df_sub.index).difference(set(seed_data.index)))
     candidate_data = get_features_aft(candidate_space, df)
 
-    print "Agent working"
-    agent = agent(candidate_data, seed_data, hull_distance, N_query, **agent_params)
-
+    # Hypothesize
+    print "Hypothesize: Agent working"
+    agent = agent(candidate_data, seed_data, N_query, **agent_params)
     suggested_experiments = agent.hypotheses()
-
     with open(os.path.join(path, 'next_experiments_requests.json'), 'w') as f:
         json.dump(suggested_experiments, f)
 
-    with open(os.path.join(path, 'discovered_{}.json'.format(iteration)), 'w') as f:
-        json.dump(np.array(new_experiment_requests)[sa].tolist(), f)
-
+    # Report out
     with open(os.path.join(path, 'discovery.log'), 'a') as f:
         if iteration == 0:
-            f.write("Iteration Discovery N_query N_candidates N_stable model-CV\n")
-        f.write("{:9} {:9} {:7} {:11} {:8} {:f}\n".format(iteration, nd, N_query, len(candidate_space), ns,
-                                                          agent.cv_score))
-
+            f.write("Iteration N_Discovery Total_Discovery N_query N_candidates model-CV\n")
+        f.write("{:9} {:11} {:15} {:7} {:12} {:f}\n".format(iteration, np.sum(results_new_uids),
+                                                            np.sum(results_all_uids), N_query, len(candidate_space),
+                                                            agent.cv_score))
 
 
 def get_features_aft(ids, d):
