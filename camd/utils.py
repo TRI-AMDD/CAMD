@@ -5,9 +5,10 @@ import pickle
 import json
 import numpy as np
 
-from camd.analysis import AnalyzeStability
 from camd.experiment import get_dft_calcs_aft
 
+#TODO: subsampling capability should be a functionality of hypo generation. df_sub here should just be repalced
+# with an option to downselect to e.g. chemistry
 
 def aft_loop(path, df, df_sub, N_seed, N_query, agent, agent_params, analyzer, analyzer_params):
     """
