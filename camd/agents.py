@@ -13,7 +13,7 @@ class AgentStabilityQBC(HypothesisBase):
 
     def __init__(self, candidate_data, seed_data, N_query=None,
                  pd=None, hull_distance=None, ML_algorithm=None, ML_algorithm_params=None,
-                 N_members=None, frac=None):
+                 N_members=None, frac=None, multiprocessing=True):
 
         self.candidate_data = candidate_data
         self.seed_data = seed_data
@@ -24,6 +24,8 @@ class AgentStabilityQBC(HypothesisBase):
         self.ML_algorithm_params = ML_algorithm_params
         self.N_members = N_members if N_members else 10
         self.frac = frac if frac else 0.5
+        self.multiprocessing = multiprocessing
+
         self.cv_score = np.nan
 
         self.qbc = QBC(N_members=self.N_members, frac=self.frac,
@@ -64,7 +66,10 @@ class AgentStabilityQBC(HypothesisBase):
         pd_ml = deepcopy(self.pd)
         pd_ml.add_phases(candidate_phases)
         space_ml = PhaseSpaceAL(bounds=ELEMENTS, data=pd_ml)
-        space_ml.compute_stabilities_mod(candidate_phases)
+        if self.multiprocessing:
+            space_ml.compute_stabilities_multi(candidate_phases)
+        else:
+            space_ml.compute_stabilities_mod(candidate_phases)
 
         ml_stabilities = []
         for _p in candidate_phases:
