@@ -13,7 +13,7 @@ df_sub = df[df['N_species'] == 2].sample(frac=0.2) # Downsampling candidates to 
 N_seed = 5000  # Starting sample size
 N_query = 200  # This many new candidates are "calculated with DFT" (i.e. requested from Oracle -- DFT)
 agent = AgentRandom
-agent_params = {'hull_distance': 0.05} # Distance to hull to consider a finding as discovery (eV/atom)
+agent_params = {'hull_distance': 0.05}  # Distance to hull to consider a finding as discovery (eV/atom)
 analyzer = AnalyzeStability
 analyzer_params = {'hull_distance': 0.05}
 ##########################################################
