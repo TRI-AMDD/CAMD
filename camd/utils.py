@@ -5,8 +5,11 @@ import os
 import pickle
 import json
 import numpy as np
+import boto3
+from tqdm import tqdm
 
 from camd.experiment import get_dft_calcs_aft
+from camd import S3_CACHE
 
 # TODO: subsampling capability should be a functionality of hypo
 #  generation.  df_sub here should just be repalced with an
@@ -102,4 +105,13 @@ def get_features_aft(ids, d):
     return d.loc[ids]
 
 
-
+def sync_s3_objs():
+    s3 = boto3.resource('s3')
+    bucket = s3.Bucket("ml-dash-datastore")
+    # Put more s3 objects here if desired
+    s3_keys = ["oqmd_voro_March25_v2.csv"]
+    for s3_key in tqdm(s3_keys):
+        filename = os.path.split(s3_key)[-1]
+        local_path = os.path.join(S3_CACHE, filename)
+        if not os.path.isfile(local_path):
+            bucket.download_file(s3_key, os.path.join(S3_CACHE, filename))

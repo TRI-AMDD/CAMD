@@ -18,5 +18,6 @@ setup(
                       "qmpy",
                       "tqdm",
                       "pandas",
-                      "sklearn"]
+                      "sklearn",
+                      "boto3"]
 )
