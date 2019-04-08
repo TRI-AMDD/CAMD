@@ -12,9 +12,6 @@ from camd.experiment import get_dft_calcs_aft
 #  generation.  df_sub here should just be repalced with an
 #  option to downselect to e.g. chemistry
 
-# TODO: maybe put seeding outside of abstract loop
-#  structure?  maybe we need the larger data structure?
-
 
 def aft_loop(path, df, df_sub, n_seed, n_query, agent,
              agent_params, analyzer, analyzer_params):
