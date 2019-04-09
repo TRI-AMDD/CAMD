@@ -6,12 +6,14 @@ from copy import deepcopy
 from camd.analysis import PhaseSpaceAL, ELEMENTS
 from camd.hypothesis import HypothesisBase, QBC
 
+# TODO: Adaptive N_query and subsampling of candidate space
 
 
-class Agent_StabilityQBC(HypothesisBase):
+class AgentStabilityQBC(HypothesisBase):
 
-    def __init__(self, candidate_data, seed_data, hull_distance=None, N_query=None,
-                 pd=None, ML_algorithm=None, ML_algorithm_params=None, N_members=None, frac=None):
+    def __init__(self, candidate_data, seed_data, N_query=None,
+                 pd=None, hull_distance=None, ML_algorithm=None, ML_algorithm_params=None,
+                 N_members=None, frac=None, multiprocessing=True):
 
         self.candidate_data = candidate_data
         self.seed_data = seed_data
@@ -22,12 +24,14 @@ class Agent_StabilityQBC(HypothesisBase):
         self.ML_algorithm_params = ML_algorithm_params
         self.N_members = N_members if N_members else 10
         self.frac = frac if frac else 0.5
+        self.multiprocessing = multiprocessing
+
         self.cv_score = np.nan
 
         self.qbc = QBC(N_members=self.N_members, frac=self.frac,
                        ML_algorithm=self.ML_algorithm, ML_algorithm_params=self.ML_algorithm_params)
 
-        super(Agent_StabilityQBC, self).__init__()
+        super(AgentStabilityQBC, self).__init__()
 
     def hypotheses(self, retrain_committee=False):
         if retrain_committee:
@@ -62,7 +66,10 @@ class Agent_StabilityQBC(HypothesisBase):
         pd_ml = deepcopy(self.pd)
         pd_ml.add_phases(candidate_phases)
         space_ml = PhaseSpaceAL(bounds=ELEMENTS, data=pd_ml)
-        space_ml.compute_stabilities_mod(candidate_phases)
+        if self.multiprocessing:
+            space_ml.compute_stabilities_multi(candidate_phases)
+        else:
+            space_ml.compute_stabilities_mod(candidate_phases)
 
         ml_stabilities = []
         for _p in candidate_phases:
@@ -87,11 +94,11 @@ class Agent_StabilityQBC(HypothesisBase):
         self.pd.add_phases(phases)
 
 
-class Agent_Random(HypothesisBase):
+class AgentRandom(HypothesisBase):
     """
     Baseline agent: Randomly picks next experiments
     """
-    def __init__(self, candidate_data, seed_data, hull_distance=None, N_query=None,pd=None):
+    def __init__(self, candidate_data, seed_data, N_query=None, pd=None, hull_distance=None):
 
         self.candidate_data = candidate_data
         self.seed_data = seed_data
@@ -99,7 +106,7 @@ class Agent_Random(HypothesisBase):
         self.N_query = N_query if N_query else 1
         self.pd = pd
         self.cv_score = np.nan
-        super(Agent_Random, self).__init__()
+        super(AgentRandom, self).__init__()
 
     def hypotheses(self):
         indices_to_compute = []
