@@ -120,7 +120,7 @@ def sync_s3_objs():
     # Put more s3 objects here if desired
     s3_keys = ["oqmd_voro_March25_v2.csv"]
 
-    s3_keys_to_download = set(s3_keys) - set(os.path.listdir(S3_CACHE))
+    s3_keys_to_download = set(s3_keys) - set(os.listdir(S3_CACHE))
 
     for s3_key in s3_keys_to_download:
         filename = os.path.split(s3_key)[-1]
