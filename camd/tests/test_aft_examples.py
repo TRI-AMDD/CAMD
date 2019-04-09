@@ -14,6 +14,8 @@ CAMD_LONG_TESTS = os.environ.get("CAMD_LONG_TESTS", None)
 SKIP_MSG = "Long tests disabled, set CAMD_LONG_TESTS to run long tests"
 
 
+# TODO: s3 sync doesn't work on jenkins
+
 @unittest.skipIf(CAMD_LONG_TESTS, SKIP_MSG)
 class AftLoopTest(unittest.TestCase):
     def setUpClass(self):
