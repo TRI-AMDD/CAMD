@@ -9,11 +9,17 @@ from camd.analysis import AnalyzeStability
 from camd.utils import aft_loop, sync_s3_objs
 from camd import S3_CACHE
 
-# Sync s3 objects required for this test
-sync_s3_objs()
 
-# TODO: remove skips when files are provided
+CAMD_LONG_TESTS = os.environ.get("CAMD_LONG_TESTS", None)
+SKIP_MSG = "Long tests disabled, set CAMD_LONG_TESTS to run long tests"
+
+
+@unittest.skipIf(CAMD_LONG_TESTS, SKIP_MSG)
 class AftLoopTest(unittest.TestCase):
+    def setUpClass(self):
+        # Sync s3 objects required for this test
+        sync_s3_objs()
+
     def setUp(self):
         self.pwd = os.getcwd()
         self.tempdir = tempfile.mkdtemp()
@@ -37,7 +43,6 @@ class AftLoopTest(unittest.TestCase):
                      agent_params, analyzer, analyzer_params)
             self.assertTrue(True)
 
-    @unittest.skip
     def test_qbc_agent_loop(self):
         pass
 
