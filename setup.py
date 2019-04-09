@@ -1,4 +1,11 @@
 from setuptools import setup, find_packages
+import warnings
+
+try:
+    import numpy
+except ImportError:
+    warnings.warn("numpy must be installed prior to building, run pip install"
+                  "numpy before installation")
 
 setup(
     name='CAMD',
@@ -11,7 +18,7 @@ setup(
     description='',
     # Since qmpy can't be bothered to maintain
     # a proper install, pin numpy/networkx/matplotlib
-    install_requires=["numpy==1.15",
+    install_requires=["numpy",
                       "networkx==2.2",
                       "matplotlib==2.2",
                       "MySQL-python",
