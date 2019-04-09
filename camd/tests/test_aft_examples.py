@@ -18,12 +18,10 @@ SKIP_MSG = "Long tests disabled, set CAMD_LONG_TESTS to run long tests"
 # TODO: s3 sync doesn't currently work on jenkins
 @unittest.skipUnless(CAMD_LONG_TESTS, SKIP_MSG)
 class AftLoopTestLong(unittest.TestCase):
-    @classmethod
-    def setUpClass(cls):
-        # Sync s3 objects required for this test
-        sync_s3_objs()
-
     def setUp(self):
+        # Normally put in setUpClass but that doesn't
+        # work with skip apparently
+        sync_s3_objs()
         self.pwd = os.getcwd()
         self.tempdir = tempfile.mkdtemp()
         os.chdir(self.tempdir)
