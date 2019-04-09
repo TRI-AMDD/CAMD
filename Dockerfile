@@ -22,6 +22,7 @@ RUN source /opt/conda/bin/activate camd
 RUN apt-get update
 RUN apt install -y default-libmysqlclient-dev gcc
 ENV PATH=$PATH:/usr/local/mysql/bin/
+ENV TQDM_OFF=1
 
 # Goofy numpy pre-install
 RUN pip install numpy
