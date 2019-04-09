@@ -4,7 +4,7 @@ import numpy as np
 from sklearn.linear_model import LinearRegression
 from sklearn.preprocessing import StandardScaler
 from sklearn.model_selection import KFold, cross_val_score
-from tqdm import tqdm
+from camd import tqdm
 
 from abc import ABCMeta
 

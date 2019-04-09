@@ -6,7 +6,7 @@ import pickle
 import json
 import numpy as np
 import boto3
-from tqdm import tqdm
+from camd import tqdm
 
 from camd.experiment import get_dft_calcs_aft
 from camd import S3_CACHE

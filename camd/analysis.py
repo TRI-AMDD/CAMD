@@ -1,7 +1,7 @@
 # Copyright Toyota Research Institute 2019
 
 import numpy as np
-from tqdm import tqdm
+from camd import tqdm
 from qmpy import PhaseSpace, Phase, PhaseData
 from abc import ABCMeta
 import multiprocessing
