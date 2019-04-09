@@ -4,8 +4,10 @@ import warnings
 try:
     import numpy
 except ImportError:
-    warnings.warn("numpy must be installed prior to building, run pip install"
-                  "numpy before installation")
+    # This is goofy, but the best way I can figure to do this
+    warnings.warn("Setup requires pre-installation of numpy, run pip "
+                  "install numpy before setup.py")
+
 
 setup(
     name='CAMD',
@@ -18,9 +20,10 @@ setup(
     description='',
     # Since qmpy can't be bothered to maintain
     # a proper install, pin numpy/networkx/matplotlib
-    install_requires=["numpy",
+    setup_requires=["numpy>=1.16"],
+    install_requires=["numpy>=1.16",
                       "networkx==2.2",
-                      "matplotlib==2.2",
+                      "matplotlib",
                       "MySQL-python",
                       "qmpy",
                       "tqdm",
