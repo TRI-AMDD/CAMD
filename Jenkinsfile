@@ -102,32 +102,33 @@ node {
 
        	// Push to Docker Stage:
 	    // Gets AWS login and pushes docker image to docker registry
+	    // TODO: fix docker push
 
-        stage('push docker') {
+        // stage('push docker') {
 
-          echo "Logging in to ECR in region $awsRegion"
-          sh """
-            LOCAL=`aws ecr get-login --region $awsRegion --no-include-email`
-            sudo \$LOCAL
-          """
+        //   echo "Logging in to ECR in region $awsRegion"
+        //   sh """
+        //     LOCAL=`aws ecr get-login --region $awsRegion --no-include-email`
+        //     sudo \$LOCAL
+        //   """
 
-          echo "pushing to $dockerRegistry/$dockerRegistryPrefix:$dockerTag\n\n"
-          sh """
-            sudo docker push $dockerRegistry/$dockerRegistryPrefix:$dockerTagLatest
-            sudo docker push $dockerRegistry/$dockerRegistryPrefix:$dockerTag
-            """
+        //   echo "pushing to $dockerRegistry/$dockerRegistryPrefix:$dockerTag\n\n"
+        //   sh """
+        //     sudo docker push $dockerRegistry/$dockerRegistryPrefix:$dockerTagLatest
+        //     sudo docker push $dockerRegistry/$dockerRegistryPrefix:$dockerTag
+        //     """
 
-          echo "local docker images cleanup\n\n"
-          sh """
-            # remove old images
-            sudo docker images
-            sudo docker image prune -a -f --filter "until=240h"  # TODO better filter using labels
-            # what's left
-            sudo docker images
-            """
+        //   echo "local docker images cleanup\n\n"
+        //   sh """
+        //     # remove old images
+        //     sudo docker images
+        //     sudo docker image prune -a -f --filter "until=240h"  # TODO better filter using labels
+        //     # what's left
+        //     sudo docker images
+        //     """
 
-        slackSend color: 'good', message: "New build ${buildEnv.slackBuildLink} ready for docker pull from ECR: `docker pull $dockerRegistry/$dockerRegistryPrefix:$dockerTag`", channel: "materials-dev"
-        }
+        // slackSend color: 'good', message: "New build ${buildEnv.slackBuildLink} ready for docker pull from ECR: `docker pull $dockerRegistry/$dockerRegistryPrefix:$dockerTag`", channel: "materials-dev"
+        // }
 
 	  }
 	  catch(Exception e) {
