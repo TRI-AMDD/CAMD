@@ -114,6 +114,12 @@ def hook(t):
 
 def sync_s3_objs():
     """Quick function to download relevant s3 files to cache"""
+
+    # make cache dir
+    if not os.path.isdir(S3_CACHE):
+        os.mkdir(S3_CACHE)
+
+    # Initialize s3 resource
     s3 = boto3.resource("s3")
     bucket = s3.Bucket("ml-dash-datastore")
 
