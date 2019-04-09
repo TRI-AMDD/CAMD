@@ -6,9 +6,11 @@ import pandas as pd
 
 from camd.agents import AgentRandom, AgentStabilityQBC
 from camd.analysis import AnalyzeStability
+from camd.utils import aft_loop, sync_s3_objs
+from camd import S3_CACHE
 
-from camd.utils import aft_loop
-
+# Sync s3 objects required for this test
+sync_s3_objs()
 
 # TODO: remove skips when files are provided
 class AftLoopTest(unittest.TestCase):
@@ -21,12 +23,11 @@ class AftLoopTest(unittest.TestCase):
         os.chdir(self.pwd)
         shutil.rmtree(self.tempdir)
 
-    @unittest.skip
     def test_random_agent_loop(self):
-        df = pd.read_csv('../oqmd_voro_March25_v2.csv')
+        df = pd.read_csv(os.path.join(S3_CACHE, 'oqmd_voro_March25_v2.csv'))
         df_sub = df[df['N_species'] == 2].sample(frac=0.2)  # Downsampling candidates to 20% just for testing!
         n_seed = 5000  # Starting sample size
-        n_query = 200  # This many new candidates are "calculated with DFT" (i.e. requested from Oracle -- DFT)
+        n_query = 200  # his many new candidates are "calculated with DFT" (i.e. requested from Oracle -- DFT)
         agent = AgentRandom
         agent_params = {'hull_distance': 0.05}  # Distance to hull to consider a finding as discovery (eV/atom)
         analyzer = AnalyzeStability

@@ -105,13 +105,27 @@ def get_features_aft(ids, d):
     return d.loc[ids]
 
 
+def hook(t):
+    """tqdm hook for processing s3 downloads"""
+    def inner(bytes_amount):
+        t.update(bytes_amount)
+    return inner
+
+
 def sync_s3_objs():
-    s3 = boto3.resource('s3')
+    """Quick function to download relevant s3 files to cache"""
+    s3 = boto3.resource("s3")
     bucket = s3.Bucket("ml-dash-datastore")
+
     # Put more s3 objects here if desired
     s3_keys = ["oqmd_voro_March25_v2.csv"]
-    for s3_key in tqdm(s3_keys):
+
+    s3_keys_to_download = set(s3_keys) - set(os.path.listdir(S3_CACHE))
+
+    for s3_key in s3_keys_to_download:
         filename = os.path.split(s3_key)[-1]
-        local_path = os.path.join(S3_CACHE, filename)
-        if not os.path.isfile(local_path):
-            bucket.download_file(s3_key, os.path.join(S3_CACHE, filename))
+        file_object = s3.Object("ml-dash-datastore", s3_key)
+        file_size = file_object.content_length
+        with tqdm(total=file_size, unit_scale=True, desc=filename) as t:
+            bucket.download_file(
+                s3_key, os.path.join(S3_CACHE, filename), Callback=hook(t))
