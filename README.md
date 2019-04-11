@@ -1,9 +1,9 @@
-# CAMD
-Computational Autonomy for Materials Discovery
+# Computational Autonomy for Materials Discovery (CAMD)
 
-Dataset for featurized OQMD entries for after-the-fact testing can be downloaded from a dedicated S3 bucket at: https://s3.console.aws.amazon.com/s3/buckets/ml-dash-datastore/
 
-CAMD documents and flow diagram for stable material discovery is available on [Google Drive](https://drive.google.com/open?id=1wvPy4qOzY_-AD5xar4SeUQ4GlcDrzF77).
+
+CAMD documents and flow diagram for stable material 
+discovery is available on [Google Drive](https://drive.google.com/open?id=1wvPy4qOzY_-AD5xar4SeUQ4GlcDrzF77).
 
 
 ## Installation
@@ -63,3 +63,16 @@ Then use the included setup.py procedure, from the cloned directory.
 pip install -e .
 ```
 
+## Data download
+
+Dataset for featurized OQMD entries for after-the-fact testing can be 
+downloaded from a dedicated S3 bucket at: 
+https://s3.console.aws.amazon.com/s3/buckets/ml-dash-datastore/
+
+If you are in the vaspUsers group (e. g. SUNCAT), you can use the shell command:
+
+```angular2
+aws s3 cp s3://matr.io/materials-data-external/OQMD_data/oqmd_voro_March25_v2.csv .
+```
+
+To download the data into your current directory.
