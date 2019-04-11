@@ -11,6 +11,29 @@ CAMD documents and flow diagram for stable material discovery is available on [G
 Note that, since qmpy is currently only python 2.7 compatible, CAMD is similarly
 only python 2.7 compatible.
 
+### Linux
+
+Update packages via apt and set pathing for MySQL dependency:
+
+```angular2
+apt-get update
+apt install -y default-libmysqlclient-dev gcc
+export PATH=$PATH:/usr/local/mysql/bin
+```
+
+Install numpy via pip first, since the build depends on this and numpy has some difficulty recognizing
+its own install:
+
+```angular2
+pip install numpy
+```
+
+Then use the included setup.py procedure, from the cloned directory.
+
+```angular2
+pip install -e .
+```
+
 ### Mac OSX
 
 First dependencies via [homebrew](https://brew.sh/). Thanks to the contributors to this 
@@ -22,8 +45,15 @@ $ brew unlink mysql
 $ brew install mysql-connector-c
 $ sed -i -e 's/libs="$libs -l "/libs="$libs -lmysqlclient -lssl -lcrypto"/g' /usr/local/bin/mysql_config
 $ pip install MySQL-python
-$ brew unlink mysql-connector-c
+$ brew unlink mysql-connuiesdfuuuuctor-c
 $ brew link --overwrite mysql
+```
+
+Install numpy via pip first, since the build depends on this and numpy has some difficulty recognizing
+its own install:
+
+```angular2
+pip install numpy
 ```
 
 Then use the included setup.py procedure, from the cloned directory.
