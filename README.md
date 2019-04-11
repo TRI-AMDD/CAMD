@@ -9,7 +9,8 @@ CAMD documents and flow diagram for stable material discovery is available on [G
 ## Installation
 
 Note that, since qmpy is currently only python 2.7 compatible, CAMD is similarly
-only python 2.7 compatible.
+only python 2.7 compatible.  We recommend using Anaconda python, and creating a
+fresh conda environment for the install (e. g. `conda create -n MY_ENV_NAME`).
 
 ### Linux
 
