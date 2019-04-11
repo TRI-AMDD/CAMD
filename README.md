@@ -66,8 +66,7 @@ pip install -e .
 ## Data download
 
 Dataset for featurized OQMD entries for after-the-fact testing can be 
-downloaded from a dedicated S3 bucket at: 
-https://s3.console.aws.amazon.com/s3/buckets/ml-dash-datastore/
+downloaded from dedicated S3 bucket.
 
 If you are in the vaspUsers group (e. g. SUNCAT), you can use the shell command:
 
