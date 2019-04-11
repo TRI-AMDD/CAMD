@@ -30,10 +30,10 @@ node {
 
         stage('Pre-Checkout') {
         // Ask Westin/AMDD if this section needs to be changed
-        withCredentials([string(credentialsId: 'vault_token', variable: 'VAULT_TOKEN')]) {
+        withCredentials([string(credentialsId: 'vault_token', variable: 'VAULT_TOKEN'),
+                         string(credentialsId: 'vault_ip', variable: 'VAULT_IP'),
+                         string(credentialsId: 'jumpbox_ip', variable: 'JUMPBOX')]) {
 
-                def JUMPBOX = "52.89.56.187"
-                def VAULT_IP = "10.0.7.42"
                 def VAULT_PORT = "8200"
 
                 echo 'Testing..'
