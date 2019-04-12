@@ -3,13 +3,12 @@
 CREATE SCHEMA IF NOT EXISTS camd;
 
 
-
 CREATE TABLE IF NOT EXISTS camd.material (
-    id INT PRIMARY KEY,
+    id SERIAL PRIMARY KEY,
+    internal_reference VARCHAR UNIQUE,
     definition JSON,
     poscar TEXT,
-    definition_dft JSON,
-    poscar_dft TEXT
+    dft_computed BOOL
 );
 
 CREATE TABLE IF NOT EXISTS camd.material_set (
@@ -17,10 +16,11 @@ CREATE TABLE IF NOT EXISTS camd.material_set (
     material_ids INT[]
 );
 
+
 CREATE TABLE IF NOT EXISTS camd.feature (
-    id SERIAL PRIMARY KEY,
+    id INT PRIMARY KEY,
     "name" VARCHAR,
-    "type" VARCHAR,
+    feature_type VARCHAR,
     possible_values VARCHAR[]
 );
 
