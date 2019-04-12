@@ -50,3 +50,24 @@ def read_s3_object_to_dataframe(bucket, prefix, header=0, sep=',', encoding='utf
     f = boto3.resource('s3').Object(bucket, prefix).get()['Body']
     df = pd.read_csv(f, header=header, sep=sep, encoding=encoding)
     return df
+
+
+def read_s3_object_body(bucket, prefix, amt=None):
+    """
+    Reads a s3 object and creates a pandas data frame object under the
+    assumption that the contained data is comma separated.
+
+    Args:
+        bucket: str
+            name of the S3 bucket
+        prefix: str
+            full prefix of the S3 object
+        amt: int
+            bytes to read from s3 file. default=None (read complete file)
+
+    Returns: pandas.DataFrame
+        data frame with data in S3 object
+
+    """
+    f = boto3.resource('s3').Object(bucket, prefix).get()['Body']
+    return f.read(amt)
