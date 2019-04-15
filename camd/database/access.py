@@ -57,7 +57,7 @@ class CamdSchemaSession:
                 primary key value in camd.feature table
 
         Returns: camd.database.schema.Featurization
-            CAMD Featurization object
+            CAMD Featurization object, if exists. None otherwise.
 
         """
         return self.session.query(Featurization)\
@@ -72,7 +72,36 @@ class CamdSchemaSession:
                 primary key value in camd.material table
 
         Returns: camd.database.schema.Material
-            CAMD Material object
+            CAMD Material object, if exists. None otherwise.
 
         """
         return self.session.query(Material).filter_by(id=material_id).first()
+
+    def query_feature(self, feature_id):
+        """
+        Queries a feature entry by feature_id
+
+        Args:
+            feature_id: int
+                primary key value in camd.feature table
+
+        Returns: camd.database.schema.Feature
+            CAMD Feature object, if exists. None otherwise.
+
+        """
+        return self.session.query(Feature).filter_by(id=feature_id).first()
+
+    def query_material_by_internal_reference(self, internal_reference):
+        """
+        Queries a material entry by internal reference.
+
+        Args:
+            internal_reference: str
+                unique internal reference in camd.material table
+
+        Returns: camd.database.schema.Material
+            CAMD Material object, if exists. None otherwise.
+
+        """
+        return self.session.query(Material)\
+            .filter_by(internal_reference=internal_reference).first()
