@@ -29,5 +29,6 @@ setup(
                       "tqdm",
                       "pandas",
                       "sklearn",
-                      "boto3"]
+                      "boto3",
+                      "sqlalchemy"]
 )
