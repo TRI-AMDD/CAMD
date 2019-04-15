@@ -32,7 +32,7 @@ class Material(Base, CamdEntity):
     __tablename__ = 'material'
 
     id = Column(Integer, primary_key=True, autoincrement=True)
-    internal_reference = Column(String)
+    internal_reference = Column(String, unique=True)
     definition = Column(JSON)
     poscar = Column(Text)
     dft_computed = Column(Boolean, nullable=False)
