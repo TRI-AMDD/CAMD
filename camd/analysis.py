@@ -2,7 +2,8 @@
 
 import numpy as np
 from camd import tqdm
-from qmpy import PhaseSpace, Phase, PhaseData
+from qmpy.analysis.thermodynamics.phase import Phase, PhaseData
+from qmpy.analysis.thermodynamics.space import PhaseSpace
 from abc import ABCMeta
 import multiprocessing
 
@@ -43,14 +44,17 @@ class AnalyzeStability(AnalysisBase):
         else:
             space.compute_stabilities_mod()
 
-        stabilities_of_space_uids = np.array([p.stability for p in space.phases]) <= self.hull_distance
+        # Add dtype so that None values can be compared
+        stabilities_of_space_uids = np.array([p.stability for p in space.phases],
+                                             dtype=np.float) <= self.hull_distance
 
         stabilities_of_new = {}
         for _p in space.phases:
             if _p.description in self.new_result_ids:
                 stabilities_of_new[_p.description] = _p.stability
 
-        stabilities_of_new_uids = np.array([stabilities_of_new[uid] for uid in self.new_result_ids]) <= self.hull_distance
+        stabilities_of_new_uids = np.array([stabilities_of_new[uid] for uid in self.new_result_ids],
+                                           dtype=np.float) <= self.hull_distance
 
         # array of bools for stable vs not for new uids, and all experiments, respectively
         return stabilities_of_new_uids, stabilities_of_space_uids
