@@ -24,7 +24,7 @@ ENV TQDM_OFF=1
 RUN pip install numpy
 
 # Install package
-RUN pip install -e .
+RUN python setup.py develop
 RUN pip install nose
 RUN pip install coverage
 RUN pip install pylint
