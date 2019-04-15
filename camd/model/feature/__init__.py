@@ -1,1 +1,1 @@
-from .provide import FeatureProvider
+from .provide import FeatureProvider, FeatureComputer

@@ -7,7 +7,10 @@ Helper methods.
 
 
 from matminer.featurizers.structure import SiteStatsFingerprint, \
-    StructuralHeterogeneity, ChemicalOrdering
+    StructuralHeterogeneity, ChemicalOrdering, MaximumPackingEfficiency, \
+    StructureComposition
+from matminer.featurizers.composition import ElementProperty, Stoichiometry, \
+    ValenceOrbital, IonProperty
 
 
 def feature_definition(feature_id):
@@ -62,7 +65,7 @@ def index_sub_index(feature_id):
     return index, sub_index
 
 
-feature_index_blocks = (1, 6, 15, )
+feature_index_blocks = (1, 6, 15, 18, 19, 129, 135, 267, 271, 272)
 
 feature_directory = {
     1: {
@@ -81,6 +84,72 @@ feature_directory = {
                                  ChemicalOrdering().featurize(x.structure())],
         'labels': ChemicalOrdering().feature_labels(),
         'types': ['numerical'] * len(ChemicalOrdering().feature_labels())
-    }
+    },
+    18: {
+        'featurizer': lambda x: [[xx] for xx in MaximumPackingEfficiency()\
+            .featurize(x.structure())],
+        'labels': MaximumPackingEfficiency().feature_labels(),
+        'types': ['numerical'] *
+                 len(MaximumPackingEfficiency().feature_labels())
+    },
+    19: {
+        'featurizer': lambda x: [[xx] for xx in SiteStatsFingerprint\
+            .from_preset("LocalPropertyDifference_ward-prb-2017")\
+            .featurize(x.structure())],
+        'labels': SiteStatsFingerprint\
+            .from_preset("LocalPropertyDifference_ward-prb-2017")\
+            .feature_labels(),
+        'types': ['numerical'] *
+                 len(SiteStatsFingerprint\
+                     .from_preset("LocalPropertyDifference_ward-prb-2017")\
+                     .feature_labels())
+    },
+    129: {
+        'featurizer': lambda x: [[xx] for xx in \
+                                 StructureComposition(Stoichiometry())\
+                                     .featurize(x.structure())],
+        'labels': StructureComposition(Stoichiometry()).feature_labels(),
+        'types': ['numerical'] *
+                 len(StructureComposition(Stoichiometry()).feature_labels())
+    },
+    135: {
+        'featurizer': lambda x: [[xx] for xx in \
+                                 StructureComposition(ElementProperty\
+                                                      .from_preset("magpie"))\
+                                     .featurize(x.structure())],
+        'labels': StructureComposition(ElementProperty.from_preset("magpie"))\
+            .feature_labels(),
+        'types': ['numerical'] *
+                 len(StructureComposition(ElementProperty\
+                                          .from_preset("magpie"))\
+                     .feature_labels())
+    },
+    267: {
+        'featurizer': lambda x: [[xx] for xx in \
+                                 StructureComposition(
+                                     ValenceOrbital(props=['frac'])) \
+                                     .featurize(x.structure())],
+        'labels': StructureComposition(ValenceOrbital(props=['frac'])) \
+            .feature_labels(),
+        'types': ['numerical'] *
+                 len(StructureComposition(ValenceOrbital(props=['frac'])) \
+                     .feature_labels())
+    },
+    271: {
+        'featurizer': lambda x: [[float(StructureComposition(\
+            IonProperty(fast=True)).featurize(x.structure())[0])]],
+        'labels': StructureComposition(IonProperty(fast=True)) \
+            .feature_labels()[0],
+        'types': ['numerical']
+    },
+    272: {
+        'featurizer': lambda x: [[xx] for xx in \
+                                 StructureComposition(IonProperty(fast=True)) \
+                                     .featurize(x.structure())[1:]],
+        'labels': StructureComposition(IonProperty(fast=True)) \
+            .feature_labels()[1:],
+        'types': ['numerical'] *
+                 len(StructureComposition(IonProperty(fast=True)) \
+                     .feature_labels()[1:])
+    },
 }
-

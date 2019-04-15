@@ -6,7 +6,8 @@ computation.
 """
 
 from camd.database.access import CamdSchemaSession
-from camd.model.feature.definition import feature_definition, index_sub_index
+from camd.model.feature.definition import feature_definition, index_sub_index, \
+    feature_index_blocks
 from camd.database.schema import Featurization, Feature
 
 
@@ -65,10 +66,14 @@ class FeatureProvider:
                 new_feature_id = index + i
                 new_label = all_labels[i]
                 new_type = all_types[i]
+                feature = self.camd_schema_session.query_feature(new_feature_id)
+                if feature is None:
+                    feature = Feature(new_feature_id, new_label, new_type)
                 new_featurization = Featurization()
                 new_featurization.material = material
-                new_featurization.feature = Feature(new_feature_id, new_label, new_type)
+                new_featurization.feature = feature
                 new_featurization.value = all[i]
+
                 self.camd_schema_session.session.add(new_featurization)
             self.camd_schema_session.session.commit()
             featurization = self.camd_schema_session\
@@ -110,4 +115,18 @@ class FeatureComputer:
         else:
             return featurizations[sub_index]
 
+    @staticmethod
+    def compute_all_features(material):
 
+        featurizations = list()
+        feature_labels = list()
+        types = list()
+
+        for block_index in feature_index_blocks:
+            f, l, t, sub_index = feature_definition(block_index)
+            l = l if isinstance(l, list) else [l]
+            featurizations += [x[0] for x in f(material)]
+            feature_labels += l
+            types += t
+
+        return featurizations, feature_labels, types
