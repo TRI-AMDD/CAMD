@@ -30,5 +30,6 @@ setup(
                       "pandas",
                       "sklearn",
                       "boto3",
-                      "sqlalchemy"]
+                      "sqlalchemy",
+                      "matminer"]
 )
