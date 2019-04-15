@@ -9,9 +9,7 @@ from camd import tqdm
 from abc import ABCMeta
 
 
-class HypothesisBase:
-    __metaclass__ = ABCMeta
-
+class HypothesisBase(metaclass=ABCMeta):
     def hypotheses(self):
         pass
 
@@ -54,7 +52,7 @@ class QBC:
             split_y.append(y.iloc[indices])
 
         self.committee_models = []
-        for i in tqdm(range(self.N_members)):
+        for i in tqdm(list(range(self.N_members))):
             scaler = StandardScaler()
             X = scaler.fit_transform(split_X[i].drop(ignore_columns, axis=1))
             y = split_y[i]
@@ -79,7 +77,7 @@ class QBC:
 
         # Apply the committee of models to candidate space
         committee_predictions = []
-        for i in tqdm(range(self.N_members)):
+        for i in tqdm(list(range(self.N_members))):
             scaler = self.committee_models[i][0]
             model = self.committee_models[i][1]
             _X = X.drop(ignore_columns, axis=1)

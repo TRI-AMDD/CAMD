@@ -15,9 +15,7 @@ ELEMENTS = ["Pr", "Ru", "Th", "Pt", "Ni", "S", "Na", "Nb", "Nd", "C", "Li", "Pb"
 
 #TODO: Eval Performance = start / stop?
 
-class AnalysisBase:
-    __metaclass__ = ABCMeta
-
+class AnalysisBase(metaclass=ABCMeta):
     def analysis(self):
         pass
 
@@ -80,24 +78,24 @@ class PhaseSpaceAL(PhaseSpace):
         if phases_to_evaluate is None:
             phases_to_evaluate = self.phases
 
-        for p in tqdm(self.phase_dict.values()):
+        for p in tqdm(list(self.phase_dict.values())):
             if p.stability is None:  # for low e phases, we only need to eval stability if it doesn't exist
                 try:
                     p.stability = p.energy - self.gclp(p.unit_comp)[0]
                 except:
-                    print p
+                    print(p)
                     p.stability = np.nan
 
         # will only do requested phases for things not in phase_dict
         for p in tqdm(phases_to_evaluate):
-            if p not in self.phase_dict.values():
+            if p not in list(self.phase_dict.values()):
                 if p.name in self.phase_dict:
                     p.stability = p.energy - self.phase_dict[p.name].energy + self.phase_dict[p.name].stability
                 else:
                     try:
                         p.stability = p.energy - self.gclp(p.unit_comp)[0]
                     except:
-                        print p
+                        print(p)
                         p.stability = np.nan
 
     def compute_stabilities_multi(self, phases_to_evaluate=None, ncpus=multiprocessing.cpu_count()):
@@ -119,7 +117,7 @@ class PhaseSpaceAL(PhaseSpace):
         # Creating a map from entry uid to index of entry in the current list of phases in space.
         self.uid_to_phase_ind = dict([(self.phases[i].description, i) for i in range(len(self.phases))])
 
-        phase_dict_list = self.phase_dict.values()
+        phase_dict_list = list(self.phase_dict.values())
         _result_list1 = parmap(self._multiproc_help1,  phase_dict_list, nprocs=ncpus)
         for i in range(len(phase_dict_list)):
             self.phase_dict[phase_dict_list[i].name].stability = _result_list1[i]
@@ -136,19 +134,19 @@ class PhaseSpaceAL(PhaseSpace):
             try:
                 p.stability = p.energy - self.gclp(p.unit_comp)[0]
             except:
-                print p
+                print(p)
                 p.stability = np.nan
         return p.stability
 
     def _multiproc_help2(self, p):
-        if p not in self.phase_dict.values():
+        if p not in list(self.phase_dict.values()):
             if p.name in self.phase_dict:
                 p.stability = p.energy - self.phase_dict[p.name].energy + self.phase_dict[p.name].stability
             else:
                 try:
                     p.stability = p.energy - self.gclp(p.unit_comp)[0]
                 except:
-                    print p
+                    print(p)
                     p.stability = np.nan
         return p.stability
 

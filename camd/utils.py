@@ -1,5 +1,5 @@
 # Copyright Toyota Research Institute 2019
-from __future__ import print_function
+
 
 import os
 import pickle
