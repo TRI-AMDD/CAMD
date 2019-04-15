@@ -17,9 +17,11 @@ COPY . /home/camd
 # Install camd
 RUN source /opt/conda/bin/activate camd
 
-# Set TQDM to be off in tests
+# Update mysql
 RUN apt-get update
-RUN apt install -y gcc
+RUN apt install -y gcc, libmysqlclient-dev
+
+# Set TQDM to be off in tests
 ENV TQDM_OFF=1
 
 # Goofy numpy pre-install
