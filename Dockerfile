@@ -26,6 +26,7 @@ ENV TQDM_OFF=1
 
 # Goofy numpy pre-install
 RUN pip install numpy
+RUN pip install Django
 
 # Install package
 RUN python setup.py develop
