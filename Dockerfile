@@ -19,7 +19,7 @@ RUN source /opt/conda/bin/activate camd
 
 # Update mysql
 RUN apt-get update
-RUN apt install -y gcc default-libmysqlclient-dev
+RUN apt-get install -y gcc default-libmysqlclient-dev
 
 # Set TQDM to be off in tests
 ENV TQDM_OFF=1
