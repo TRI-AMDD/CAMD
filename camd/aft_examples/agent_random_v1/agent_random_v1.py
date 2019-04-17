@@ -3,7 +3,7 @@ import pandas as pd
 import os
 from camd.agents import AgentRandom
 from camd.analysis import AnalyzeStability
-from camd.utils import aft_loop
+from camd.utils.utils import aft_loop
 
 ##########################################################
 # Binary stable material discovery QBC based agent recipe
