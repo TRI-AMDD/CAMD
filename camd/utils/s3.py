@@ -2,9 +2,12 @@
 Module with methods to access S3.
 
 """
+import os
+
 import boto3
 from botocore.exceptions import NoCredentialsError
 import pandas as pd
+from camd import S3_CACHE, tqdm
 
 
 def s3_connection_broken(bucket, prefix):
@@ -71,3 +74,35 @@ def read_s3_object_body(bucket, prefix, amt=None):
     """
     f = boto3.resource('s3').Object(bucket, prefix).get()['Body']
     return f.read(amt)
+
+
+def hook(t):
+    """tqdm hook for processing s3 downloads"""
+    def inner(bytes_amount):
+        t.update(bytes_amount)
+    return inner
+
+
+def sync_s3_objs():
+    """Quick function to download relevant s3 files to cache"""
+
+    # make cache dir
+    if not os.path.isdir(S3_CACHE):
+        os.mkdir(S3_CACHE)
+
+    # Initialize s3 resource
+    s3 = boto3.resource("s3")
+    bucket = s3.Bucket("ml-dash-datastore")
+
+    # Put more s3 objects here if desired
+    s3_keys = ["oqmd_voro_March25_v2.csv"]
+
+    s3_keys_to_download = set(s3_keys) - set(os.listdir(S3_CACHE))
+
+    for s3_key in s3_keys_to_download:
+        filename = os.path.split(s3_key)[-1]
+        file_object = s3.Object("ml-dash-datastore", s3_key)
+        file_size = file_object.content_length
+        with tqdm(total=file_size, unit_scale=True, desc=filename) as t:
+            bucket.download_file(
+                s3_key, os.path.join(S3_CACHE, filename), Callback=hook(t))
