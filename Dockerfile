@@ -26,7 +26,6 @@ RUN /etc/init.d/postgresql start && \
   psql -c "CREATE USER localuser WITH SUPERUSER PASSWORD 'localpassword';" && \
   createdb local
 USER root
-CMD service postgresql stop && service postgresql start
 
 # Set TQDM to be off in tests
 ENV TQDM_OFF=1
@@ -40,3 +39,5 @@ RUN python setup.py develop
 RUN pip install nose
 RUN pip install coverage
 RUN pip install pylint
+
+CMD ["./dockertest.sh"]
