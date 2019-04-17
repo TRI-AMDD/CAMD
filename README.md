@@ -45,12 +45,8 @@ First dependencies via [homebrew](https://brew.sh/). Thanks to the contributors 
 
 ```angular2
 $ brew install mysql
-$ brew unlink mysql
-$ brew install mysql-connector-c
-$ sed -i -e 's/libs="$libs -l "/libs="$libs -lmysqlclient -lssl -lcrypto"/g' /usr/local/bin/mysql_config
-$ pip install MySQL-python
-$ brew unlink mysql-connector-c
-$ brew link --overwrite mysql
+$ brew install postgresql
+$ brew install gcc
 ```
 
 Install numpy via pip first, since the build depends on this and numpy has some difficulty recognizing

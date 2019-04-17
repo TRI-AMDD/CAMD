@@ -10,6 +10,7 @@ from camd.database.schema import Material
 from camd.model.feature.provide import FeatureComputer
 from camd.utils.postgres import sqlalchemy_session
 from camd.database.access import CamdSchemaSession
+from camd.utils.postgres import database_available
 
 from matminer.featurizers.base import MultipleFeaturizer
 from matminer.featurizers.composition import ElementProperty, Stoichiometry, \
@@ -22,6 +23,8 @@ from matminer.featurizers.structure import MaximumPackingEfficiency
 ENVIRONMENT = 'local'
 
 
+@unittest.skipUnless(database_available(ENVIRONMENT),
+                     ENVIRONMENT + ' database not available')
 class TestFeatureComputation(unittest.TestCase):
 
     def setUp(self):
