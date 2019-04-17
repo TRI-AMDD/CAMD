@@ -76,7 +76,7 @@ class AgentStabilityQBC(HypothesisBase):
             ml_stabilities.append(_p.stability)
 
         # Now let's find the most stable ones upto N_query within hull_distance
-        ml_stabilities = np.array(ml_stabilities)
+        ml_stabilities = np.array(ml_stabilities, dtype=float)
         ml_stable = np.array(candidate_phases)[ml_stabilities <= self.hull_distance]
         to_compute = sorted(ml_stable, key=lambda x: x.stability)[:self.N_query]
 
