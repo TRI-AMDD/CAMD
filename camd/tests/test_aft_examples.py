@@ -74,8 +74,7 @@ class AftLoopTest(unittest.TestCase):
 
     def test_qbc_agent_loop(self):
         df = pd.read_csv(os.path.join(CAMD_TEST_FILES, 'test_df.csv'))
-        # TODO: @murat can you check this, is it okay to do?
-        df_sub = df[df['N_species'] <= 3]# .sample(frac=0.8) # Downsampling candidates to 20% just for testing!
+        df_sub = df[df['N_species'] <= 3]
         n_seed = 200  # Starting sample size
         n_query = 10  # This many new candidates are "calculated with DFT" (i.e. requested from Oracle -- DFT)
         agent = AgentStabilityQBC

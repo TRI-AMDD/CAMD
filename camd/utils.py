@@ -1,5 +1,5 @@
 # Copyright Toyota Research Institute 2019
-from __future__ import print_function
+
 
 import os
 import pickle
@@ -53,11 +53,11 @@ def aft_loop(path, df, df_sub, n_seed, n_query, agent,
     # Generate seed data if on first iteration
     if iteration == 0:
         seed_data = df.sample(n=n_seed)
-        with open(os.path.join(path, 'seed_data.pd'), 'w') as f:
+        with open(os.path.join(path, 'seed_data.pd'), 'wb') as f:
             pickle.dump(seed_data, f)
         new_experiment_requests = []
     else:
-        with open(os.path.join(path, 'seed_data.pd'), 'r') as f:
+        with open(os.path.join(path, 'seed_data.pd'), 'rb') as f:
             seed_data = pickle.load(f)
         with open(os.path.join(path, 'next_experiments_requests.json'), 'r') as f:
             new_experiment_requests = json.load(f)
@@ -68,7 +68,7 @@ def aft_loop(path, df, df_sub, n_seed, n_query, agent,
                 new_experiment_requests, df)
 
             seed_data = seed_data.append(new_experimental_results)
-        with open(os.path.join(path, 'seed_data.pd'), 'w') as f:
+        with open(os.path.join(path, 'seed_data.pd'), 'wb') as f:
             pickle.dump(seed_data, f)
 
     # Run analysis

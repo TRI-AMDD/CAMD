@@ -1,7 +1,7 @@
 // define a tag according to the Docker tag rules https://docs.docker.com/engine/reference/commandline/tag/
 // the hash sign (#) is problematic when using it in bash, instead of working around this problem, just replace all
 // punctuation with dash (-)
-def dockerTagWithoutBuildNumber = "${env.BRANCH_NAME}".toLowerCase().replaceAll("\\p{Punct}", "-").replaceAll("\\p{Space}", "-")
+def dockerTagWithoutBuildNumber = "public-${env.BRANCH_NAME}".toLowerCase().replaceAll("\\p{Punct}", "-").replaceAll("\\p{Space}", "-")
 def dockerTag = "${dockerTagWithoutBuildNumber}-${env.BUILD_NUMBER}"
 def dockerTagLatest = "${dockerTagWithoutBuildNumber}-latest"
 def awsRegion = "us-west-2"
@@ -30,10 +30,10 @@ node {
 
         stage('Pre-Checkout') {
         // Ask Westin/AMDD if this section needs to be changed
-        withCredentials([string(credentialsId: 'vault_token', variable: 'VAULT_TOKEN')]) {
+        withCredentials([string(credentialsId: 'vault_token', variable: 'VAULT_TOKEN'),
+                         string(credentialsId: 'vault_ip', variable: 'VAULT_IP'),
+                         string(credentialsId: 'jumpbox_ip', variable: 'JUMPBOX')]) {
 
-                def JUMPBOX = "52.89.56.187"
-                def VAULT_IP = "10.0.7.42"
                 def VAULT_PORT = "8200"
 
                 echo 'Testing..'

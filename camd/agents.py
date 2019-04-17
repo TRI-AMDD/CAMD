@@ -1,7 +1,7 @@
 # Copyright Toyota Research Institute 2019
 
 import numpy as np
-from qmpy import Phase, PhaseData
+from qmpy.analysis.thermodynamics.phase import Phase, PhaseData
 from copy import deepcopy
 from camd.analysis import PhaseSpaceAL, ELEMENTS
 from camd.hypothesis import HypothesisBase, QBC
