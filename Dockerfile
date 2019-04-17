@@ -7,19 +7,20 @@ WORKDIR /home
 RUN mkdir -p /home/camd
 WORKDIR /home/camd
 
-# Create BEEP_EP env
+# Create camd env
 RUN conda create -n camd python=3.6
 ENV PATH="/opt/conda/envs/camd/bin:$PATH"
-# ENV SHOW_TQDM=false
 
 COPY . /home/camd
 
 # Install camd
 RUN source /opt/conda/bin/activate camd
 
-# Update mysql
+# Update mysql/postgres
 RUN apt-get update
 RUN apt-get install -y gcc default-libmysqlclient-dev libpq-dev
+RUN /usr/local/pgsql/bin/pg_ctl start -l logfile -D /usr/local/pgsql/data
+
 
 # Set TQDM to be off in tests
 ENV TQDM_OFF=1
