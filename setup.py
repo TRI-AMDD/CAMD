@@ -30,7 +30,7 @@ setup(
                       "sklearn",
                       "boto3",
                       "sqlalchemy",
-                      "matminer"]
+                      "matminer"],
     # TODO: make this materials?
     dependency_links=[
         "http://github.com/JosephMontoya-TRI/qmpy_py3/tarball/master#egg=qmpy"
