@@ -19,8 +19,14 @@ RUN source /opt/conda/bin/activate camd
 # Update mysql/postgres
 RUN apt-get update
 RUN apt-get install -y gcc default-libmysqlclient-dev libpq-dev
-RUN /usr/local/pgsql/bin/pg_ctl start -l logfile -D /usr/local/pgsql/data
 
+# Start postgres and add user
+USER postgres
+RUN /etc/init.d/postgresql start && \
+  psql -c "CREATE USER localuser WITH SUPERUSER PASSWORD 'localpassword';" && \
+  createdb local
+USER root
+CMD service postgresql stop && service postgresql start
 
 # Set TQDM to be off in tests
 ENV TQDM_OFF=1
