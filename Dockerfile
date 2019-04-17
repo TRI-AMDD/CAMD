@@ -40,4 +40,5 @@ RUN pip install nose
 RUN pip install coverage
 RUN pip install pylint
 
+RUN chmod +x dockertest.sh
 CMD ["./dockertest.sh"]
