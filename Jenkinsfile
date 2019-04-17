@@ -73,7 +73,7 @@ node {
 				// ie. write: openssl rand -base64 32 | docker secret create secure-secret -
 				// read: docker service create --secret="secure-secret" redis:alpine
 				// # cat /run/secrets/secure-secret
-                echo eval \"\$(aws configure get aws_access_key_id)\"
+                // echo eval "aws configure get aws_access_key_id"
                 AWS_ACCESS_KEY_ID=$(aws configure get aws_access_key_id)
                 AWS_SECRET_ACCESS_KEY=$(aws configure get aws_secret_access_key)
                 //
