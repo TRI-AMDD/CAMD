@@ -32,7 +32,7 @@ class TestFeatureComputation(unittest.TestCase):
         # populate some materials (if they don't yet exist in db)
         bucket = 'oqmd-chargedensity'
         s3_key_list = ['OQMD_CHGCARs/1000000_POSCAR',
-                            'OQMD_CHGCARs/1000001_POSCAR']
+                       'OQMD_CHGCARs/1000001_POSCAR']
         session = sqlalchemy_session(ENVIRONMENT)
         for key in s3_key_list:
             material = Material.from_poscar_s3(bucket, prefix=key,

@@ -7,19 +7,25 @@ WORKDIR /home
 RUN mkdir -p /home/camd
 WORKDIR /home/camd
 
-# Create BEEP_EP env
+# Create camd env
 RUN conda create -n camd python=3.6
 ENV PATH="/opt/conda/envs/camd/bin:$PATH"
-# ENV SHOW_TQDM=false
 
 COPY . /home/camd
 
 # Install camd
 RUN source /opt/conda/bin/activate camd
 
-# Update mysql
+# Update mysql/postgres
 RUN apt-get update
-RUN apt-get install -y gcc default-libmysqlclient-dev
+RUN apt-get install -y gcc default-libmysqlclient-dev libpq-dev postgresql
+
+# Start postgres and add user
+USER postgres
+RUN /etc/init.d/postgresql start && \
+  psql -c "CREATE USER localuser WITH SUPERUSER PASSWORD 'localpassword';" && \
+  createdb local
+USER root
 
 # Set TQDM to be off in tests
 ENV TQDM_OFF=1
@@ -33,3 +39,6 @@ RUN python setup.py develop
 RUN pip install nose
 RUN pip install coverage
 RUN pip install pylint
+
+RUN chmod +x dockertest.sh
+CMD ["./dockertest.sh"]
