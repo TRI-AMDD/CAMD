@@ -6,7 +6,7 @@ import pandas as pd
 
 from sklearn.neural_network import MLPRegressor
 from camd.agent.agents import QBCStabilityAgent
-from camd.agent.base import AgentRandom
+from camd.agent.base import RandomAgent
 from camd.analysis import AnalyzeStability
 from camd.loop import aft_loop
 from camd.utils.s3 import sync_s3_objs
@@ -37,7 +37,7 @@ class AftLoopTestLong(unittest.TestCase):
         df_sub = df[df['N_species'] == 2].sample(frac=0.2)  # Downsampling candidates to 20% just for testing!
         n_seed = 5000  # Starting sample size
         n_query = 200  # his many new candidates are "calculated with DFT" (i.e. requested from Oracle -- DFT)
-        agent = AgentRandom
+        agent = RandomAgent
         agent_params = {'hull_distance': 0.05}  # Distance to hull to consider a finding as discovery (eV/atom)
         analyzer = AnalyzeStability
         analyzer_params = {'hull_distance': 0.05}
@@ -65,7 +65,7 @@ class AftLoopTest(unittest.TestCase):
         df_sub = df[df['N_species'] == 2].sample(frac=0.5)  # Downsampling candidates to 20% just for testing!
         n_seed = 200  # Starting sample size
         n_query = 10  # his many new candidates are "calculated with DFT" (i.e. requested from Oracle -- DFT)
-        agent = AgentRandom
+        agent = RandomAgent
         agent_params = {'hull_distance': 0.05}  # Distance to hull to consider a finding as discovery (eV/atom)
         analyzer = AnalyzeStability
         analyzer_params = {'hull_distance': 0.05}
