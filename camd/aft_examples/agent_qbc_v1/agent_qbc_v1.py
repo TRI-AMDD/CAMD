@@ -2,7 +2,7 @@
 import pandas as pd
 import os
 from sklearn.neural_network import MLPRegressor
-from camd.utils.utils import aft_loop
+from camd.loop import aft_loop
 from camd.agents import AgentStabilityQBC
 from camd.analysis import AnalyzeStability
 
