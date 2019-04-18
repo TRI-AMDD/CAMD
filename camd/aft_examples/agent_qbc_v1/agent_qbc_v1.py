@@ -3,7 +3,7 @@ import pandas as pd
 import os
 from sklearn.neural_network import MLPRegressor
 from camd.loop import aft_loop
-from camd.agents import AgentStabilityQBC
+from camd.agent.agents import QBCStabilityAgent
 from camd.analysis import AnalyzeStability
 
 ##########################################################
@@ -13,7 +13,7 @@ df = pd.read_csv('../oqmd_voro_March25_v2.csv')
 df_sub = df[df['N_species'] == 2].sample(frac=0.2) # Downsampling candidates to 20% just for testing!
 N_seed = 5000  # Starting sample size
 N_query = 200  # This many new candidates are "calculated with DFT" (i.e. requested from Oracle -- DFT)
-agent = AgentStabilityQBC
+agent = QBCStabilityAgent
 agent_params = {
     'ML_algorithm': MLPRegressor,
     'ML_algorithm_params': {'hidden_layer_sizes': (84, 50)},

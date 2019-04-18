@@ -6,19 +6,42 @@ from sklearn.preprocessing import StandardScaler
 from sklearn.model_selection import KFold, cross_val_score
 from camd import tqdm
 
-from abc import ABCMeta
+import abc
 
 
-class HypothesisBase(metaclass=ABCMeta):
-    def hypotheses(self):
+class HypothesisAgent(metaclass=abc.ABCMeta):
+    def __init__(self, candidate_data, params):
         pass
+
+    @abc.abstractmethod
+    def predict(self):
+        """
+
+        Returns:
+            subset of candidate data which represent some
+            choice e. g. for the next set of experiments
+
+        """
+
+    @abc.abstractmethod
+    def update_candidate_data(self, new_results):
+        """
+
+        Args:
+            new_results:
+
+        Returns:
+
+        """
+
 
 
 class QBC:
     """
     Uncertainty quantification for non-supporting regressors with Query-By-Committee
     """
-    def __init__(self, N_members, frac, ML_algorithm=None, ML_algorithm_params=None, test_full_model=True):
+    def __init__(self, N_members, frac, ML_algorithm=None, ML_algorithm_params=None,
+                 test_full_model=True):
         """
         :param N_members: Number of committee members (i.e. models to train)
         :param frac: fraction of data to use in training committee members
@@ -87,3 +110,28 @@ class QBC:
         means = np.mean(np.array(committee_predictions), axis=0)
 
         return means, stds
+
+
+class RandomAgent(HypothesisAgent):
+    """
+    Baseline agent: Randomly picks next experiments
+    """
+    def __init__(self, candidate_data, seed_data, N_query=None,
+                 pd=None, hull_distance=None):
+
+        self.candidate_data = candidate_data
+        self.seed_data = seed_data
+        self.hull_distance = hull_distance if hull_distance else 0.0
+        self.N_query = N_query if N_query else 1
+        self.pd = pd
+        self.cv_score = np.nan
+        super(AgentRandom, self).__init__()
+
+    def hypotheses(self):
+        indices_to_compute = []
+        for data in self.candidate_data.iterrows():
+            indices_to_compute.append(data[0])
+        a = np.array(indices_to_compute)
+        np.random.shuffle(a)
+        indices_to_compute = a[:self.N_query].tolist()
+        return indices_to_compute

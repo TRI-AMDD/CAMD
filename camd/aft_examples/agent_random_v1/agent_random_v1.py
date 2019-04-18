@@ -1,7 +1,7 @@
 # Copyright Toyota Research Institute 2019
 import pandas as pd
 import os
-from camd.agents import AgentRandom
+from camd.agent.base import AgentRandom
 from camd.analysis import AnalyzeStability
 from camd.loop import aft_loop
 

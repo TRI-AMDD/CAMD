@@ -1,13 +1,36 @@
 # Copyright Toyota Research Institute 2019
 
+import abc
 
 import os
 import pickle
 import json
 import numpy as np
+from monty.json import MSONable
 
 from camd.experiment import get_dft_calcs_aft
 
+
+class ActiveLearningLoop(MSONable):
+    def __init__(self, path, data, agent_class, experiment_class, analyzer_class=None):
+        """
+
+        Args:
+            path (str or Path-like): path in which to execute the loop
+            data (dict): starting data
+            agent (HypothesisAgent): a subclass of HypothesisAgent
+            experiment (Experiment): a subclass of Experiment
+            analyzer (Analyzer): a subclass of Analyzer, in principle this
+            is optional
+        """
+        self.path = path
+        self.data = data
+        self.agent = agent_class(data)
+        self.experiment_class = experiment_class
+        self.analyzer_class = analyzer_class
+
+    def construct(self, agent_params):
+        pass
 
 # TODO: subsampling capability should be a functionality of hypo
 #  generation.  df_sub here should just be repalced with an

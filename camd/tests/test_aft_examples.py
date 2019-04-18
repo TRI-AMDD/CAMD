@@ -5,7 +5,8 @@ import shutil
 import pandas as pd
 
 from sklearn.neural_network import MLPRegressor
-from camd.agents import AgentRandom, AgentStabilityQBC
+from camd.agent.agents import QBCStabilityAgent
+from camd.agent.base import AgentRandom
 from camd.analysis import AnalyzeStability
 from camd.loop import aft_loop
 from camd.utils.s3 import sync_s3_objs
@@ -78,7 +79,7 @@ class AftLoopTest(unittest.TestCase):
         df_sub = df[df['N_species'] <= 3]
         n_seed = 200  # Starting sample size
         n_query = 10  # This many new candidates are "calculated with DFT" (i.e. requested from Oracle -- DFT)
-        agent = AgentStabilityQBC
+        agent = QBCStabilityAgent
         agent_params = {
             'ML_algorithm': MLPRegressor,
             'ML_algorithm_params': {'hidden_layer_sizes': (84, 50)},

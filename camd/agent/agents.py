@@ -4,12 +4,12 @@ import numpy as np
 from qmpy.analysis.thermodynamics.phase import Phase, PhaseData
 from copy import deepcopy
 from camd.analysis import PhaseSpaceAL, ELEMENTS
-from camd.hypothesis import HypothesisBase, QBC
+from camd.agent.base import HypothesisAgent, QBC
 
 # TODO: Adaptive N_query and subsampling of candidate space
 
 
-class AgentStabilityQBC(HypothesisBase):
+class QBCStabilityAgent(HypothesisAgent):
 
     def __init__(self, candidate_data, seed_data, N_query=None,
                  pd=None, hull_distance=None, ML_algorithm=None, ML_algorithm_params=None,
@@ -31,9 +31,9 @@ class AgentStabilityQBC(HypothesisBase):
         self.qbc = QBC(N_members=self.N_members, frac=self.frac,
                        ML_algorithm=self.ML_algorithm, ML_algorithm_params=self.ML_algorithm_params)
 
-        super(AgentStabilityQBC, self).__init__()
+        super(QBCStabilityAgent, self).__init__()
 
-    def hypotheses(self, retrain_committee=False):
+    def predict(self, retrain_committee=False):
         if retrain_committee:
             self.qbc.trained = False
 
@@ -84,6 +84,17 @@ class AgentStabilityQBC(HypothesisBase):
 
         return self.indices_to_compute
 
+    def update_candidate_data(self, new_results):
+        """
+
+        Args:
+            new_results (dataframe):
+
+        Returns:
+
+        """
+        raise NotImplementedError("To be implemented")
+
     def get_pd(self):
         self.pd = PhaseData()
         phases = []
@@ -94,25 +105,3 @@ class AgentStabilityQBC(HypothesisBase):
         self.pd.add_phases(phases)
 
 
-class AgentRandom(HypothesisBase):
-    """
-    Baseline agent: Randomly picks next experiments
-    """
-    def __init__(self, candidate_data, seed_data, N_query=None, pd=None, hull_distance=None):
-
-        self.candidate_data = candidate_data
-        self.seed_data = seed_data
-        self.hull_distance = hull_distance if hull_distance else 0.0
-        self.N_query = N_query if N_query else 1
-        self.pd = pd
-        self.cv_score = np.nan
-        super(AgentRandom, self).__init__()
-
-    def hypotheses(self):
-        indices_to_compute = []
-        for data in self.candidate_data.iterrows():
-            indices_to_compute.append(data[0])
-        a = np.array(indices_to_compute)
-        np.random.shuffle(a)
-        indices_to_compute = a[:self.N_query].tolist()
-        return indices_to_compute
