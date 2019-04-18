@@ -7,7 +7,8 @@ import pandas as pd
 from sklearn.neural_network import MLPRegressor
 from camd.agents import AgentRandom, AgentStabilityQBC
 from camd.analysis import AnalyzeStability
-from camd.utils import aft_loop, sync_s3_objs
+from camd.loop import aft_loop
+from camd.utils.s3 import sync_s3_objs
 from camd import S3_CACHE, CAMD_TEST_FILES
 
 
