@@ -8,7 +8,7 @@ import json
 import numpy as np
 from monty.json import MSONable
 
-from camd.experiment import get_dft_calcs_aft
+from camd.experiment.dft import get_dft_calcs_aft
 
 
 class ActiveLearningLoop(MSONable):
