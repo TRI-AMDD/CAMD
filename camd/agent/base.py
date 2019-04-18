@@ -125,7 +125,7 @@ class RandomAgent(HypothesisAgent):
         self.N_query = N_query if N_query else 1
         self.pd = pd
         self.cv_score = np.nan
-        super(AgentRandom, self).__init__()
+        super(RandomAgent, self).__init__()
 
     def hypotheses(self):
         indices_to_compute = []
