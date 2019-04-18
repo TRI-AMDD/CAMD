@@ -29,7 +29,10 @@ setup(
                       "pandas",
                       "sklearn",
                       "boto3",
-                      "monty"],
+                      "monty",
+                      "sqlalchemy",
+                      "matminer",
+                      "psycopg2"],
     # TODO: make this materials?
     dependency_links=[
         "http://github.com/JosephMontoya-TRI/qmpy_py3/tarball/master#egg=qmpy"

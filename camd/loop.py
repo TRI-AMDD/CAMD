@@ -5,11 +5,9 @@ import os
 import pickle
 import json
 import numpy as np
-import boto3
-from camd import tqdm
 
 from camd.experiment import get_dft_calcs_aft
-from camd import S3_CACHE
+
 
 # TODO: subsampling capability should be a functionality of hypo
 #  generation.  df_sub here should just be repalced with an
@@ -103,35 +101,3 @@ def get_features_aft(ids, d):
     Placeholder function that mocks featurization of structures
     """
     return d.loc[ids]
-
-
-def hook(t):
-    """tqdm hook for processing s3 downloads"""
-    def inner(bytes_amount):
-        t.update(bytes_amount)
-    return inner
-
-
-def sync_s3_objs():
-    """Quick function to download relevant s3 files to cache"""
-
-    # make cache dir
-    if not os.path.isdir(S3_CACHE):
-        os.mkdir(S3_CACHE)
-
-    # Initialize s3 resource
-    s3 = boto3.resource("s3")
-    bucket = s3.Bucket("ml-dash-datastore")
-
-    # Put more s3 objects here if desired
-    s3_keys = ["oqmd_voro_March25_v2.csv"]
-
-    s3_keys_to_download = set(s3_keys) - set(os.listdir(S3_CACHE))
-
-    for s3_key in s3_keys_to_download:
-        filename = os.path.split(s3_key)[-1]
-        file_object = s3.Object("ml-dash-datastore", s3_key)
-        file_size = file_object.content_length
-        with tqdm(total=file_size, unit_scale=True, desc=filename) as t:
-            bucket.download_file(
-                s3_key, os.path.join(S3_CACHE, filename), Callback=hook(t))
