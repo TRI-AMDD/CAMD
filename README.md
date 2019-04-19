@@ -50,17 +50,18 @@ $ brew unlink mysql-connector-c
 $ brew link --overwrite mysql
 ```
 
-Install numpy via pip first, since the build depends on this and numpy has some difficulty recognizing
+Install numpy/Django via pip first, since the build depends on these and numpy has some difficulty recognizing
 its own install:
 
 ```angular2
 pip install numpy
+pip install Django
 ```
 
 Then use the included setup.py procedure, from the cloned directory.
 
 ```angular2
-pip install -e .
+python setup.py develop
 ```
 
 ## Data download
