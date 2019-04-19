@@ -24,10 +24,13 @@ setup(
     install_requires=["numpy>=1.16",
                       "networkx==2.2",
                       "matplotlib",
-                      "MySQL-python",
                       "qmpy",
                       "tqdm",
                       "pandas",
                       "sklearn",
-                      "boto3"]
+                      "boto3"],
+    # TODO: make this materials?
+    dependency_links=[
+        "http://github.com/JosephMontoya-TRI/qmpy_py3/tarball/master#egg=qmpy"
+    ]
 )

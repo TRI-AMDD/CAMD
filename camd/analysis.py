@@ -2,7 +2,8 @@
 
 import numpy as np
 from camd import tqdm
-from qmpy import PhaseSpace, Phase, PhaseData
+from qmpy.analysis.thermodynamics.phase import Phase, PhaseData
+from qmpy.analysis.thermodynamics.space import PhaseSpace
 from abc import ABCMeta
 import multiprocessing
 
@@ -15,9 +16,7 @@ ELEMENTS = ["Pr", "Ru", "Th", "Pt", "Ni", "S", "Na", "Nb", "Nd", "C", "Li", "Pb"
 
 #TODO: Eval Performance = start / stop?
 
-class AnalysisBase:
-    __metaclass__ = ABCMeta
-
+class AnalysisBase(metaclass=ABCMeta):
     def analysis(self):
         pass
 
@@ -45,14 +44,17 @@ class AnalyzeStability(AnalysisBase):
         else:
             space.compute_stabilities_mod()
 
-        stabilities_of_space_uids = np.array([p.stability for p in space.phases]) <= self.hull_distance
+        # Add dtype so that None values can be compared
+        stabilities_of_space_uids = np.array([p.stability for p in space.phases],
+                                             dtype=np.float) <= self.hull_distance
 
         stabilities_of_new = {}
         for _p in space.phases:
             if _p.description in self.new_result_ids:
                 stabilities_of_new[_p.description] = _p.stability
 
-        stabilities_of_new_uids = np.array([stabilities_of_new[uid] for uid in self.new_result_ids]) <= self.hull_distance
+        stabilities_of_new_uids = np.array([stabilities_of_new[uid] for uid in self.new_result_ids],
+                                           dtype=np.float) <= self.hull_distance
 
         # array of bools for stable vs not for new uids, and all experiments, respectively
         return stabilities_of_new_uids, stabilities_of_space_uids
@@ -80,24 +82,24 @@ class PhaseSpaceAL(PhaseSpace):
         if phases_to_evaluate is None:
             phases_to_evaluate = self.phases
 
-        for p in tqdm(self.phase_dict.values()):
+        for p in tqdm(list(self.phase_dict.values())):
             if p.stability is None:  # for low e phases, we only need to eval stability if it doesn't exist
                 try:
                     p.stability = p.energy - self.gclp(p.unit_comp)[0]
                 except:
-                    print p
+                    print(p)
                     p.stability = np.nan
 
         # will only do requested phases for things not in phase_dict
         for p in tqdm(phases_to_evaluate):
-            if p not in self.phase_dict.values():
+            if p not in list(self.phase_dict.values()):
                 if p.name in self.phase_dict:
                     p.stability = p.energy - self.phase_dict[p.name].energy + self.phase_dict[p.name].stability
                 else:
                     try:
                         p.stability = p.energy - self.gclp(p.unit_comp)[0]
                     except:
-                        print p
+                        print(p)
                         p.stability = np.nan
 
     def compute_stabilities_multi(self, phases_to_evaluate=None, ncpus=multiprocessing.cpu_count()):
@@ -119,7 +121,7 @@ class PhaseSpaceAL(PhaseSpace):
         # Creating a map from entry uid to index of entry in the current list of phases in space.
         self.uid_to_phase_ind = dict([(self.phases[i].description, i) for i in range(len(self.phases))])
 
-        phase_dict_list = self.phase_dict.values()
+        phase_dict_list = list(self.phase_dict.values())
         _result_list1 = parmap(self._multiproc_help1,  phase_dict_list, nprocs=ncpus)
         for i in range(len(phase_dict_list)):
             self.phase_dict[phase_dict_list[i].name].stability = _result_list1[i]
@@ -136,19 +138,19 @@ class PhaseSpaceAL(PhaseSpace):
             try:
                 p.stability = p.energy - self.gclp(p.unit_comp)[0]
             except:
-                print p
+                print(p)
                 p.stability = np.nan
         return p.stability
 
     def _multiproc_help2(self, p):
-        if p not in self.phase_dict.values():
+        if p not in list(self.phase_dict.values()):
             if p.name in self.phase_dict:
                 p.stability = p.energy - self.phase_dict[p.name].energy + self.phase_dict[p.name].stability
             else:
                 try:
                     p.stability = p.energy - self.gclp(p.unit_comp)[0]
                 except:
-                    print p
+                    print(p)
                     p.stability = np.nan
         return p.stability
 
