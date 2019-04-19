@@ -46,7 +46,7 @@ $ brew unlink mysql
 $ brew install mysql-connector-c
 $ sed -i -e 's/libs="$libs -l "/libs="$libs -lmysqlclient -lssl -lcrypto"/g' /usr/local/bin/mysql_config
 $ pip install MySQL-python
-$ brew unlink mysql-connuiesdfuuuuctor-c
+$ brew unlink mysql-connector-c
 $ brew link --overwrite mysql
 ```
 
