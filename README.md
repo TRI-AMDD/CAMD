@@ -22,17 +22,18 @@ apt install -y default-libmysqlclient-dev gcc
 export PATH=$PATH:/usr/local/mysql/bin
 ```
 
-Install numpy via pip first, since the build depends on this and numpy has some difficulty recognizing
+Install numpy/Django via pip first, since the build depends on this and numpy has some difficulty recognizing
 its own install:
 
 ```angular2
 pip install numpy
+pip install Django
 ```
 
 Then use the included setup.py procedure, from the cloned directory.
 
 ```angular2
-pip install -e .
+python setup.py develop
 ```
 
 ### Mac OSX
