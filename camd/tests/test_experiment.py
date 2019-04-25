@@ -1,12 +1,12 @@
 import unittest
+import time
 
 from monty.tempfile import ScratchDir
 from pymatgen.util.testing import PymatgenTest
 from camd.experiment import submit_dft_calcs_to_mc1, check_dft_calcs
 
 
-
-@unittest.skipIf(True, "toggle this test")
+@unittest.skipIf(False, "toggle this test")
 class Mc1Test(unittest.TestCase):
     def test_get(self):
         good_silicon = PymatgenTest.get_structure("Si")
@@ -14,6 +14,7 @@ class Mc1Test(unittest.TestCase):
 
         # Add another site at the same position
         bad_silicon.append("Si", bad_silicon[0].frac_coords)
+        self.assertEqual(len(bad_silicon), 3)
 
         with ScratchDir('.'):
             structure_dict = {"good": good_silicon,
@@ -21,12 +22,13 @@ class Mc1Test(unittest.TestCase):
             calc_status = submit_dft_calcs_to_mc1(structure_dict)
             finished = False
             while not finished:
+                time.sleep(120)
                 calc_status = check_dft_calcs(calc_status)
                 print("Calc status: {}".format(calc_status))
-                finished = all([doc['status'] is not ['pending']
+                finished = all([doc['status'] in ['SUCCEEDED', 'FAILED']
                                 for doc in calc_status.values()])
-        self.assertEqual(calc_status['good']['status'], 'completed')
-        self.assertEqual(calc_status['bad']['status'], 'failed')
+        # self.assertEqual(calc_status['good']['status'], 'COMPLETED')
+        # self.assertEqual(calc_status['bad']['status'], 'FAILED')
 
 
 if __name__ == '__main__':

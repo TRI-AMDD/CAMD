@@ -2,9 +2,12 @@
 
 import os
 import uuid
-import shutil
+import json
+import re
 from monty.os import cd
+import shlex
 from pymatgen.io.vasp.outputs import Vasprun
+import subprocess
 import traceback
 
 #TODO: Experiment Broker
@@ -23,9 +26,6 @@ def get_dft_calcs_from_northwestern(uids):
     raise NotImplementedError("Northwestern interface not yet implemented")
 
 
-OQMD_MODEL_FILE = os.path.join(os.path.dirname(__file__), "model.py")
-
-
 def submit_dft_calcs_to_mc1(structure_dict):
     """
     Placeholder function for fetching DFT calculations from MC1
@@ -41,29 +41,34 @@ def submit_dft_calcs_to_mc1(structure_dict):
         raise ValueError("TRI_PATH must be specified as env variable to "
                          "use camd MC1 interface")
     # Create run directory
-    uuid_string = uuid.uuid4()
+    uuid_string = str(uuid.uuid4()).replace('-', '')
     parent_dir = os.path.join(tri_path, "model", "oqmdvasp", "2",
-                              "u", "camd", "run_{}".format(uuid_string))
+                              "u", "camd", "run{}".format(uuid_string))
     if any(['_' in key for key in structure_dict.keys()]):
         raise ValueError("Structure keys cannot contain underscores for "
                          "mc1 compatibility")
 
     calc_status = {}
     for structure_id, structure in structure_dict.items():
-        calc_path = os.path.join(parent_dir, structure_id)
+        calc_path = os.path.join(parent_dir, structure_id, "_1")
         os.makedirs(calc_path)
         with cd(calc_path):
             # Write input cif file and python model file
-            structure.to(filename="input.cif")
-            shutil.copy(OQMD_MODEL_FILE, "model.py")
+            structure.to(filename="POSCAR")
+            with open("model.py", "w") as f:
+                f.write(MODEL_TEMPLATE)
 
             # Submit to mc1
             # TODO: ensure this is checked for failure to submit
-            os.system("trisub")
+            print("Submitting job")
+            calc = subprocess.check_output(["trisub", "-q", "small"])
+            calc = calc.decode('utf-8')
+            calc = re.findall("({.+})", calc, re.DOTALL)[0]
+            calc = json.loads(calc)
+            calc.update({"path": os.getcwd(),
+                         "status": "SUBMITTED"})
+            calc_status[structure_id] = calc
 
-            # Add status to status doc
-            calc_status[structure_id] = {
-                "path": os.getcwd(), "status": "pending"}
     return calc_status
 
 
@@ -77,21 +82,25 @@ def check_dft_calcs(calc_status):
         updated calc_status dictionary
 
     """
-    for structure_id, status_doc in calc_status.items():
-        if status_doc['status'] in ['completed', 'failed']:
+    for structure_id, calc in calc_status.items():
+        if calc['status'] in ['SUCCEEDED', 'FAILED']:
             continue
-        path = status_doc['path']
+        path = calc['path']
         print("Checking status of {}: {}".format(path, structure_id))
-        os.chdir(path)
-        os.system('trisync')
-        os.chdir('simulation')
-        # TODO: look into querying AWS batch system, rather than filesystem
-        if os.path.isfile('completed'):
+        # TODO: probably could use botocore for this
+        aws_cmd = "aws batch describe-jobs --jobs {}".format(calc['jobId'])
+        result = subprocess.check_output(shlex.split(aws_cmd))
+        result = json.loads(result)
+        aws_status = result["jobs"][0]["status"]
+        # calc.update({"status": status})
+        if aws_status is "SUCCEEDED":
+            os.chdir(path)
+            subprocess.call('trisync')
+            os.chdir('simulation')
             try:
-                os.chdir('static')
-                vr = Vasprun('.')
-                status_doc.update({
-                    "state": "completed",
+                vr = Vasprun('static/vasprun.xml')
+                calc.update({
+                    "status": "SUCCEEDED",
                     "error": None,
                     "result": vr.as_dict()
                 })
@@ -100,13 +109,54 @@ def check_dft_calcs(calc_status):
                 with open('err') as errfile:
                     error_doc.update({"trisub_stderr": errfile.read()})
                 error_doc.update({"camd_exception": "{}".format(e),
-                                  "camd_traceback": traceback.format_exc(e)})
-                status_doc.update({
-                    "state": "failed",
+                                  "camd_traceback": traceback.format_exc()})
+                calc.update({
+                    "status": "FAILED",
                     "error": error_doc,
                     "result": None
                 })
+        elif aws_status is "FAILED":
+            error_doc = {"aws_fail": result['attempts'][-1]['statusReason']}
+            calc.update({"status": "FAILED",
+                         "error": error_doc
+                         })
         else:
-            pass
-            # TODO: could put some checkpoints here for viz, etc.
+            calc.update({"status": aws_status})
     return calc_status
+
+
+MODEL_TEMPLATE = """
+import os
+
+import qmpy
+from qmpy.materials.structure import Structure
+from qmpy.analysis.vasp.calculation import Calculation
+from qmpy import io
+
+
+# TODO: definitely move this somewhere else, as it's not
+#       meant to be imported
+def run_oqmd_calculation(poscar_filename):
+    starting_structure = io.poscar.read(poscar_filename)
+
+    # Relaxation
+    os.mkdir("relax")
+    os.chdir("relax")
+    calc = Calculation()
+    calc.setup(starting_structure, "relaxation")
+    os.system("mpirun -n 1 vasp_std")
+    relaxed_structure = io.poscar.read("CONTCAR")
+    os.chdir('..')
+
+    # Relaxation
+    os.mkdir("static")
+    os.chdir("static")
+    calc = Calculation()
+    calc.setup(relaxed_structure, "static")
+    os.system("mpirun -n 1 vasp_std")
+    os.chdir('..')
+
+
+if __name__ == '__main__':
+    run_oqmd_calculation("POSCAR")
+"""
