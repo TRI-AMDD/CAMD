@@ -7,7 +7,9 @@ from camd.experiment import submit_dft_calcs_to_mc1, check_dft_calcs,\
     run_dft_experiments
 
 
-@unittest.skipIf(True, "toggle this test")
+# This test is still inconsistent because of issues with
+# batch AWS jobs and database communications
+@unittest.skipIf(False, "toggle this test")
 class Mc1Test(unittest.TestCase):
     def test_get(self):
         good_silicon = PymatgenTest.get_structure("Si")
@@ -19,7 +21,7 @@ class Mc1Test(unittest.TestCase):
         self.assertEqual(len(bad_silicon), 4)
         calc_status = run_dft_experiments({
             "good": good_silicon, "bad": bad_silicon},
-             poll_time=30, timeout=200)
+             poll_time=30, timeout=150)
 
         self.assertEqual(calc_status['good']['status'], 'SUCCEEDED')
         self.assertEqual(calc_status['bad']['status'], 'FAILED')

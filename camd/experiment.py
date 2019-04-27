@@ -137,8 +137,9 @@ def run_dft_experiments(structure_dict, poll_time=60, timeout=3600):
             finished = all([doc['status'] in ['SUCCEEDED', 'FAILED']
                             for doc in calc_status.values()])
             elapsed_time = time.time() - start_time
+            print("Elapsed time {} seconds".format(elapsed_time))
             if elapsed_time > timeout:
-                for doc in calc_status:
+                for doc in calc_status.values():
                     if doc['status'] not in ['SUCCEEDED', 'FAILED']:
                         # Update job status to reflect timeout
                         doc.update({"status": "FAILED",
