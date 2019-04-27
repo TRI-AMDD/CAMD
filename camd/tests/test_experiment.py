@@ -7,7 +7,7 @@ from camd.experiment import submit_dft_calcs_to_mc1, check_dft_calcs,\
     run_dft_experiments
 
 
-@unittest.skipIf(False, "toggle this test")
+@unittest.skipIf(True, "toggle this test")
 class Mc1Test(unittest.TestCase):
     def test_get(self):
         good_silicon = PymatgenTest.get_structure("Si")
@@ -20,18 +20,8 @@ class Mc1Test(unittest.TestCase):
         calc_status = run_dft_experiments({
             "good": good_silicon, "bad": bad_silicon},
              poll_time=30, timeout=200)
-        # with ScratchDir('.'):
-        #     structure_dict =
-        #     calc_status = submit_dft_calcs_to_mc1(structure_dict)
-        #     finished = False
-        #     while not finished:
-        #         time.sleep(30)
-        #         calc_status = check_dft_calcs(calc_status)
-        #         print("Calc status: {}".format(calc_status))
-        #         finished = all([doc['status'] in ['SUCCEEDED', 'FAILED']
-        #                         for doc in calc_status.values()])
 
-        self.assertEqual(calc_status['good']['status'], 'COMPLETED')
+        self.assertEqual(calc_status['good']['status'], 'SUCCEEDED')
         self.assertEqual(calc_status['bad']['status'], 'FAILED')
 
 
