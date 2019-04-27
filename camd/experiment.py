@@ -4,7 +4,9 @@ import os
 import uuid
 import json
 import re
+import time
 from monty.os import cd
+from monty.tempfile import ScratchDir
 import shlex
 from pymatgen.io.vasp.outputs import Vasprun
 import subprocess
@@ -87,13 +89,11 @@ def check_dft_calcs(calc_status):
             continue
         path = calc['path']
         print("Checking status of {}: {}".format(path, structure_id))
-        # TODO: probably could use botocore for this
         aws_cmd = "aws batch describe-jobs --jobs {}".format(calc['jobId'])
         result = subprocess.check_output(shlex.split(aws_cmd))
         result = json.loads(result)
         aws_status = result["jobs"][0]["status"]
-        # calc.update({"status": status})
-        if aws_status is "SUCCEEDED":
+        if aws_status == "SUCCEEDED":
             os.chdir(path)
             subprocess.call('trisync')
             os.chdir('simulation')
@@ -115,14 +115,41 @@ def check_dft_calcs(calc_status):
                     "error": error_doc,
                     "result": None
                 })
-        elif aws_status is "FAILED":
-            error_doc = {"aws_fail": result['attempts'][-1]['statusReason']}
+        elif aws_status == "FAILED":
+            error_doc = {"aws_fail": result['jobs'][0]['attempts'][-1]['statusReason']}
             calc.update({"status": "FAILED",
                          "error": error_doc
                          })
         else:
             calc.update({"status": aws_status})
     return calc_status
+
+
+def run_dft_experiments(structure_dict, poll_time=60, timeout=3600):
+    with ScratchDir('.'):
+        calc_status = submit_dft_calcs_to_mc1(structure_dict)
+        finished = False
+        start_time = time.time()
+        while not finished:
+            time.sleep(poll_time)
+            calc_status = check_dft_calcs(calc_status)
+            print("Calc status: {}".format(calc_status))
+            finished = all([doc['status'] in ['SUCCEEDED', 'FAILED']
+                            for doc in calc_status.values()])
+            elapsed_time = time.time() - start_time
+            if elapsed_time > timeout:
+                for doc in calc_status:
+                    if doc['status'] not in ['SUCCEEDED', 'FAILED']:
+                        # Update job status to reflect timeout
+                        doc.update({"status": "FAILED",
+                                    "error": "timeout"})
+                        # Kill AWS job
+                        kill_cmd = "aws batch terminate-job --job-id {} --reason camd_timeout".format(
+                            doc['jobId'])
+                        kill_result = subprocess.check_output(shlex.split(kill_cmd))
+                break
+    return calc_status
+
 
 
 MODEL_TEMPLATE = """
@@ -132,6 +159,7 @@ import qmpy
 from qmpy.materials.structure import Structure
 from qmpy.analysis.vasp.calculation import Calculation
 from qmpy import io
+import time
 
 
 # TODO: definitely move this somewhere else, as it's not
@@ -145,6 +173,9 @@ def run_oqmd_calculation(poscar_filename):
     calc = Calculation()
     calc.setup(starting_structure, "relaxation")
     os.system("mpirun -n 1 vasp_std")
+    # Just in case the mysql server process dies
+    # Kids, don't try this at home
+    os.system("sudo -u mysql mysqld &")
     relaxed_structure = io.poscar.read("CONTCAR")
     os.chdir('..')
 
