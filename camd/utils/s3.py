@@ -83,8 +83,19 @@ def hook(t):
     return inner
 
 
-def sync_s3_objs():
-    """Quick function to download relevant s3 files to cache"""
+def cache_s3_objs(obj_names, bucket_name='kitware',
+                  filter_existing_files=False):
+    """
+    Quick function to download relevant s3 files to cache
+
+    Args:
+        obj_names ([str]): list of object names
+        bucket_name (str): name of s3 bucket
+        filter_existing_files (bool): whether or not to filter existing files
+
+    Returns:
+        None
+    """
 
     # make cache dir
     if not os.path.isdir(S3_CACHE):
@@ -92,17 +103,29 @@ def sync_s3_objs():
 
     # Initialize s3 resource
     s3 = boto3.resource("s3")
-    bucket = s3.Bucket("ml-dash-datastore")
+    bucket = s3.Bucket(bucket_name)
 
-    # Put more s3 objects here if desired
-    s3_keys = ["oqmd_voro_March25_v2.csv"]
+    # Filter out existing files if desired
+    if filter_existing_files:
+        obj_names = set(obj_names) - set(os.listdir(S3_CACHE))
 
-    s3_keys_to_download = set(s3_keys) - set(os.listdir(S3_CACHE))
-
-    for s3_key in s3_keys_to_download:
-        filename = os.path.split(s3_key)[-1]
-        file_object = s3.Object("ml-dash-datastore", s3_key)
+    for s3_key in obj_names:
+        path, filename = os.path.split(s3_key)
+        if not os.path.isdir(os.path.join(S3_CACHE, path)):
+            os.makedirs(os.path.join(S3_CACHE, path))
+        file_object = s3.Object(bucket_name, s3_key)
         file_size = file_object.content_length
-        with tqdm(total=file_size, unit_scale=True, desc=filename) as t:
+        with tqdm(total=file_size, unit_scale=True, desc=s3_key) as t:
             bucket.download_file(
-                s3_key, os.path.join(S3_CACHE, filename), Callback=hook(t))
+                s3_key, os.path.join(S3_CACHE, s3_key), Callback=hook(t))
+
+
+# List of objects to sync upon running of this script
+MATRIO_S3_OBJS = [
+    "camd/shared-data/oqmd_voro_March25_v2.csv",
+    "camd/shared-data/protosearch-data/materials-db/oqmd/oqmd_ver3.db"
+]
+
+if __name__ == "__main__":
+    cache_s3_objs(MATRIO_S3_OBJS, bucket_name="matr.io",
+                  filter_existing_files=True)
