@@ -18,7 +18,7 @@ RUN source /opt/conda/bin/activate camd
 
 # Update mysql/postgres
 RUN apt-get update
-RUN apt-get install -y gcc default-libmysqlclient-dev libpq-dev postgresql
+RUN apt-get install -y gcc g++ default-libmysqlclient-dev libpq-dev postgresql
 
 # Start postgres and add user
 USER postgres
@@ -31,14 +31,19 @@ USER root
 ENV TQDM_OFF=1
 
 # Goofy numpy pre-install
-RUN pip install numpy
-RUN pip install Django
+# RUN pip install numpy
+# RUN pip install Django
 
 # Install package
-RUN python setup.py develop
-RUN pip install nose
-RUN pip install coverage
-RUN pip install pylint
+RUN ls -l
+RUN pip install numpy && \
+    pip install Django && \
+    cd bulk_enumerator && python setup.py install && cd .. && \
+    cd protosearch && python setup.py install && cd .. && \
+    python setup.py develop && \
+    pip install nose && \
+    pip install coverage && \
+    pip install pylint
 
 RUN chmod +x dockertest.sh
 CMD ["./dockertest.sh"]
