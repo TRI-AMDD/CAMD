@@ -83,8 +83,8 @@ def hook(t):
     return inner
 
 
-def cache_s3_objs(obj_names, bucket_name='kitware',
-                  filter_existing_files=False):
+def cache_s3_objs(obj_names, bucket_name='matr.io',
+                  filter_existing_files=True):
     """
     Quick function to download relevant s3 files to cache
 
@@ -107,7 +107,8 @@ def cache_s3_objs(obj_names, bucket_name='kitware',
 
     # Filter out existing files if desired
     if filter_existing_files:
-        obj_names = set(obj_names) - set(os.listdir(S3_CACHE))
+        obj_names = [obj_name for obj_name in obj_names
+                     if not os.path.isfile(os.path.join(S3_CACHE, obj_name))]
 
     for s3_key in obj_names:
         path, filename = os.path.split(s3_key)
