@@ -35,6 +35,7 @@ ENV TQDM_OFF=1
 # RUN pip install Django
 
 # Install package
+RUN ls -l
 RUN pip install numpy && \
     pip install Django && \
     cd bulk_enumerator && python setup.py install && cd .. && \
