@@ -18,7 +18,7 @@ RUN source /opt/conda/bin/activate camd
 
 # Update mysql/postgres
 RUN apt-get update
-RUN apt-get install -y gcc default-libmysqlclient-dev libpq-dev postgresql
+RUN apt-get install -y gcc g++ default-libmysqlclient-dev libpq-dev postgresql
 
 # Start postgres and add user
 USER postgres
