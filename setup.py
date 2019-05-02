@@ -37,6 +37,6 @@ setup(
     dependency_links=[
         "http://github.com/JosephMontoya-TRI/qmpy_py3/tarball/master#egg=qmpy",
         "https://github.awsinternal.tri.global/materials/bulk_enumerator#egg=bulk_enumerator",
-        "https://github.com/ToyotaResearchInstitute/protosearch#egg=protosearch",
+        "https://github.awsinternal.tri.global/materials/protosearch#egg=protosearch"
     ]
 )
