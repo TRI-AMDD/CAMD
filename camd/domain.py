@@ -26,7 +26,7 @@ class Domain(abc.ABC):
 
 
 # TODO: sample from a chemsys, as opposed to formulas
-def create_structure_dataframe(formulas, db_interface=None):
+def create_structure_dataframe(formulas, source=None, db_interface=None):
     """
     Function to create a dataframe of structures corresponding
     to formulas from OQMD prototypes
@@ -45,6 +45,9 @@ def create_structure_dataframe(formulas, db_interface=None):
         cache_s3_objs([obj])
         oqmd_db_path = os.path.join(S3_CACHE, obj)
         db_interface = OqmdInterface(oqmd_db_path)
-    dataframes = [db_interface.create_proto_data_set(formula)
-                  for formula in formulas]
+    dataframes = [
+        db_interface.create_proto_data_set(
+            source=source, chemical_formula=formula)
+        for formula in formulas
+    ]
     return pd.concat(dataframes)
