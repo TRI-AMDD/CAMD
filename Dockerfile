@@ -35,8 +35,7 @@ RUN pip install numpy
 RUN pip install Django
 
 # Install package
-COPY .ssh/config .ssh/config
-RUN cat .ssh/config
+RUN cat ~/.ssh/config
 RUN python setup.py develop
 RUN pip install nose
 RUN pip install coverage
