@@ -36,7 +36,7 @@ setup(
     # TODO: make this materials?
     dependency_links=[
         "http://github.com/JosephMontoya-TRI/qmpy_py3/tarball/master#egg=qmpy",
-        "git+git@github.awsinternal.tri.global/materials/bulk_enumerator#egg=bulk_enumerator",
-        "git+git@github.awsinternal.tri.global/materials/protosearch#egg=protosearch"
+        "git+ssh://git@github.awsinternal.tri.global/materials/bulk_enumerator#egg=bulk_enumerator",
+        "git+ssh://git@github.awsinternal.tri.global/materials/protosearch#egg=protosearch"
     ]
 )
