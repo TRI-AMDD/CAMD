@@ -31,15 +31,18 @@ USER root
 ENV TQDM_OFF=1
 
 # Goofy numpy pre-install
-RUN pip install numpy
-RUN pip install Django
+# RUN pip install numpy
+# RUN pip install Django
 
 # Install package
-RUN cat ~/.ssh/config
-RUN python setup.py develop
-RUN pip install nose
-RUN pip install coverage
-RUN pip install pylint
+RUN pip install numpy && \
+    pip install Django && \
+    cd bulk_enumerator && python setup.py install && cd .. && \
+    cd protosearch && python setup.py install && cd .. && \
+    python setup.py develop && \
+    pip install nose && \
+    pip install coverage && \
+    pip install pylint
 
 RUN chmod +x dockertest.sh
 CMD ["./dockertest.sh"]
