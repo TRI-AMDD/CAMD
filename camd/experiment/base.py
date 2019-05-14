@@ -47,9 +47,10 @@ class Experiment(abc.ABC, MSONable):
         self.state = self.get_state()
 
     @abc.abstractmethod
-    def get_results(self):
+    def get_results(self, indices):
         """
-
+        Args:
+            indices (list): uids / indices of experiments to get the results for
         Returns:
             dict: a dictionary of results
 
@@ -101,19 +102,29 @@ class Experiment(abc.ABC, MSONable):
         self._update_results()
         return True
 
+    @abc.abstractmethod
+    def submit(self, unique_ids):
+        """
+        # Accepts job requests by unique id of candidates
+        Returns:
+            str: 'unstarted', 'pending', 'completed'
+
+        """
+
 
 class ATFSampler(Experiment):
     """
     A simple after the fact sampler that just samples
     a dataframe according to index_values
     """
-    def __init__(self, params):
+    def __init__(self, dataframe):
         """
 
         Args:
             params (dict):
         """
-        super(ATFSampler, self).__init__(params)
+        self.dataframe = dataframe
+        super(ATFSampler, self).__init__(dataframe)
 
     def start(self):
         """There's no start procedure for this particular experiment"""
@@ -123,7 +134,8 @@ class ATFSampler(Experiment):
         """This experiment should be complete on construction"""
         return 'completed'
 
-    def get_results(self):
-        indices = self.get_parameter('index_values')
-        dataframe = self.get_parameter('dataframe')
-        return dataframe.iloc[indices]
+    def get_results(self, indices):
+        return self.dataframe.loc[indices]
+
+    def submit(self, unique_ids):
+        pass

@@ -43,14 +43,16 @@ class AnalyzerBase(abc.ABC):
 
 
 class AnalyzeStability(AnalyzerBase):
-    def __init__(self, df, new_result_ids, hull_distance=None, multiprocessing=True):
+    def __init__(self, df=None, new_result_ids=None, hull_distance=None, multiprocessing=True):
         self.df = df
         self.new_result_ids = new_result_ids
         self.hull_distance = hull_distance if hull_distance else 0.05
         self.multiprocessing = multiprocessing
         super(AnalyzeStability, self).__init__()
 
-    def analyze(self):
+    def analyze(self, df=None, new_result_ids=None):
+        self.df = df
+        self.new_result_ids = new_result_ids
         phases = []
         for data in self.df.iterrows():
             phases.append(Phase(data[1]['Composition'], energy=data[1]['delta_e'], per_atom=True, description=data[0]))

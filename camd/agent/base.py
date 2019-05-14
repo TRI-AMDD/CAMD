@@ -10,11 +10,11 @@ import abc
 
 
 class HypothesisAgent(metaclass=abc.ABCMeta):
-    def __init__(self, candidate_data, params):
+    def __init__(self):
         pass
 
     @abc.abstractmethod
-    def get_hypotheses(self):
+    def get_hypotheses(self, candidate_data):
         """
 
         Returns:
@@ -33,7 +33,6 @@ class HypothesisAgent(metaclass=abc.ABCMeta):
     #     Returns:
     #
     #     """
-
 
 
 class QBC:
@@ -116,7 +115,7 @@ class RandomAgent(HypothesisAgent):
     """
     Baseline agent: Randomly picks next experiments
     """
-    def __init__(self, candidate_data, seed_data, N_query=None,
+    def __init__(self, candidate_data=None, seed_data=None, N_query=None,
                  pd=None, hull_distance=None):
 
         self.candidate_data = candidate_data
@@ -127,7 +126,8 @@ class RandomAgent(HypothesisAgent):
         self.cv_score = np.nan
         super(RandomAgent, self).__init__()
 
-    def get_hypotheses(self):
+    def get_hypotheses(self, candidate_data, seed_data=None):
+        self.candidate_data = candidate_data
         indices_to_compute = []
         for data in self.candidate_data.iterrows():
             indices_to_compute.append(data[0])

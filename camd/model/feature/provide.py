@@ -130,3 +130,5 @@ class FeatureComputer:
             types += t
 
         return featurizations, feature_labels, types
+
+AFTFeatureProvider
