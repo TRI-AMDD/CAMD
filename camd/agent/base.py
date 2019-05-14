@@ -14,7 +14,7 @@ class HypothesisAgent(metaclass=abc.ABCMeta):
         pass
 
     @abc.abstractmethod
-    def predict(self):
+    def get_hypotheses(self):
         """
 
         Returns:
@@ -23,16 +23,16 @@ class HypothesisAgent(metaclass=abc.ABCMeta):
 
         """
 
-    @abc.abstractmethod
-    def update_candidate_data(self, new_results):
-        """
-
-        Args:
-            new_results:
-
-        Returns:
-
-        """
+    # @abc.abstractmethod
+    # def update_candidate_data(self, new_results):
+    #     """
+    #
+    #     Args:
+    #         new_results:
+    #
+    #     Returns:
+    #
+    #     """
 
 
 
@@ -127,7 +127,7 @@ class RandomAgent(HypothesisAgent):
         self.cv_score = np.nan
         super(RandomAgent, self).__init__()
 
-    def hypotheses(self):
+    def get_hypotheses(self):
         indices_to_compute = []
         for data in self.candidate_data.iterrows():
             indices_to_compute.append(data[0])

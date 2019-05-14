@@ -106,7 +106,7 @@ def aft_loop(path, df, df_sub, n_seed, n_query, agent,
     # Hypothesize new experiments
     print("Hypothesize: Agent working")
     agent = agent(candidate_data, seed_data, n_query, **agent_params)
-    suggested_experiments = agent.hypotheses()
+    suggested_experiments = agent.get_hypotheses()
     with open(os.path.join(path, 'next_experiments_requests.json'), 'w') as f:
         json.dump(suggested_experiments, f)
 
