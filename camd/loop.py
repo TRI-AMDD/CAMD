@@ -111,11 +111,12 @@ class Loop(MSONable):
         with open(os.path.join(self.path, 'iteration.log'), 'w') as f:
             f.write(str(self.iteration))
 
-    def auto_loop(self, wait_time=10):
+    def auto_loop(self, n_iterations=10, wait_time=10):
         """
         Runs the loop repeatedly
         TODO: Stopping criterion from Analyzer
         Args:
+            n_iterations (int): Number of iterations.
             wait_time (int): Time (in seconds) to wait on idle for submitted experiments to finish.
         """
         if self.create_seed:
@@ -123,7 +124,7 @@ class Loop(MSONable):
             self.initialize()
             time.sleep(wait_time)
             print("finished creating seed")
-        while True:
+        while n_iterations - self.iteration >= 0:
             print("Iteration: {}".format(self.iteration))
             self.run()
             print("  Waiting for next round ...")
