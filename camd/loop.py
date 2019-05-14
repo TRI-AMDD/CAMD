@@ -7,6 +7,8 @@ import pickle
 import json
 import time
 import numpy as np
+import warnings
+
 from monty.json import MSONable
 
 from camd.experiment.dft import get_dft_calcs_aft
@@ -42,15 +44,21 @@ class Loop(MSONable):
         self.seed_data = seed_data
         self.create_seed = create_seed
 
+        # Check if there exists earlier iterations
         if os.path.exists(os.path.join(self.path, 'iteration.log')):
             with open(os.path.join(self.path, 'iteration.log'), 'r') as f:
                 self.iteration = int(f.readline().rstrip('\n'))
         else:
             self.iteration = 0
+        if self.iteration>0:
+            self.create_seed=False
+            warnings.warn("Turning off create_seed since there is existing iteration in path. Use clean folder to"
+                          "to reinitialize from scratch.")
+
         self.stop = False
         self.submitted_experiment_requests = []
 
-    def apply(self):
+    def run(self):
         """
         This method applies a single iteration of the active-learning loop, and keeps record of everything in place.
 
@@ -104,14 +112,21 @@ class Loop(MSONable):
             f.write(str(self.iteration))
 
     def auto_loop(self, wait_time=10):
+        """
+        Runs the loop repeatedly
+        TODO: Stopping criterion from Analyzer
+        Args:
+            wait_time (int): Time (in seconds) to wait on idle for submitted experiments to finish.
+        """
         if self.create_seed:
             print("creating seed")
             self.initialize()
             time.sleep(wait_time)
             print("finished creating seed")
         while True:
-            self.apply()
-            print("Waiting for next round ...")
+            print("Iteration: {}".format(self.iteration))
+            self.run()
+            print("  Waiting for next round ...")
             time.sleep(wait_time)
 
     def initialize(self, random_state=42):
@@ -143,10 +158,6 @@ class Loop(MSONable):
         with open(_path, 'wb') as f:
             pickle.dump(self.__getattribute__(data_holder), f)
 
-
-# TODO: subsampling capability should be a functionality of hypo
-#  generation.  df_sub here should just be repalced with an
-#  option to downselect to e.g. chemistry
 
 
 def aft_loop(path, df, df_sub, n_seed, n_query, agent,
