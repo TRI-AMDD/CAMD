@@ -70,7 +70,6 @@ class AnalyzeStability(AnalyzerBase):
         # Add dtype so that None values can be compared
         stabilities_of_space_uids = np.array([p.stability for p in space.phases],
                                              dtype=np.float) <= self.hull_distance
-
         stabilities_of_new = {}
         for _p in space.phases:
             if _p.description in self.new_result_ids:

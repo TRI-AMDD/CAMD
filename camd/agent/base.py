@@ -116,18 +116,22 @@ class RandomAgent(HypothesisAgent):
     Baseline agent: Randomly picks next experiments
     """
     def __init__(self, candidate_data=None, seed_data=None, N_query=None,
-                 pd=None, hull_distance=None):
+                 pd=None, hull_distance=None, N_species=None):
 
         self.candidate_data = candidate_data
         self.seed_data = seed_data
         self.hull_distance = hull_distance if hull_distance else 0.0
         self.N_query = N_query if N_query else 1
         self.pd = pd
+        self.N_species = N_species
         self.cv_score = np.nan
         super(RandomAgent, self).__init__()
 
     def get_hypotheses(self, candidate_data, seed_data=None):
-        self.candidate_data = candidate_data
+        if self.N_species:
+            self.candidate_data = candidate_data[ candidate_data['N_species'] == self.N_species ]
+        else:
+            self.candidate_data = candidate_data
         indices_to_compute = []
         for data in self.candidate_data.iterrows():
             indices_to_compute.append(data[0])
