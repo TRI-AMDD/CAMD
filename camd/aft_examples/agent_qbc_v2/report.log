@@ -1,0 +1,6 @@
+Iteration N_Discovery Total_Discovery N_query N_candidates model-CV
+        0        1995            2079        82116 0.222788
+        1         131            2160        81916 0.222788
+        2         143            2225        81716 0.222788
+        3         137            2302        81516 0.222788
+        4         126            2382        81316 0.222788

@@ -12,7 +12,7 @@ from camd.agent.base import HypothesisAgent, QBC
 class QBCStabilityAgent(HypothesisAgent):
 
     def __init__(self, candidate_data=None, seed_data=None, N_query=None,
-                 pd=None, hull_distance=None, ML_algorithm=None, ML_algorithm_params=None,
+                 pd=None, hull_distance=None, N_species=None, ML_algorithm=None, ML_algorithm_params=None,
                  N_members=None, frac=None, multiprocessing=True):
 
         self.candidate_data = candidate_data
@@ -25,7 +25,7 @@ class QBCStabilityAgent(HypothesisAgent):
         self.N_members = N_members if N_members else 10
         self.frac = frac if frac else 0.5
         self.multiprocessing = multiprocessing
-
+        self.N_species = N_species
         self.cv_score = np.nan
 
         self.qbc = QBC(N_members=self.N_members, frac=self.frac,
@@ -34,7 +34,10 @@ class QBCStabilityAgent(HypothesisAgent):
         super(QBCStabilityAgent, self).__init__()
 
     def get_hypotheses(self, candidate_data, seed_data=None, retrain_committee=False):
-        self.candidate_data = candidate_data
+        if self.N_species:
+            self.candidate_data = candidate_data[ candidate_data['N_species'] == self.N_species ]
+        else:
+            self.candidate_data = candidate_data
         self.seed_data = seed_data
         if retrain_committee:
             self.qbc.trained = False
