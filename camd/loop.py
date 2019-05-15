@@ -1,17 +1,11 @@
 # Copyright Toyota Research Institute 2019
-
-import abc
-
 import os
 import pickle
-import json
 import time
 import numpy as np
 import warnings
 
 from monty.json import MSONable
-
-from camd.experiment.dft import get_dft_calcs_aft
 
 
 class Loop(MSONable):

@@ -101,8 +101,8 @@ class AgentStabilityML5(HypothesisAgent):
     An agent that does a certain fraction of full exploration an exploitation in each iteration.
     It will exploit a fraction of N_query options (frac), and explore the rest of its budget.
     """
-    def __init__(self, candidate_data, seed_data, N_query=None,
-                 pd=None, hull_distance=None, ML_algorithm=None, ML_algorithm_params=None,
+    def __init__(self, candidate_data=None, seed_data=None, N_query=None,
+                 pd=None, hull_distance=None, N_species=None, ML_algorithm=None, ML_algorithm_params=None,
                  frac=None, multiprocessing=True):
 
         self.candidate_data = candidate_data
@@ -115,11 +115,15 @@ class AgentStabilityML5(HypothesisAgent):
         self.multiprocessing = multiprocessing
         self.frac = frac if frac else 0.5
         self.cv_score = np.nan
+        self.N_species = N_species
 
         super(AgentStabilityML5, self).__init__()
 
     def get_hypotheses(self, candidate_data, seed_data=None):
-        self.candidate_data = candidate_data
+        if self.N_species:
+            self.candidate_data = candidate_data[ candidate_data['N_species'] == self.N_species ]
+        else:
+            self.candidate_data = candidate_data
         self.seed_data = seed_data
         overall_model = self.ML_algorithm(**self.ML_algorithm_params)
         X = self.seed_data.drop(['Composition', 'delta_e', 'N_species'], axis=1)
