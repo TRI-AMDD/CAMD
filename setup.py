@@ -29,6 +29,7 @@ setup(
                       "pandas",
                       "sklearn",
                       "boto3",
+                      "monty",
                       "sqlalchemy",
                       "matminer",
                       "psycopg2",

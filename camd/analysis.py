@@ -1,10 +1,11 @@
 # Copyright Toyota Research Institute 2019
 
+import abc
+
 import numpy as np
 from camd import tqdm
 from qmpy.analysis.thermodynamics.phase import Phase, PhaseData
 from qmpy.analysis.thermodynamics.space import PhaseSpace
-from abc import ABCMeta
 import multiprocessing
 
 ELEMENTS = ["Pr", "Ru", "Th", "Pt", "Ni", "S", "Na", "Nb", "Nd", "C", "Li", "Pb", "Y", "Tl", "Lu", "Rb", "Ti", "Np",
@@ -16,20 +17,42 @@ ELEMENTS = ["Pr", "Ru", "Th", "Pt", "Ni", "S", "Na", "Nb", "Nd", "C", "Li", "Pb"
 
 #TODO: Eval Performance = start / stop?
 
-class AnalysisBase(metaclass=ABCMeta):
-    def analysis(self):
-        pass
+class AnalyzerBase(abc.ABC):
+    @abc.abstractmethod
+    def analyze(self):
+        """
+        Performs the analysis procedure associated with the analyzer
+
+        # TODO: I'm not yet sure what we might want to do here
+        #       in terms of enforcing a result contract
+        Returns:
+            Some arbitrary result
+
+        """
+
+    @abc.abstractmethod
+    def present(self):
+        """
+        Formats the analysis into a some presentation-oriented
+        document
+
+        Returns:
+            json document for presentation, e. g. on a web frontend
+
+        """
 
 
-class AnalyzeStability(AnalysisBase):
-    def __init__(self, df, new_result_ids, hull_distance=None, multiprocessing=True):
+class AnalyzeStability(AnalyzerBase):
+    def __init__(self, df=None, new_result_ids=None, hull_distance=None, multiprocessing=True):
         self.df = df
         self.new_result_ids = new_result_ids
         self.hull_distance = hull_distance if hull_distance else 0.05
         self.multiprocessing = multiprocessing
         super(AnalyzeStability, self).__init__()
 
-    def analysis(self):
+    def analyze(self, df=None, new_result_ids=None):
+        self.df = df
+        self.new_result_ids = new_result_ids
         phases = []
         for data in self.df.iterrows():
             phases.append(Phase(data[1]['Composition'], energy=data[1]['delta_e'], per_atom=True, description=data[0]))
@@ -47,7 +70,6 @@ class AnalyzeStability(AnalysisBase):
         # Add dtype so that None values can be compared
         stabilities_of_space_uids = np.array([p.stability for p in space.phases],
                                              dtype=np.float) <= self.hull_distance
-
         stabilities_of_new = {}
         for _p in space.phases:
             if _p.description in self.new_result_ids:
@@ -58,6 +80,9 @@ class AnalyzeStability(AnalysisBase):
 
         # array of bools for stable vs not for new uids, and all experiments, respectively
         return stabilities_of_new_uids, stabilities_of_space_uids
+
+    def present(self):
+        pass
 
 
 class PhaseSpaceAL(PhaseSpace):
