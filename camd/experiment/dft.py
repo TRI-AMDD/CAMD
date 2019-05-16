@@ -44,7 +44,7 @@ def submit_dft_calcs_to_mc1(structure_dict):
                          "use camd MC1 interface")
     # Create run directory
     uuid_string = str(uuid.uuid4()).replace('-', '')
-    parent_dir = os.path.join(tri_path, "model", "oqmdvasp", "2",
+    parent_dir = os.path.join(tri_path, "model", "oqmdvasp", "3",
                               "u", "camd", "run{}".format(uuid_string))
     if any(['_' in key for key in structure_dict.keys()]):
         raise ValueError("Structure keys cannot contain underscores for "
@@ -63,7 +63,7 @@ def submit_dft_calcs_to_mc1(structure_dict):
             # Submit to mc1
             # TODO: ensure this is checked for failure to submit
             print("Submitting job")
-            calc = subprocess.check_output(["trisub", "-q", "small"])
+            calc = subprocess.check_output(["trisub", "-q", "oqmd_test_queue"])
             calc = calc.decode('utf-8')
             calc = re.findall("({.+})", calc, re.DOTALL)[0]
             calc = json.loads(calc)
