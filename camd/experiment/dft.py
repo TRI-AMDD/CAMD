@@ -62,7 +62,7 @@ def submit_dft_calcs_to_mc1(structure_dict):
 
             # Submit to mc1
             # TODO: ensure this is checked for failure to submit
-            print("Submitting job")
+            print("Submitting job: {}".format(structure_id))
             calc = subprocess.check_output(["trisub", "-q", "oqmd_test_queue"])
             calc = calc.decode('utf-8')
             calc = re.findall("({.+})", calc, re.DOTALL)[0]
@@ -145,7 +145,9 @@ def run_dft_experiments(structure_dict, poll_time=60, timeout=3600):
         while not finished:
             time.sleep(poll_time)
             calc_status = check_dft_calcs(calc_status)
-            # print("Calc status: {}".format(calc_status))
+            status_string = "\n".join(["{}: {}".format(key, value["status"])
+                                       for key, value in calc_status.items()])
+            print("Calc status:\n{}".format(status_string))
             finished = all([doc['status'] in ['SUCCEEDED', 'FAILED']
                             for doc in calc_status.values()])
             elapsed_time = time.time() - start_time

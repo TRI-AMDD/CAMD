@@ -11,7 +11,7 @@ from camd.experiment.dft import submit_dft_calcs_to_mc1, check_dft_calcs,\
 # This test is still inconsistent because of issues with
 # batch AWS jobs and database communications
 class Mc1Test(unittest.TestCase):
-    @unittest.skipIf(True, "toggle this test")
+    @unittest.skipUnless(False, "toggle this test")
     def test_get(self):
 
         good_silicon = PymatgenTest.get_structure("Si")
@@ -28,7 +28,7 @@ class Mc1Test(unittest.TestCase):
         self.assertEqual(calc_status['good']['status'], 'SUCCEEDED')
         self.assertEqual(calc_status['bad']['status'], 'FAILED')
 
-    @unittest.skipIf(True, "toggle this test")
+    @unittest.skipUnless(True, "toggle this test")
     def test_structure_suite(self):
         # TODO: fix the formation energy calculation
         mp_ids = ["mp-702",
@@ -39,7 +39,7 @@ class Mc1Test(unittest.TestCase):
         with MPRester() as mpr:
             structure_dict = {mp_id: mpr.get_structure_by_material_id(mp_id)
                               for mp_id in mp_ids}
-        status = run_dft_experiments(structure_dict)
+        status = run_dft_experiments(structure_dict, poll_time=25)
         self.assertTrue(all([run['status'] == "SUCCEEDED" for run in status]))
 
 
