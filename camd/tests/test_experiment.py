@@ -4,7 +4,7 @@ import time
 from monty.tempfile import ScratchDir
 from pymatgen.util.testing import PymatgenTest
 from pymatgen import MPRester
-from camd.experiment import submit_dft_calcs_to_mc1, check_dft_calcs,\
+from camd.experiment.dft import submit_dft_calcs_to_mc1, check_dft_calcs,\
     run_dft_experiments
 
 
