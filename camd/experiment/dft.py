@@ -126,6 +126,18 @@ def check_dft_calcs(calc_status):
 
 
 def run_dft_experiments(structure_dict, poll_time=60, timeout=3600):
+    """
+
+    Args:
+        structure_dict ({}): dictionary of identifiers/structures
+            to be run for DFT on mc1
+        poll_time (float): time between polling steps
+        timeout (float): time in seconds to poll until issuing a timeout
+
+    Returns:
+        (dict): calculation status, including results
+
+    """
     with ScratchDir('.'):
         calc_status = submit_dft_calcs_to_mc1(structure_dict)
         finished = False
@@ -133,7 +145,7 @@ def run_dft_experiments(structure_dict, poll_time=60, timeout=3600):
         while not finished:
             time.sleep(poll_time)
             calc_status = check_dft_calcs(calc_status)
-            print("Calc status: {}".format(calc_status))
+            # print("Calc status: {}".format(calc_status))
             finished = all([doc['status'] in ['SUCCEEDED', 'FAILED']
                             for doc in calc_status.values()])
             elapsed_time = time.time() - start_time
