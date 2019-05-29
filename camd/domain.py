@@ -68,13 +68,14 @@ class StructureDomain(DomainBase):
     Args:
         formulas ([str]): list of chemical formulas to create new material candidates.
     """
-    def __init__(self, formulas):
+    def __init__(self, formulas, n_max_atoms=None):
         self.formulas = formulas
+        self.n_max_atoms = n_max_atoms
         self.hypo_structures = None
         self.features = None
 
     @classmethod
-    def from_bounds(cls, bounds, charge_balanced=True, create_subsystems=False, **kwargs):
+    def from_bounds(cls, bounds, n_max_atoms=None, charge_balanced=True, create_subsystems=False, **kwargs):
         """
         Convenience constructor that delivers an ML-ready domain from defined chemical boundaries.
         Args:
@@ -87,7 +88,7 @@ class StructureDomain(DomainBase):
         formulas = create_formulas(bounds, charge_balanced=charge_balanced,
                                    create_subsystems=create_subsystems, **kwargs)
         print("Generated chemical formulas: {}".format(formulas))
-        return cls(formulas)
+        return cls(formulas, n_max_atoms)
 
     @property
     def bounds(self):
@@ -99,7 +100,7 @@ class StructureDomain(DomainBase):
     def get_structures(self):
         if self.formulas:
             print("Generating hypothetical structures...")
-            self.hypo_structures = get_structures_from_protosearch(self.formulas)
+            self.hypo_structures = get_structures_from_protosearch(self.formulas, self.n_max_atoms)
             print("Generated {} hypothetical structures".format(len(self.hypo_structures)))
         else:
             raise("Need formulas to create structures")
@@ -179,15 +180,19 @@ class StructureDomain(DomainBase):
         self.candidates().sample(num_samples)
 
 
-def get_structures_from_protosearch(formulas, source='icsd', db_interface=None):
+def get_structures_from_protosearch(formulas, source='icsd', db_interface=None, n_max_atoms=None):
     """
     Calls protosearch to get the hypothetical structures.
     Args:
         formulas ([str]): list of chemical formulas from which to generate candidate structures
         source (str): project name in OQMD to be used as source. defaults to ICSD.
         db_interface (DbInterface): interface to OQMD database by default uses the one stored in s3
+        n_max_atoms (int): maximum number of atoms allowed in a structure.
     Returns:
         pandas.DataFrame of hypothetical pymatgen structures generated and their unique ids from protosearch
+
+    TODO:
+        - For efficiency, n_max_atoms can be handled within OqmdInterface
     """
 
     if db_interface is None:
@@ -214,12 +219,20 @@ def get_structures_from_protosearch(formulas, source='icsd', db_interface=None):
     structure_uids = [_structures.iloc[i]['proto_name'] +
                            '_' + '_'.join(pmg_structures[i].symbol_set) for i in range(len(_structures))]
     _structures.index = structure_uids
+
+    if n_max_atoms:
+        n_max_filter = [i.num_sites<=n_max_atoms for i in pmg_structures]
+        _structures = _structures[n_max_filter]
     return _structures
 
 
 def get_stoichiometric_formulas(n_components, grid=None):
     """
-    Returns unique
+    Args:
+        n_components (int): number of components (dimensions)
+        grid (list): a range of integers
+    Returns:
+        list: unique stoichiometric formula from an allowed grid of integers.
     """
     grid = grid if grid else list(range(1,8))
     args = [grid for _ in range(n_components)]
@@ -233,6 +246,8 @@ def create_formulas(bounds, charge_balanced=True, oxi_states_extend=None, oxi_st
                     all_oxi_states=False, create_subsystems=False, grid=None):
     """
     Creates a list of formulas given the bounds of a chemical space.
+    TODO:
+        - implement create_subsystems
     """
     stoichs = get_stoichiometric_formulas(len(bounds), grid=grid)
 
