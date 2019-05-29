@@ -5,57 +5,73 @@ import os
 import pandas as pd
 import abc
 import warnings
+import itertools
+import numpy as np
 
 from camd import S3_CACHE
 from camd.utils.s3 import cache_s3_objs
 from protosearch.build_bulk.oqmd_interface import OqmdInterface
 
 from pymatgen.io.ase import AseAtomsAdaptor
+from pymatgen import Composition, Element
 from matminer.featurizers.base import MultipleFeaturizer
 from matminer.featurizers.composition import ElementProperty, Stoichiometry, ValenceOrbital, IonProperty
 from matminer.featurizers.structure import (SiteStatsFingerprint, StructuralHeterogeneity,
                                             ChemicalOrdering, StructureComposition, MaximumPackingEfficiency)
 
-from pymatgen import Composition, Element
-import itertools
-import numpy as np
 
+class DomainBase(abc.ABC):
+    """
+    Domains combine geberation and featurization and prepare the search space for CAMD Loop.
+    """
+    @abc.abstractmethod
+    def candidates(self):
+        """
+        Primary method for every Domain to provide candidates.
+        Returns:
+            pandas.DataFrame: features for generated hypothetical structures. The Index of dataframe should be
+                the unique ids for the structures.
+        """
+        pass
 
+    @property
+    @abc.abstractmethod
+    def bounds(self):
+        """
+        Returns:
+            list: names of dimensions of the search space.
+        """
+        pass
 
-# Just an initial idea, will need some fleshing out
-class Domain(abc.ABC):
     @abc.abstractmethod
     def sample(self, num_samples):
         """
-        Abstract method for sampling from a domain
-
+        Abstract method for sampling from created domain
         Args:
             num_samples:
-
         Returns:
-
         """
         pass
 
-    @abc.abstractmethod
-    def candidates(self):
-        pass
+    @property
+    def bounds_string(self):
+        """
+        Returns: a string representation of search space bounds: e.g. "Ir-Fe-O" or "x1-x2-x3"
+        """
+        return '-'.join(self.bounds)
 
 
-
-class StructureDomain(Domain):
+class StructureDomain(DomainBase):
+    """
+    Provides machine learning ready candidate domains (search spaces) for hypothetical structures.
+    If scanning an entire system, use the StructureDomain.from_bounds method.
+    Args:
+        formulas ([str]): list of chemical formulas to create new material candidates.
+    """
     def __init__(self, formulas):
-        """
-        Creates an ML-ready search domain with given chemical formulas.
-
-        Args:
-            formulas(list): List of chemical formulas to create new material candidates.
-
-        """
         self.formulas = formulas
-        self.structures = None
+        self.hypo_structures = None
         self.features = None
-        self.features_df = None
 
     @classmethod
     def from_bounds(cls, bounds, charge_balanced=True, create_subsystems=False, **kwargs):
@@ -67,12 +83,10 @@ class StructureDomain(Domain):
             frequency_threshold:
             create_subsystems:
             kwargs: arguments to pass to formula creator
-        Returns:
-
         """
         formulas = create_formulas(bounds, charge_balanced=charge_balanced,
                                    create_subsystems=create_subsystems, **kwargs)
-        print("Generated the following chemical formulas for the given system: {}".format(formulas))
+        print("Generated chemical formulas: {}".format(formulas))
         return cls(formulas)
 
     @property
@@ -82,37 +96,42 @@ class StructureDomain(Domain):
             bounds = bounds.union(Composition(formula).as_dict().keys())
         return bounds
 
-    @property
-    def bounds_string(self):
-        return '-'.join(self.bounds)
-
     def get_structures(self):
         if self.formulas:
-            self.structures = get_structures_from_protosearch(self.formulas)
-            print("Generated {} hypothetical structures".format(len(self.structures)))
+            print("Generating hypothetical structures...")
+            self.hypo_structures = get_structures_from_protosearch(self.formulas)
+            print("Generated {} hypothetical structures".format(len(self.hypo_structures)))
         else:
             raise("Need formulas to create structures")
 
     @property
     def compositions(self):
-        return [s.composition for s in self.structures]
+        return [s.composition for s in self.hypo_structures]
 
     @property
     def reduced_formulas(self):
-        if self.structures:
-            return [s.composition.reduced_formula for s in self.structures["pmg_structures"]]
+        if self.valid_structures is not None: # Note the redundancy here is for pandas to work
+            return [s.composition.reduced_formula for s in self.valid_structures["pmg_structures"]]
         else:
             warnings.warn("No structures available yet.")
             return []
 
     def featurize_structures(self, featurizer=None, **kwargs):
-        if not self.structures:
-            warnings.warn("No structures available. Attemtting to generate structures first.")
+        """
+        Featurizes the hypothetical structures available from hypo_structures method. Hypothetical structures for
+            which featurization fails is removed and valid structures are made available as valid_structures
+        Args:
+            featurizer (Featurizer): A MatMiner Featurizer. Defaults to MultipleFeaturizer with
+                PRB Ward Voronoi descriptors.
+            **kwargs (dict): kwargs passed to featurize_many method of featurizer.
+        Returns:
+            pandas.DataFrame: features
+        """
+        if self.hypo_structures is None: # Note the redundancy here is for pandas to work
+            warnings.warn("No structures available. Generating structures.")
             self.get_structures()
 
         print("Generating features")
-
-        # Defaults to  PRB Ward descriptors
         featurizer = featurizer if featurizer else MultipleFeaturizer([
             SiteStatsFingerprint.from_preset("CoordinationNumber_ward-prb-2017"),
             StructuralHeterogeneity(),
@@ -125,40 +144,52 @@ class StructureDomain(Domain):
             StructureComposition(IonProperty(fast=True))
         ])
 
-        features = featurizer.featurize_many(self.structures['pmg_structures'], **kwargs)
-        self.features_df = pd.DataFrame.from_records(features, columns=featurizer.feature_labels())
-        self.features_df.index = self.structures.index
-        return self.features_df
+        features = featurizer.featurize_many(self.hypo_structures['pmg_structures'], ignore_errors=True, **kwargs)
 
-    @property
+        self._features_df = pd.DataFrame.from_records(features, columns=featurizer.feature_labels())
+        self._features_df.index = self.hypo_structures.index
+        self.features = self._features_df.dropna(axis=0, how='any')
+
+        self._valid_structure_labels = list(self.features.index)
+        self.valid_structures = self.hypo_structures.loc[self._valid_structure_labels]
+
+        print("{} out of {} structures were successfully featurized.".format(self.features.shape[0],
+                                                                             self._features_df.shape[0]))
+        return self.features
+
     def candidates(self, include_formula=True):
-        if not self.features_df:
+        """
+        Args:
+            include_formula (bool): Adds a column named "formula" to the dataframe.
+        Returns:
+            feature vectors of valid hypothetical structures.
+        """
+        if self.hypo_structures is None:
+            self.get_structures()
+
+        if self.features is None:
             self.featurize_structures()
         if include_formula:
-            _features_df = self.features_df.copy()
-            _features_df['formula'] = self.reduced_formulas
-            return _features_df
-        return self.features_df
+            _features = self.features.copy()
+            _features['formula'] = self.reduced_formulas
+            return _features
+        return self.features
 
     def sample(self, num_samples):
-        self.candidates.sample(num_samples)
+        self.candidates().sample(num_samples)
 
 
 def get_structures_from_protosearch(formulas, source='icsd', db_interface=None):
     """
-       Function to create a dataframe of structures corresponding
-       to formulas from OQMD prototypes
+    Calls protosearch to get the hypothetical structures.
+    Args:
+        formulas ([str]): list of chemical formulas from which to generate candidate structures
+        source (str): project name in OQMD to be used as source. defaults to ICSD.
+        db_interface (DbInterface): interface to OQMD database by default uses the one stored in s3
+    Returns:
+        pandas.DataFrame of hypothetical pymatgen structures generated and their unique ids from protosearch
+    """
 
-       Args:
-           formulas ([str]): list of chemical formulas from which
-               to generate candidate structures
-           db_interface (DbInterface): interface to OQMD database
-               by default uses the one stored in s3
-
-       Returns:
-            pandas.DataFrame of structures generated and their unique ids.
-
-       """
     if db_interface is None:
         obj = "camd/shared-data/protosearch-data/materials-db/oqmd/oqmd_ver3.db"
         cache_s3_objs([obj])
@@ -171,13 +202,19 @@ def get_structures_from_protosearch(formulas, source='icsd', db_interface=None):
     ]
     _structures = pd.concat(dataframes)
 
+    # Drop bad structures
+    _structures.dropna(axis=0, how='any', inplace=True)
+
+    # conversion to pymatgen structures
     ase_adap = AseAtomsAdaptor()
-    pmg_structures = [ase_adap.get_structure(_structures.iloc[i]['atoms']) for i in range(len(_structures))]
+    pmg_structures = [ase_adap.get_structure(_structures.iloc[i]['atoms'])
+                      for i in range(len(_structures))]
     _structures['pmg_structures'] = pmg_structures
+
     structure_uids = [_structures.iloc[i]['proto_name'] +
                            '_' + '_'.join(pmg_structures[i].symbol_set) for i in range(len(_structures))]
     _structures.index = structure_uids
-    return  _structures
+    return _structures
 
 
 def get_stoichiometric_formulas(n_components, grid=None):
