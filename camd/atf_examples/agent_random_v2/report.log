@@ -1,0 +1,6 @@
+Iteration N_Discovery Total_Discovery N_query N_candidates model-CV
+        0        2013            2097       430582 nan
+        1          84            2148       430382 nan
+        2          88            2201       430182 nan
+        3          94            2239       429982 nan
+        4          94            2286       429782 nan
