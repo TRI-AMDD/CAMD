@@ -98,6 +98,9 @@ class StructureDomain(DomainBase):
         return bounds
 
     def get_structures(self):
+        """
+        Method to call the external structure generator.
+        """
         if self.formulas:
             print("Generating hypothetical structures...")
             self.hypo_structures = get_structures_from_protosearch(self.formulas, self.n_max_atoms)
@@ -107,7 +110,15 @@ class StructureDomain(DomainBase):
 
     @property
     def compositions(self):
-        return [s.composition for s in self.hypo_structures]
+        """
+        Returns:
+            list: Compositions of hypothetical structures generated.
+        """
+        if self.hypo_structures is not None:
+            return [s.composition for s in self.hypo_structures]
+        else:
+            warnings.warn("No stuctures available.")
+            return []
 
     @property
     def reduced_formulas(self):
