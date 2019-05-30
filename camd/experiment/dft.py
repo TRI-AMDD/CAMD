@@ -44,7 +44,7 @@ def submit_dft_calcs_to_mc1(structure_dict):
                          "use camd MC1 interface")
     # Create run directory
     uuid_string = str(uuid.uuid4()).replace('-', '')
-    parent_dir = os.path.join(tri_path, "model", "oqmdvasp", "2",
+    parent_dir = os.path.join(tri_path, "model", "oqmdvasp", "3",
                               "u", "camd", "run{}".format(uuid_string))
     if any(['_' in key for key in structure_dict.keys()]):
         raise ValueError("Structure keys cannot contain underscores for "
@@ -62,8 +62,8 @@ def submit_dft_calcs_to_mc1(structure_dict):
 
             # Submit to mc1
             # TODO: ensure this is checked for failure to submit
-            print("Submitting job")
-            calc = subprocess.check_output(["trisub", "-q", "small"])
+            print("Submitting job: {}".format(structure_id))
+            calc = subprocess.check_output(["trisub", "-q", "oqmd_test_queue"])
             calc = calc.decode('utf-8')
             calc = re.findall("({.+})", calc, re.DOTALL)[0]
             calc = json.loads(calc)
@@ -126,6 +126,18 @@ def check_dft_calcs(calc_status):
 
 
 def run_dft_experiments(structure_dict, poll_time=60, timeout=3600):
+    """
+
+    Args:
+        structure_dict ({}): dictionary of identifiers/structures
+            to be run for DFT on mc1
+        poll_time (float): time between polling steps
+        timeout (float): time in seconds to poll until issuing a timeout
+
+    Returns:
+        (dict): calculation status, including results
+
+    """
     with ScratchDir('.'):
         calc_status = submit_dft_calcs_to_mc1(structure_dict)
         finished = False
@@ -133,7 +145,9 @@ def run_dft_experiments(structure_dict, poll_time=60, timeout=3600):
         while not finished:
             time.sleep(poll_time)
             calc_status = check_dft_calcs(calc_status)
-            print("Calc status: {}".format(calc_status))
+            status_string = "\n".join(["{}: {}".format(key, value["status"])
+                                       for key, value in calc_status.items()])
+            print("Calc status:\n{}".format(status_string))
             finished = all([doc['status'] in ['SUCCEEDED', 'FAILED']
                             for doc in calc_status.values()])
             elapsed_time = time.time() - start_time
