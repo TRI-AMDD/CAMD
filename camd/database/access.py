@@ -46,6 +46,27 @@ class CamdSchemaSession:
         self.session.add(camd_entity)
         self.session.commit()
 
+    def insert_batch(self, camd_entities):
+        """
+        Adds a list of CAMD entities to the database.
+
+        Args:
+            camd_entities: list
+                list of camd.database.schema.CamdEntity
+
+        Returns: bool, Exception
+            True, None if batch insert successful
+            False, exception if batch insert raised and exception
+        """
+        try:
+            self.session.bulk_save_objects(camd_entities)
+            self.session.commit()
+        except Exception as e:
+            self.session.rollback()
+            return False, e
+
+        return True, None
+
     def query_featurization(self, material_id, feature_id):
         """
         Queries a featurization entry by material_id and feature_id
@@ -105,3 +126,17 @@ class CamdSchemaSession:
         """
         return self.session.query(Material)\
             .filter_by(internal_reference=internal_reference).first()
+
+    def get_list_of_material_internal_references(self):
+        """
+        Returns a list of internal_references for materials that exist in the
+        materials table,
+
+        Args:
+            self
+
+        Returns: list
+            List of internal_references in the material table.
+        """
+        results = self.session.query(Material.internal_reference).all()
+        return [value[0] for value in results]
