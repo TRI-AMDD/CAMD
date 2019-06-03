@@ -121,6 +121,24 @@ def cache_s3_objs(obj_names, bucket_name='matr.io',
                 s3_key, os.path.join(S3_CACHE, s3_key), Callback=hook(t))
 
 
+def iterate_bucket_items(bucket):
+    """
+    Generator that iterates over all objects in a given s3 bucket
+
+    :param bucket: name of s3 bucket
+    :return: dict of metadata for an object
+    """
+
+    client = boto3.client('s3')
+    paginator = client.get_paginator('list_objects_v2')
+    page_iterator = paginator.paginate(Bucket=bucket)
+
+    for page in page_iterator:
+        if page['KeyCount'] > 0:
+            for item in page['Contents']:
+                yield item
+
+
 # List of objects to sync upon running of this script
 MATRIO_S3_OBJS = [
     "camd/shared-data/oqmd_voro_March25_v2.csv",
