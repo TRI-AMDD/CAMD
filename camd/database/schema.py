@@ -7,6 +7,8 @@ functionality.
 
 """
 
+import logging, sys
+import argparse
 import numpy as np
 from sqlalchemy import *
 from sqlalchemy.orm import relation
@@ -171,3 +173,29 @@ class Featurization(Base, CamdEntity):
 
         """
         return np.array([float(x) for x in self.value])
+
+
+if __name__ == '__main__':
+    logging.basicConfig(stream=sys.stdout, level=logging.DEBUG)
+
+    # db credentials and schema name in args
+    parser = argparse.ArgumentParser(description='Provide database credentials\
+     as arguments: user, password, host, port, database, schema')
+    parser.add_argument('--user', '-u', type=str, help='-u user')
+    parser.add_argument('--password', '-pw', type=str, help='-pw password')
+    parser.add_argument('--host', '-host', type=str, help='-host host')
+    parser.add_argument('--port', '-p', type=str, help='-p port')
+    parser.add_argument('--database', '-d', type=str, help='-d database')
+    parser.add_argument('--schema', '-s', type=str, help='-s schema')
+    args = parser.parse_args()
+
+    # create tables
+    connection_string = f'postgres://{args.user}:{args.password}@{args.host}' +\
+                        f':{args.port}/{args.database}'
+    logging.info(f'Connecting to database. Connection: {connection_string}')
+    engine = create_engine(connection_string,
+                           connect_args={'options': '-csearch_path={}'\
+                           .format(args.schema)})
+    logging.info(f'Creating all tables in schema {args.schema}')
+    Base.metadata.create_all(engine)
+    logging.info('All tables created.')
