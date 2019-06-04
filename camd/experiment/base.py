@@ -137,5 +137,5 @@ class ATFSampler(Experiment):
     def get_results(self, indices):
         return self.dataframe.loc[indices]
 
-    def submit(self, unique_ids):
+    def submit(self, unique_ids, *args):
         pass

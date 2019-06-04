@@ -11,21 +11,90 @@ import shlex
 from pymatgen.io.vasp.outputs import Vasprun
 import subprocess
 import traceback
-
-#TODO: Experiment Broker
-def get_dft_calcs_aft(uids, df):
-    """
-    Mock function that mimics fetching DFT calculations
-    """
-    uids = [uids] if type(uids) != list else uids
-    return df.loc[uids]
+import warnings
 
 
-def get_dft_calcs_from_northwestern(uids):
-    """
-    Placeholder function for fetching DFT calculations from Northwestern
-    """
-    raise NotImplementedError("Northwestern interface not yet implemented")
+from camd.experiment.base import Experiment
+
+
+class OqmdDFTonMC1(Experiment):
+    def __init__(self, params):
+
+        if 'structure_dict' not in params:
+            raise ValueError("A dictionary of structures must be provided as input as structure_dict")
+
+        self.structure_dict = params['structure_dict']
+        self.poll_time = params['poll_time'] if 'poll_time' in params else 60
+        self.timeout = params['timeout'] if 'timeout' in params else 7200
+
+        self.unique_ids = params['unique_ids'] if 'unique_ids' in params else []
+        self.job_status = params['job_status'] if 'job_status' in params else {}
+        super().__init__(params)
+
+    def start(self):
+        """No start procedure"""
+        pass
+
+    def get_state(self):
+        self.job_status = check_dft_calcs(self.job_status)
+        return all([doc['status'] in ['SUCCEEDED', 'FAILED']
+                    for doc in self.job_status.values()])
+
+    def get_results(self, indices):
+        # This gets the formation energies.
+        if not self.get_state():
+            warnings.warn("Some calculations did not finish.")
+        results_dict = {}
+        for structure_id, calc in self.job_status.items():
+            if calc['status'] == "SUCCEEDED":
+                results_dict['structure_id'] = calc['result']
+        return results_dict
+
+    def submit(self, unique_ids=None):
+        """
+        Args:
+            unique_ids (list): Unique ids for structures to run from the structure_dict. If None, all entries in
+            structure_dict are submitted.
+        Returns:
+
+        """
+        self.unique_ids = unique_ids if unique_ids else list(self.structure_dict.keys())
+        self._structures_to_run = dict([(k, v) for k, v in self.structure_dict.items() if k in self.unique_ids])
+        self.job_status = submit_dft_calcs_to_mc1(self._structures_to_run)
+        return self.job_status
+
+    def run_monitor(self):
+        """
+        Returns:
+            (dict): calculation status, including results
+        """
+        finished = self.get_state()
+        with ScratchDir("."):
+            while not finished:
+                time.sleep(self.poll_time)
+                finished = self.get_state()
+                status_string = "\n".join(["{}: {}".format(key, value["status"])
+                                           for key, value in self.job_status.items()])
+                print("Calc status:\n{}".format(status_string))
+
+                for doc in self.job_status.values():
+                    doc["elapsed_time"] = time.time() - doc["start_time"]
+                    if doc["elapsed_time"] > self.timeout:
+                        if doc['status'] not in ['SUCCEEDED', 'FAILED']:
+                            # Update job status to reflect timeout
+                            doc.update({"status": "FAILED",
+                                        "error": "timeout"})
+                            # Kill AWS job
+                            kill_cmd = "aws batch terminate-job --job-id {} --reason camd_timeout".format(
+                                doc['jobId'])
+                            kill_result = subprocess.check_output(shlex.split(kill_cmd))
+        return self.job_status
+
+    @classmethod
+    def from_jon_status(cls, params, job_status):
+        params["job_status"] = job_status
+        params["unique_ids"] = list(job_status.keys())
+        return cls(params)
 
 
 def submit_dft_calcs_to_mc1(structure_dict):
@@ -44,7 +113,7 @@ def submit_dft_calcs_to_mc1(structure_dict):
                          "use camd MC1 interface")
     # Create run directory
     uuid_string = str(uuid.uuid4()).replace('-', '')
-    parent_dir = os.path.join(tri_path, "model", "oqmdvasp", "3",
+    parent_dir = os.path.join(tri_path, "model", "oqmdvasp", "2",
                               "u", "camd", "run{}".format(uuid_string))
     if any(['_' in key for key in structure_dict.keys()]):
         raise ValueError("Structure keys cannot contain underscores for "
@@ -63,12 +132,13 @@ def submit_dft_calcs_to_mc1(structure_dict):
             # Submit to mc1
             # TODO: ensure this is checked for failure to submit
             print("Submitting job: {}".format(structure_id))
-            calc = subprocess.check_output(["trisub", "-q", "oqmd_test_queue"])
+            calc = subprocess.check_output(["trisub", "-q", "small"])
             calc = calc.decode('utf-8')
             calc = re.findall("({.+})", calc, re.DOTALL)[0]
             calc = json.loads(calc)
             calc.update({"path": os.getcwd(),
-                         "status": "SUBMITTED"})
+                         "status": "SUBMITTED",
+                         "start_time": time.time()})
             calc_status[structure_id] = calc
 
     return calc_status
@@ -125,47 +195,6 @@ def check_dft_calcs(calc_status):
     return calc_status
 
 
-def run_dft_experiments(structure_dict, poll_time=60, timeout=3600):
-    """
-
-    Args:
-        structure_dict ({}): dictionary of identifiers/structures
-            to be run for DFT on mc1
-        poll_time (float): time between polling steps
-        timeout (float): time in seconds to poll until issuing a timeout
-
-    Returns:
-        (dict): calculation status, including results
-
-    """
-    with ScratchDir('.'):
-        calc_status = submit_dft_calcs_to_mc1(structure_dict)
-        finished = False
-        start_time = time.time()
-        while not finished:
-            time.sleep(poll_time)
-            calc_status = check_dft_calcs(calc_status)
-            status_string = "\n".join(["{}: {}".format(key, value["status"])
-                                       for key, value in calc_status.items()])
-            print("Calc status:\n{}".format(status_string))
-            finished = all([doc['status'] in ['SUCCEEDED', 'FAILED']
-                            for doc in calc_status.values()])
-            elapsed_time = time.time() - start_time
-            print("Elapsed time {} seconds".format(elapsed_time))
-            if elapsed_time > timeout:
-                for doc in calc_status.values():
-                    if doc['status'] not in ['SUCCEEDED', 'FAILED']:
-                        # Update job status to reflect timeout
-                        doc.update({"status": "FAILED",
-                                    "error": "timeout"})
-                        # Kill AWS job
-                        kill_cmd = "aws batch terminate-job --job-id {} --reason camd_timeout".format(
-                            doc['jobId'])
-                        kill_result = subprocess.check_output(shlex.split(kill_cmd))
-                break
-    return calc_status
-
-
 
 MODEL_TEMPLATE = """
 import os
@@ -206,3 +235,18 @@ def run_oqmd_calculation(poscar_filename):
 if __name__ == '__main__':
     run_oqmd_calculation("POSCAR")
 """
+
+
+def get_dft_calcs_aft(uids, df):
+    """
+    Mock function that mimics fetching DFT calculations
+    """
+    uids = [uids] if type(uids) != list else uids
+    return df.loc[uids]
+
+
+def get_dft_calcs_from_northwestern(uids):
+    """
+    Placeholder function for fetching DFT calculations from Northwestern
+    """
+    raise NotImplementedError("Northwestern interface not yet implemented")

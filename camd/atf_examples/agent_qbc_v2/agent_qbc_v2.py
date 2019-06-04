@@ -37,4 +37,4 @@ new_loop = Loop(path, candidate_data, agent, experiment, analyzer,
                agent_params=agent_params, analyzer_params=analyzer_params, experiment_params=experiment_params,
                create_seed=N_seed)
 
-new_loop.auto_loop(n_iterations=4, wait_time=5)
+new_loop.auto_loop(n_iterations=4, timeout=5)
