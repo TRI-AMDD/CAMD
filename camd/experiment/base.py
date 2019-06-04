@@ -16,20 +16,8 @@ class Experiment(abc.ABC, MSONable):
     """
 
     def __init__(self, params):
-        self.state = 'unstarted'
         self._params = params
 
-    @abc.abstractmethod
-    def start(self):
-        """
-
-        Args:
-            params:
-
-        Returns:
-
-        """
-        self.state = "pending"
 
     @abc.abstractmethod
     def get_state(self):
@@ -39,12 +27,6 @@ class Experiment(abc.ABC, MSONable):
             str: 'unstarted', 'pending', 'completed'
 
         """
-
-    def _update_state(self):
-        """
-        Returns:
-        """
-        self.state = self.get_state()
 
     @abc.abstractmethod
     def get_results(self, indices):
@@ -70,23 +52,6 @@ class Experiment(abc.ABC, MSONable):
 
     def _update_results(self):
         self.results = self.get_results()
-
-    def _wait_until_complete(self, time_interval=120):
-        """
-
-        Args:
-            time_interval (float): time interval between
-                polling steps
-
-        Returns:
-            str: the ending state
-
-        """
-        state = self.state
-        while self.state is not 'completed':
-            self._update_state()
-            sleep(time_interval)
-        return state
 
     @abc.abstractmethod
     def run_monitor(self):

@@ -31,13 +31,9 @@ class OqmdDFTonMC1(Experiment):
         self.job_status = params['job_status'] if 'job_status' in params else {}
         super().__init__(params)
 
-    def start(self):
-        """No start procedure"""
-        pass
-
     @property
     def state(self):
-        if self.get_state():
+        if self.get_state() and self.job_status:
             return "completed"
         elif sum([doc['status'] in ['SUCCEEDED', 'FAILED']
                     for doc in self.job_status.values()]) > 0:
@@ -47,7 +43,7 @@ class OqmdDFTonMC1(Experiment):
 
     @property
     def state_detailed(self):
-        pass
+        return NotImplementedError("Not implemented")
 
     def get_state(self):
         self.job_status = check_dft_calcs(self.job_status)
