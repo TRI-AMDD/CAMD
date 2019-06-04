@@ -5,6 +5,7 @@ computation.
 
 """
 import logging
+import pandas as pd
 from camd.database.access import CamdSchemaSession
 from camd.model.feature.definition import feature_definition, index_sub_index, \
     feature_index_blocks, feature_directory, number_of_features
@@ -125,19 +126,44 @@ class FeatureProvider:
         return featurization.value_array()
 
     def block_featurization(self, material_ids, feature_ids, output='pandas'):
+        """
+        Provides a featurization matrix for selected materials and features.
+
+        Args:
+            material_ids: list
+            feature_ids: list
+            output: str
+                Type of return format (e.g. pandas data frame)
+                default=pandas
+
+        Returns:
+            featurized material selection in selected format
+        """
 
         # identify missing featurizations
-        # TODO
+        missing = self.camd_schema_session\
+            .query_missing_featurizations(material_ids, feature_ids)
 
-        # compute missing featurizations
+        # compute/insert missing featurizations
+        for material_id in missing.keys():
+            for feature_id in missing[material_id]:
+                self.one_featurization(material_id, feature_id)
 
-
-        # query featurizations
-
-
-        # format to output
-
-        pass
+        # pandas formatting
+        if output == 'pandas':
+            feature_values = self.camd_schema_session\
+                .query_featurizations(material_ids, feature_ids)
+            feature_labels = self.camd_schema_session\
+                .query_feature_labels(feature_ids)
+            data = dict()
+            for i in range(len(feature_labels)):
+                row_values = list()
+                for material_id in feature_values.keys():
+                    row_values.append(feature_values[material_id][i])
+                data[feature_labels[i]] = row_values
+            return pd.DataFrame(data=data)
+        else:
+            raise NotImplementedError()
 
 
 class FeatureComputer:
@@ -157,7 +183,7 @@ class FeatureComputer:
                 selected should be returned
 
         Returns: tuple
-            camd.database.schema.Featurization
+            list of featuriation values
             list of all Featurizations computed alongside
             list of feature_labels
             list of feature_types
@@ -165,13 +191,13 @@ class FeatureComputer:
         """
         featurizer, feature_labels, types, sub_index = \
             feature_definition(feature_id)
-        featurizations = featurizer(material)
+        featurization_values = featurizer(material)
 
         if return_all:
-            return featurizations[sub_index], featurizations, feature_labels, \
-                   types
+            return featurization_values[sub_index], featurization_values, \
+                   feature_labels, types
         else:
-            return featurizations[sub_index]
+            return featurization_values[sub_index]
 
     @staticmethod
     def compute_all_features(material):
@@ -188,5 +214,3 @@ class FeatureComputer:
             types += t
 
         return featurizations, feature_labels, types
-
-FeatureProvider('local')

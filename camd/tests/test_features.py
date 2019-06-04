@@ -4,6 +4,7 @@ unit tests for feature computation and provision
 
 """
 
+import logging, sys
 import unittest
 
 from camd.database.schema import Material
@@ -21,6 +22,10 @@ from matminer.featurizers.structure import MaximumPackingEfficiency
 
 
 ENVIRONMENT = 'local'
+
+# logger
+FORMAT = '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+logging.basicConfig(stream=sys.stdout, level=logging.INFO, format=FORMAT)
 
 
 @unittest.skipUnless(database_available(ENVIRONMENT),
@@ -42,7 +47,7 @@ class TestFeatureComputation(unittest.TestCase):
                 session.add(material)
                 session.commit()
             except Exception as e:
-                print(e)
+                logging.debug('Material already in database.')
                 session.rollback()
 
     def tearDown(self):
@@ -106,3 +111,6 @@ class TestFeatureComputation(unittest.TestCase):
         for i in range(len(featurizations)):
             self.assertEqual(features_actual[i], featurizations[i])
             self.assertEqual(labels_actual[i], feature_labels[i])
+
+    def test_provide_block_featurization(self):
+        pass
