@@ -103,7 +103,7 @@ class StructureDomain(DomainBase):
         """
         if self.formulas:
             print("Generating hypothetical structures...")
-            self.hypo_structures = get_structures_from_protosearch(self.formulas, self.n_max_atoms)
+            self.hypo_structures = get_structures_from_protosearch(self.formulas, n_max_atoms=self.n_max_atoms)
             print("Generated {} hypothetical structures".format(len(self.hypo_structures)))
         else:
             raise("Need formulas to create structures")

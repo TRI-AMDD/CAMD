@@ -88,19 +88,11 @@ class Experiment(abc.ABC, MSONable):
             sleep(time_interval)
         return state
 
-    def run(self):
+    @abc.abstractmethod
+    def run_monitor(self):
         """
-
-        Args:
-            params:
-
-        Returns:
-
+        Keeps track of jobs given the poll_time and timeout
         """
-        self.start()
-        self._wait_until_complete()
-        self._update_results()
-        return True
 
     @abc.abstractmethod
     def submit(self, unique_ids):
