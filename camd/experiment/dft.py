@@ -105,7 +105,7 @@ class OqmdDFTonMC1(Experiment):
         return self.job_status
 
     @classmethod
-    def from_jon_status(cls, params, job_status):
+    def from_job_status(cls, params, job_status):
         params["job_status"] = job_status
         params["unique_ids"] = list(job_status.keys())
         return cls(params)
