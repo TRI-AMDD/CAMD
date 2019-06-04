@@ -54,7 +54,7 @@ def get_previously_imported_references(environment):
         List of internal_references in the material table.
     """
     css = CamdSchemaSession(environment)
-    return css.get_list_of_material_internal_references()
+    return css.query_list_of_material_internal_references()
 
 
 if __name__ == '__main__':

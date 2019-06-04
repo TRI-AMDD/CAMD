@@ -65,6 +65,17 @@ def index_sub_index(feature_id):
     return index, sub_index
 
 
+def number_of_features():
+    """
+    Provides the number of features in the feature directory.
+
+    Returns: int
+        Number of features
+    """
+    max_index = max(list(feature_directory.keys()))
+    return max_index + len(feature_directory[max_index]['labels']) - 1
+
+
 feature_index_blocks = (1, 6, 15, 18, 19, 129, 135, 267, 271, 272)
 
 feature_directory = {
@@ -138,8 +149,8 @@ feature_directory = {
     271: {
         'featurizer': lambda x: [[float(StructureComposition(\
             IonProperty(fast=True)).featurize(x.structure())[0])]],
-        'labels': StructureComposition(IonProperty(fast=True)) \
-            .feature_labels()[0],
+        'labels': [StructureComposition(IonProperty(fast=True)) \
+            .feature_labels()[0]],
         'types': ['numerical']
     },
     272: {

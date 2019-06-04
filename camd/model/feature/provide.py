@@ -4,10 +4,10 @@ computation.
 
 
 """
-
+import logging
 from camd.database.access import CamdSchemaSession
 from camd.model.feature.definition import feature_definition, index_sub_index, \
-    feature_index_blocks
+    feature_index_blocks, feature_directory, number_of_features
 from camd.database.schema import Featurization, Feature
 
 
@@ -33,6 +33,49 @@ class FeatureProvider:
                 Database environment (local, stage, production)
         """
         self.camd_schema_session = CamdSchemaSession(environment)
+        if not self._all_features_registered():
+            logging.info('Registering new features in the database.')
+            self._register_features()
+
+    def _all_features_registered(self):
+        """
+        Compares the number of features in the database and in the codebase.
+
+        Returns: boolean
+            True if number of features in database and codebase match
+            False if number of features in database < codebase
+
+        Raises:
+            Exception if number of features in database > codebase
+
+        """
+        n_registered = self.camd_schema_session\
+            .query_number_of_registered_features()
+        n_coded = number_of_features()
+        if n_registered > n_coded:
+            logging.error(f'There are more features in the database ' +
+                          '({n_registered}) than in the codebase ({n_coded}).')
+            raise
+        if n_registered < n_coded:
+            return False
+        return True
+
+    def _register_features(self):
+        """
+        Checks if all features are represented in the database feature table
+        and if not, inserts them.
+
+        Returns: None
+
+        """
+        for block_index in feature_index_blocks:
+            block = feature_directory[block_index]
+            for i in range(len(block['labels'])):
+                id = block_index + i
+                name = block['labels'][i]
+                feature_type = block['types'][i]
+                feature = Feature(id, name, feature_type)
+                self.camd_schema_session.insert(feature)
 
     def one_featurization(self, material_id, feature_id):
         """
@@ -80,6 +123,21 @@ class FeatureProvider:
                 .query_featurization(material_id, feature_id)
 
         return featurization.value_array()
+
+    def block_featurization(self, material_ids, feature_ids, output='pandas'):
+
+        # identify missing featurizations
+        # TODO
+
+        # compute missing featurizations
+
+
+        # query featurizations
+
+
+        # format to output
+
+        pass
 
 
 class FeatureComputer:
@@ -130,3 +188,5 @@ class FeatureComputer:
             types += t
 
         return featurizations, feature_labels, types
+
+FeatureProvider('local')

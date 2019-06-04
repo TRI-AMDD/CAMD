@@ -4,6 +4,7 @@ inserts and queries custom to CAMD.
 
 """
 
+from sqlalchemy import exc
 from camd.database.schema import *
 from camd.utils.postgres import sqlalchemy_session
 
@@ -43,8 +44,12 @@ class CamdSchemaSession:
         if not isinstance(camd_entity, CamdEntity):
             raise ValueError('Object must be of type CamdEntity.')
 
-        self.session.add(camd_entity)
-        self.session.commit()
+        try:
+            self.session.add(camd_entity)
+            self.session.commit()
+        except exc.IntegrityError as ie:
+            logging.warning(f'IntegrityError: Object not inserted.')
+            self.session.rollback()
 
     def insert_batch(self, camd_entities):
         """
@@ -127,7 +132,7 @@ class CamdSchemaSession:
         return self.session.query(Material)\
             .filter_by(internal_reference=internal_reference).first()
 
-    def get_list_of_material_internal_references(self):
+    def query_list_of_material_internal_references(self):
         """
         Returns a list of internal_references for materials that exist in the
         materials table,
@@ -140,3 +145,14 @@ class CamdSchemaSession:
         """
         results = self.session.query(Material.internal_reference).all()
         return [value[0] for value in results]
+
+    def query_number_of_registered_features(self):
+        """
+        Returns the number of records in the feature table.
+
+        Returns: int
+            number of registered features
+
+        """
+        result = self.session.query(Feature).count()
+        return result
