@@ -48,7 +48,7 @@ class CamdSchemaSession:
             self.session.add(camd_entity)
             self.session.commit()
         except exc.IntegrityError as ie:
-            logging.warning(f'IntegrityError: Object not inserted.')
+            logging.debug(f'IntegrityError: Object {camd_entity} not inserted.')
             self.session.rollback()
 
     def insert_batch(self, camd_entities):
@@ -72,6 +72,55 @@ class CamdSchemaSession:
 
         return True, None
 
+    def insert_pairwise_featurizations(self, material_id, feature_ids,
+                                       feature_values):
+        """
+        For a given material_id and a set of feature_ids and respective values
+        inserts pairwise featurization into the database.
+
+        On unique constraint violations (does not insert; issues debug message)
+
+        Args:
+            material_id: int
+            feature_ids: list
+            feature_values: list
+
+        Returns: bool, Exception
+            True, None if batch insert successful
+            False, exception if batch insert raised and exception
+
+        """
+        featurizations = [PairwiseFeaturization(material_id, feature_ids[i],
+                                                feature_values[i])
+                          for i in range(len(feature_ids))]
+        for featurization in featurizations:
+            self.insert(featurization)
+
+    def upsert_block_featurization(self, material_id, feature_values):
+        """
+        Inserts feature value array into block_featurization table.
+        Overrides, if respective material_id already has values.
+
+        Args:
+            material_id: int
+            feature_values: list
+
+        Returns: None
+
+        """
+        conn = self.session.connection()
+        n_features = len(feature_values)
+        sql = """INSERT INTO camd.block_featurization 
+        (material_id, n_features, feature_values) 
+        VALUES (:material_id, :n_features, :feature_values) 
+        ON CONFLICT (material_id) DO UPDATE SET 
+        n_features = EXCLUDED.n_features, 
+        feature_values = EXCLUDED.feature_values"""
+        s = text(sql)
+        conn.execute(s, material_id=material_id, n_features=n_features,
+                     feature_values=feature_values)
+        self.session.commit()
+
     def query_featurization(self, material_id, feature_id):
         """
         Queries a featurization entry by material_id and feature_id
@@ -86,7 +135,7 @@ class CamdSchemaSession:
             CAMD Featurization object, if exists. None otherwise.
 
         """
-        return self.session.query(Featurization)\
+        return self.session.query(PairwiseFeaturization)\
             .filter_by(feature_id=feature_id, material_id=material_id).first()
 
     def query_featurizations(self, material_ids, feature_ids):
@@ -115,6 +164,28 @@ class CamdSchemaSession:
             vals += [float(x) for x in list(row[2])]
             feature_values[row[0]] = vals
         return feature_values
+
+    def query_all_featurizations(self, material_id):
+        """
+        Returns a list of all feature values for a material ordered by
+        feature_id.
+
+        Args:
+            material_id: int
+
+        Returns: list
+            featurization values for material
+
+        """
+        sql = """SELECT feature_id, value FROM camd.pairwise_featurization 
+        WHERE material_id=:material_id ORDER BY 1"""
+        s = text(sql)
+        conn = self.session.connection()
+        result = conn.execute(s, material_id=material_id)
+        values = list()
+        for row in result:
+            values.append(row[1])
+        return values
 
     def query_material(self, material_id):
         """
@@ -184,6 +255,18 @@ class CamdSchemaSession:
         result = self.session.query(Feature).count()
         return result
 
+    def query_registered_feature_ids(self):
+        """
+        Returns all feature_ids which exists in the Feature table.
+
+        Returns: list
+            List of feature ids.
+
+        """
+        result = self.session.query(Feature.id).all()
+        feature_ids = [row[0] for row in result]
+        return feature_ids
+
     def query_missing_featurizations(self, material_ids, feature_ids):
         """
         Queries database for missing combinations of material and feature ids
@@ -205,7 +288,7 @@ class CamdSchemaSession:
         left JOIN (SELECT cfz.material_id, cf.id AS feature_id 
         FROM camd.feature cf 
         left join (SELECT material_id, feature_id 
-        FROM camd.featurization 
+        FROM camd.pairwise_featurization 
         WHERE material_id in :material_id_list) cfz 
         on cf.id=cfz.feature_id) t2 
         on t1.material_id=t2.material_id AND t1.feature_id=t2.feature_id 
@@ -239,6 +322,26 @@ class CamdSchemaSession:
             feature_labels.append(row[0])
         return feature_labels
 
+    def query_full_feature_block(self, material_ids):
+        """
+        For given material_ids, returns matrix of featurization values.
+
+        Args:
+            material_ids: list
+
+        Returns: list
+            list of list with featurization values
+
+        """
+        bfs = self.session\
+            .query(BlockFeaturization)\
+            .filter(BlockFeaturization.material_id.in_(material_ids))\
+            .order_by(BlockFeaturization.material_id.asc())\
+            .all()
+        sorted_material_ids = [bf.material_id for bf in bfs]
+        feature_arrays = [bf.feature_values for bf in bfs]
+        return sorted_material_ids, feature_arrays
+
     def oqmd_ids_to_material_ids(self, oqmd_ids):
         """
         Looks up the respective internal material_ids for a list of oqmd_ids.
@@ -263,5 +366,4 @@ class CamdSchemaSession:
         for ir in internal_references:
             material_ids.append(material_id_map[ir])
         return material_ids
-
 
