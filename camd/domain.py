@@ -110,6 +110,8 @@ class StructureDomain(DomainBase):
 
     @property
     def hypo_structures(self):
+        if self._hypo_structures is None:
+            self.get_structures()
         if self.n_max_atoms:
             n_max_filter = [i.num_sites <= self.n_max_atoms for i in self._hypo_structures['pmg_structures']]
             if self._hypo_structures is not None:
@@ -118,6 +120,10 @@ class StructureDomain(DomainBase):
                 return None
         else:
             return self._hypo_structures
+
+    @property
+    def hypo_structures_dict(self):
+        return self.hypo_structures["pmg_structures"].to_dict()
 
     @property
     def compositions(self):
@@ -169,8 +175,15 @@ class StructureDomain(DomainBase):
 
         features = featurizer.featurize_many(self.hypo_structures['pmg_structures'], ignore_errors=True, **kwargs)
 
+        n_species, formula = [], []
+        for s in self.hypo_structures['pmg_structures']:
+            n_species.append(len(s.composition.elements))
+            formula.append(s.composition.reduced_formula)
+
         self._features_df = pd.DataFrame.from_records(features, columns=featurizer.feature_labels())
         self._features_df.index = self.hypo_structures.index
+        self._features_df['N_species'] = n_species
+        self._features_df['Composition'] = formula
         self.features = self._features_df.dropna(axis=0, how='any')
 
         self._valid_structure_labels = list(self.features.index)
@@ -187,7 +200,7 @@ class StructureDomain(DomainBase):
         Returns:
             feature vectors of valid hypothetical structures.
         """
-        if self.hypo_structures is None:
+        if self._hypo_structures is None:
             self.get_structures()
 
         if self.features is None:
@@ -237,8 +250,8 @@ def get_structures_from_protosearch(formulas, source='icsd', db_interface=None):
                       for i in range(len(_structures))]
     _structures['pmg_structures'] = pmg_structures
 
-    structure_uids = [_structures.iloc[i]['proto_name'] +
-                           '_' + '_'.join(pmg_structures[i].symbol_set) for i in range(len(_structures))]
+    structure_uids = [_structures.iloc[i]['proto_name'].replace('_','-') +
+                           '-' + '-'.join(pmg_structures[i].symbol_set) for i in range(len(_structures))]
     _structures.index = structure_uids
     return _structures
 
