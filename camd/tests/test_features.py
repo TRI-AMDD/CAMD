@@ -8,7 +8,7 @@ import logging, sys
 import unittest
 
 from camd.database.schema import Material
-from camd.model.feature.provide import FeatureComputer
+from camd.model.feature.provide import FeatureProvider
 from camd.utils.postgres import sqlalchemy_session
 from camd.database.access import CamdSchemaSession
 from camd.utils.postgres import database_available
@@ -73,44 +73,35 @@ class TestFeatureComputation(unittest.TestCase):
         features[270] = float(features[270])
         return features, featurizer.feature_labels()
 
-    def test_compute_all_features(self):
-
+    def test_provide_block_featurization(self):
         css = CamdSchemaSession(ENVIRONMENT)
 
+        # actual
+        internal_references = ['OQMD_CHGCARs/1000000_POSCAR',
+                               'OQMD_CHGCARs/1000001_POSCAR']
+        material_ids = list()
+        actual_features = list()
+        actual_labels = list()
 
-        # material 1
-        mat1 = css.query_material_by_internal_reference(
-            'OQMD_CHGCARs/1000000_POSCAR')
-        structure1 = mat1.structure()
+        for ir in internal_references:
+            material = css.query_material_by_internal_reference(ir)
+            structure = material.structure()
+            material_ids.append(material.id)
+            feat, lab = self._actual_features(structure)
+            actual_features.append(feat)
+            actual_labels = lab
 
-        fc = FeatureComputer()
-        featurizations, feature_labels, _ = fc.compute_all_features(mat1)
-        features_actual, labels_actual = self._actual_features(structure1)
+        # code under test
+        fp = FeatureProvider(ENVIRONMENT)
+        df = fp.get_featurization_block(material_ids,
+                                        list(range(1, len(actual_features[0]))))
 
-        self.assertEqual(len(featurizations), len(features_actual))
-        self.assertEqual(len(feature_labels), len(labels_actual))
-        self.assertEqual(len(featurizations), len(feature_labels))
+        # test labels
+        columns = df.columns.values
+        for i in range(len(columns)):
+            self.assertEqual(columns[i], actual_labels[i])
 
-        for i in range(len(featurizations)):
-            self.assertEqual(features_actual[i], featurizations[i])
-            self.assertEqual(labels_actual[i], feature_labels[i])
-
-        # material 2
-        mat2 = css.query_material_by_internal_reference(
-            'OQMD_CHGCARs/1000001_POSCAR')
-        structure2 = mat2.structure()
-
-        fc = FeatureComputer()
-        featurizations, feature_labels, _ = fc.compute_all_features(mat2)
-        features_actual, labels_actual = self._actual_features(structure2)
-
-        self.assertEqual(len(featurizations), len(features_actual))
-        self.assertEqual(len(feature_labels), len(labels_actual))
-        self.assertEqual(len(featurizations), len(feature_labels))
-
-        for i in range(len(featurizations)):
-            self.assertEqual(features_actual[i], featurizations[i])
-            self.assertEqual(labels_actual[i], feature_labels[i])
-
-    def test_provide_block_featurization(self):
-        pass
+        # test values
+        for i in range(df.values.shape[0]):
+            for j in range(df.values.shape[1]):
+                self.assertEqual(df.values[i][j], actual_features[i][j])
