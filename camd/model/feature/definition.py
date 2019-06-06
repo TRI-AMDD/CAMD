@@ -65,6 +65,57 @@ def index_sub_index(feature_id):
     return index, sub_index
 
 
+def number_of_features():
+    """
+    Provides the number of features in the feature directory.
+
+    Returns: int
+        Number of features
+    """
+    max_index = max(list(feature_directory.keys()))
+    return max_index + len(feature_directory[max_index]['labels']) - 1
+
+
+def directory_integrity_check():
+    """
+    Method to check integrity of feature definition enumeration.
+
+    Checks:
+    - number of labels matches number types in feature sub sets
+    - feature indices not overlapping; no gaps in feature enumeration
+
+    Returns: None
+
+    Raises:
+        ValueError in case of detected inconsistencies
+
+    """
+
+    # number of labels matches number types
+    for index in feature_index_blocks:
+        sub_set = feature_directory[index]
+        if len(sub_set['labels']) != len(sub_set['types']):
+            raise ValueError(f'Failed feature definition integrity check. ' +
+                             f'Number of labels mismatches the number of ' +
+                             f' types in sub set {index}')
+
+    # feature indices not overlapping; no gaps in feature enumeration
+    for i in range(len(feature_index_blocks) - 1):
+        index = feature_index_blocks[i]
+        sub_set = feature_directory[index]
+        if len(sub_set['labels']) + index != feature_index_blocks[i + 1]:
+            if len(sub_set['labels']) + index < feature_index_blocks[i + 1]:
+                raise ValueError('Failed feature definition integrity check. ' +
+                                 'GAP in feature enumeration in sub_set ' +
+                                 f' {index}')
+            else:
+                raise ValueError('Failed feature definition integrity check. ' +
+                                 'OVERLAP in feature enumeration in sub_set ' +
+                                 f' {index}')
+
+    return
+
+
 feature_index_blocks = (1, 6, 15, 18, 19, 129, 135, 267, 271, 272)
 
 feature_directory = {
@@ -138,8 +189,8 @@ feature_directory = {
     271: {
         'featurizer': lambda x: [[float(StructureComposition(\
             IonProperty(fast=True)).featurize(x.structure())[0])]],
-        'labels': StructureComposition(IonProperty(fast=True)) \
-            .feature_labels()[0],
+        'labels': [StructureComposition(IonProperty(fast=True)) \
+            .feature_labels()[0]],
         'types': ['numerical']
     },
     272: {

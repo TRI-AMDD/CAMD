@@ -4,11 +4,14 @@ computation.
 
 
 """
-
+import logging
+import pandas as pd
+import numpy as np
 from camd.database.access import CamdSchemaSession
 from camd.model.feature.definition import feature_definition, index_sub_index, \
-    feature_index_blocks
-from camd.database.schema import Featurization, Feature
+    feature_index_blocks, feature_directory, number_of_features, \
+    directory_integrity_check
+from camd.database.schema import PairwiseFeaturization, Feature
 
 
 class FeatureProvider:
@@ -32,62 +35,74 @@ class FeatureProvider:
             environment: str
                 Database environment (local, stage, production)
         """
-        self.camd_schema_session = CamdSchemaSession(environment)
+        self.camd_session = CamdSchemaSession(environment)
+        self.feature_persister = FeaturePersister(self.camd_session)
 
-    def one_featurization(self, material_id, feature_id):
-        """
-        Provides one feature for one material.
+        if not self.feature_persister.all_features_registered():
+            logging.info('Registering new features in the database.')
+            self.feature_persister.register_all_features()
 
-        Looks up the combination in the database and if not found computes it.
+    def get_featurization_block(self, material_ids, feature_ids,
+                                output='pandas'):
 
-        Args:
-            material_id: int
-                primary key value in camd.material table
-            feature_id: int
-                primary key value in camd.feature table
+        # check: features registered
+        registered = self.camd_session.query_registered_feature_ids()
+        for feature_id in feature_ids:
+            if feature_id not in registered:
+                raise ValueError(f'Requested feature_id {feature_id} is not ' +
+                                 ' defined in codebase. ')
 
-        Returns:    numpy.array
-            feature value as numpy array. Single value in array if numerical
-            feature. One hot encoded, multi-value array in case of categorical
-            feature type.
+        # query: missing featurizations
+        missing_pairwise = self.camd_session\
+            .query_missing_featurizations(material_ids, feature_ids)
 
-        """
+        # compute and persist: missing featurizations
+        fc = FeatureComputer()
+        for material_id, missing_feature_ids in missing_pairwise.items():
 
-        featurization = self.camd_schema_session\
-            .query_featurization(material_id, feature_id)
+            # crude optimization decision here. If all features are missing,
+            # compute all features together; otherwise individually
+            material = self.camd_session.query_material(material_id)
+            if len(missing_feature_ids) == len(feature_ids):
+                all_feature_ids, feature_values = \
+                    fc.compute_all_features(material)
+            else:
+                all_feature_ids = missing_feature_ids
+                feature_values = list()
+                for feature_id in missing_feature_ids:
+                    feature_values += fc.compute(material, feature_id)
 
-        if featurization is None or featurization.value is None:
-            fc = FeatureComputer()
-            material = self.camd_schema_session.query_material(material_id)
-            feature_value, all, all_labels, all_types = \
-                fc.compute(material, feature_id)
-            index, sub_index = index_sub_index(feature_id)
-            for i in range(len(all)):
-                new_feature_id = index + i
-                new_label = all_labels[i]
-                new_type = all_types[i]
-                feature = self.camd_schema_session.query_feature(new_feature_id)
-                if feature is None:
-                    feature = Feature(new_feature_id, new_label, new_type)
-                new_featurization = Featurization()
-                new_featurization.material = material
-                new_featurization.feature = feature
-                new_featurization.value = all[i]
+            # persist computed (missing) features
+            self.feature_persister.persist_pairwise(material_id,
+                                                    all_feature_ids,
+                                                    feature_values)
+            self.feature_persister.persist_feature_block(material_id)
 
-                self.camd_schema_session.session.add(new_featurization)
-            self.camd_schema_session.session.commit()
-            featurization = self.camd_schema_session\
-                .query_featurization(material_id, feature_id)
+        # query: full feature block
+        sorted_material_ids, feature_arrays = self.camd_session\
+            .query_full_feature_block(material_ids)
 
-        return featurization.value_array()
+        feature_arrays = np.array(feature_arrays).astype(float)
+
+        # down select: by feature_ids
+        feature_arrays = feature_arrays[:, [x - 1 for x in feature_ids]]
+
+        # format to desired output
+        if output == 'numpy':
+            return feature_arrays
+        if output == 'pandas':
+            column_names = self.camd_session.query_feature_labels(feature_ids)
+            return pd.DataFrame(data=feature_arrays, columns=column_names)
+
+        raise ValueError('Unsupported output format {output}')
 
 
 class FeatureComputer:
 
     @staticmethod
-    def compute(material, feature_id, return_all=True):
+    def compute(material, feature_id, return_all=False):
         """
-        Computes a feature for a material.
+        Computes a featurization for a material and feature_id.
 
         Args:
             material: camd.database.schema.Material
@@ -99,7 +114,8 @@ class FeatureComputer:
                 selected should be returned
 
         Returns: tuple
-            camd.database.schema.Featurization
+            list of featurization values
+            optional
             list of all Featurizations computed alongside
             list of feature_labels
             list of feature_types
@@ -107,26 +123,101 @@ class FeatureComputer:
         """
         featurizer, feature_labels, types, sub_index = \
             feature_definition(feature_id)
-        featurizations = featurizer(material)
+        featurization_values = featurizer(material)
 
         if return_all:
-            return featurizations[sub_index], featurizations, feature_labels, \
-                   types
+            return featurization_values[sub_index], featurization_values, \
+                   feature_labels, types
         else:
-            return featurizations[sub_index]
+            return featurization_values[sub_index]
 
     @staticmethod
     def compute_all_features(material):
+        """
+        For a given material, returns feature values.
 
-        featurizations = list()
-        feature_labels = list()
-        types = list()
+        Args:
+            material: camd.database.schema.Material
 
+        Returns:
+            feature_ids: list
+            feature_values: list
+
+        """
+
+        feature_values = list()
+        feature_ids = list()
+        for index in feature_index_blocks:
+            f, l, t, sub_index = feature_definition(index)
+            feature_values += [x[0] for x in f(material)]
+            feature_ids += [index + x for x in range(len(l))]
+
+        return feature_ids, feature_values
+
+
+class FeaturePersister:
+
+    def __init__(self, camd_session):
+        self.camd_session = camd_session
+
+    def all_features_registered(self):
+        """
+        Compares the number of features in the database and in the codebase.
+
+        Returns: boolean
+            True if number of features in database and codebase match
+            False if number of features in database < codebase
+
+        Raises:
+            Exception if number of features in database > codebase
+
+        """
+        n_registered = self.camd_session.query_number_of_registered_features()
+        n_coded = number_of_features()
+        if n_registered > n_coded:
+            logging.error(f'There are more features in the database ' +
+                          '({n_registered}) than in the codebase ({n_coded}).')
+            raise
+        if n_registered < n_coded:
+            return False
+        return True
+
+    def register_all_features(self):
+        """
+        Checks if all features are represented in the database feature table
+        and if not, inserts them.
+
+        Also, performs an integrity check on feature definition enumeration
+
+        Returns: None
+
+        """
+        directory_integrity_check()
         for block_index in feature_index_blocks:
-            f, l, t, sub_index = feature_definition(block_index)
-            l = l if isinstance(l, list) else [l]
-            featurizations += [x[0] for x in f(material)]
-            feature_labels += l
-            types += t
+            block = feature_directory[block_index]
+            for i in range(len(block['labels'])):
+                id = block_index + i
+                name = block['labels'][i]
+                feature_type = block['types'][i]
+                feature = Feature(id, name, feature_type)
+                self.camd_session.insert(feature)
 
-        return featurizations, feature_labels, types
+    def persist_pairwise(self, material_id, feature_ids, feature_values):
+        """
+
+        Args:
+            material_id:
+            feature_ids:
+            feature_values:
+
+        Returns:
+
+        """
+        self.camd_session.insert_pairwise_featurizations(material_id,
+                                                         feature_ids,
+                                                         feature_values)
+
+    def persist_feature_block(self, material_id):
+        feature_values = self.camd_session.query_all_featurizations(material_id)
+        self.camd_session.upsert_block_featurization(material_id,
+                                                     feature_values)

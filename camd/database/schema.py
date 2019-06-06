@@ -7,6 +7,8 @@ functionality.
 
 """
 
+import logging, sys
+import argparse
 import numpy as np
 from sqlalchemy import *
 from sqlalchemy.orm import relation
@@ -146,20 +148,25 @@ class Feature(Base, CamdEntity):
                                             self.possible_values)
 
 
-class Featurization(Base, CamdEntity):
-    __tablename__ = 'featurization'
+class PairwiseFeaturization(Base, CamdEntity):
+    __tablename__ = 'pairwise_featurization'
 
     material_id = Column(Integer, ForeignKey('material.id'), primary_key=True,
                          autoincrement=False)
     feature_id = Column(Integer, ForeignKey('feature.id'), primary_key=True,
                         autoincrement=False)
-    value = Column(postgresql.ARRAY(DECIMAL, dimensions=1))
+    value = Column(DECIMAL, nullable=False)
 
     material = relation("Material", backref='material', lazy=False)
     feature = relation("Feature", backref='feature', lazy=False)
 
+    def __init__(self, material_id, feature_id, value):
+        self.material_id = material_id
+        self.feature_id = feature_id
+        self.value = value
+
     def __repr__(self):
-        return "Featurization(%r, %r, %r)" % (self.material_id, self.feature_id,
+        return "PairwiseFeaturization(%r, %r, %r)" % (self.material_id, self.feature_id,
                                         self.value)
 
     def value_array(self):
@@ -171,3 +178,56 @@ class Featurization(Base, CamdEntity):
 
         """
         return np.array([float(x) for x in self.value])
+
+
+class BlockFeaturization(Base, CamdEntity):
+    __tablename__ = 'block_featurization'
+
+    material_id = Column(Integer, ForeignKey('material.id'), primary_key=True,
+                         autoincrement=False)
+    n_features = Column(Integer, nullable=False)
+    feature_values = Column(postgresql.ARRAY(DECIMAL, dimensions=1))
+
+    material = relation("Material", backref='material_block_featurization',
+                        lazy=False)
+
+    def __repr__(self):
+        return "BlockFeaturization(%r, %r features)" % (self.material_id,
+                                                        len(self.feature_values)
+                                                        )
+
+    def value_array(self):
+        """
+        Provides access to the featurization in numpy array format.
+
+        Returns: numpy.array
+            1d array of features
+
+        """
+        return np.array([float(x) for x in self.feature_values])
+
+
+if __name__ == '__main__':
+    logging.basicConfig(stream=sys.stdout, level=logging.DEBUG)
+
+    # db credentials and schema name in args
+    parser = argparse.ArgumentParser(description='Provide database credentials\
+     as arguments: user, password, host, port, database, schema')
+    parser.add_argument('--user', '-u', type=str, help='-u user')
+    parser.add_argument('--password', '-pw', type=str, help='-pw password')
+    parser.add_argument('--host', '-host', type=str, help='-host host')
+    parser.add_argument('--port', '-p', type=str, help='-p port')
+    parser.add_argument('--database', '-d', type=str, help='-d database')
+    parser.add_argument('--schema', '-s', type=str, help='-s schema')
+    args = parser.parse_args()
+
+    # create tables
+    connection_string = f'postgres://{args.user}:{args.password}@{args.host}' +\
+                        f':{args.port}/{args.database}'
+    logging.info(f'Connecting to database. Connection: {connection_string}')
+    engine = create_engine(connection_string,
+                           connect_args={'options': '-csearch_path={}'\
+                           .format(args.schema)})
+    logging.info(f'Creating all tables in schema {args.schema}')
+    Base.metadata.create_all(engine)
+    logging.info('All tables created.')
