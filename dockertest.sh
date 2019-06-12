@@ -7,7 +7,7 @@ set -e
 
 # TODO: set up postgresql testing
 # Start postgres in the background
-service postgresql start
+# service postgresql start
 
 # Run nosetests
 nosetests --with-xunit --all-modules --traverse-namespace \

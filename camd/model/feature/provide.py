@@ -177,7 +177,8 @@ class FeaturePersister:
         if n_registered > n_coded:
             logging.error(f'There are more features in the database ' +
                           '({n_registered}) than in the codebase ({n_coded}).')
-            raise
+            raise ValueError("There are more features in the database "
+                             "({n_registered}) than in the codebase ({n_coded}).")
         if n_registered < n_coded:
             return False
         return True
