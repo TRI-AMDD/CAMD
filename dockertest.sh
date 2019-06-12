@@ -3,8 +3,7 @@
 # This script is run as the default procedure for testing
 # in the docker container
 
-# turn on bash's job control
-set -m
+set -e
 
 # TODO: set up postgresql testing
 # Start postgres in the background
