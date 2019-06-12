@@ -1,9 +1,18 @@
 import unittest
 from camd.domain import StructureDomain, get_structures_from_protosearch
+from camd.utils.s3 import s3_connection_broken
 from pymatgen import Structure
+
+
+if not s3_connection_broken("camd", "shared-data"):
+    S3_CONNECTION = True
+else:
+    S3_CONNECTION = False
+
 
 # TODO:
 # - Add StructureDomain tests
+@unittest.skipUnless(S3_CONNECTION, "S3 connection broken")
 class DomainTest(unittest.TestCase):
 
     def test_get_structures_from_protosearch(self):
