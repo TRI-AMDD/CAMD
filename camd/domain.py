@@ -71,8 +71,8 @@ class StructureDomain(DomainBase):
     def __init__(self, formulas, n_max_atoms=None):
         self.formulas = formulas
         self.n_max_atoms = n_max_atoms
-        self.hypo_structures = None
         self.features = None
+        self._hypo_structures = None
 
     @classmethod
     def from_bounds(cls, bounds, n_max_atoms=None, charge_balanced=True, create_subsystems=False, **kwargs):
@@ -103,10 +103,27 @@ class StructureDomain(DomainBase):
         """
         if self.formulas:
             print("Generating hypothetical structures...")
-            self.hypo_structures = get_structures_from_protosearch(self.formulas, self.n_max_atoms)
+            self._hypo_structures = get_structures_from_protosearch(self.formulas)
             print("Generated {} hypothetical structures".format(len(self.hypo_structures)))
         else:
             raise("Need formulas to create structures")
+
+    @property
+    def hypo_structures(self):
+        if self._hypo_structures is None:
+            self.get_structures()
+        if self.n_max_atoms:
+            n_max_filter = [i.num_sites <= self.n_max_atoms for i in self._hypo_structures['pmg_structures']]
+            if self._hypo_structures is not None:
+                return self._hypo_structures[n_max_filter]
+            else:
+                return None
+        else:
+            return self._hypo_structures
+
+    @property
+    def hypo_structures_dict(self):
+        return self.hypo_structures["pmg_structures"].to_dict()
 
     @property
     def compositions(self):
@@ -158,8 +175,15 @@ class StructureDomain(DomainBase):
 
         features = featurizer.featurize_many(self.hypo_structures['pmg_structures'], ignore_errors=True, **kwargs)
 
+        n_species, formula = [], []
+        for s in self.hypo_structures['pmg_structures']:
+            n_species.append(len(s.composition.elements))
+            formula.append(s.composition.reduced_formula)
+
         self._features_df = pd.DataFrame.from_records(features, columns=featurizer.feature_labels())
         self._features_df.index = self.hypo_structures.index
+        self._features_df['N_species'] = n_species
+        self._features_df['Composition'] = formula
         self.features = self._features_df.dropna(axis=0, how='any')
 
         self._valid_structure_labels = list(self.features.index)
@@ -176,7 +200,7 @@ class StructureDomain(DomainBase):
         Returns:
             feature vectors of valid hypothetical structures.
         """
-        if self.hypo_structures is None:
+        if self._hypo_structures is None:
             self.get_structures()
 
         if self.features is None:
@@ -191,14 +215,13 @@ class StructureDomain(DomainBase):
         self.candidates().sample(num_samples)
 
 
-def get_structures_from_protosearch(formulas, source='icsd', db_interface=None, n_max_atoms=None):
+def get_structures_from_protosearch(formulas, source='icsd', db_interface=None):
     """
     Calls protosearch to get the hypothetical structures.
     Args:
         formulas ([str]): list of chemical formulas from which to generate candidate structures
         source (str): project name in OQMD to be used as source. defaults to ICSD.
         db_interface (DbInterface): interface to OQMD database by default uses the one stored in s3
-        n_max_atoms (int): maximum number of atoms allowed in a structure.
     Returns:
         pandas.DataFrame of hypothetical pymatgen structures generated and their unique ids from protosearch
 
@@ -227,13 +250,9 @@ def get_structures_from_protosearch(formulas, source='icsd', db_interface=None, 
                       for i in range(len(_structures))]
     _structures['pmg_structures'] = pmg_structures
 
-    structure_uids = [_structures.iloc[i]['proto_name'] +
-                           '_' + '_'.join(pmg_structures[i].symbol_set) for i in range(len(_structures))]
+    structure_uids = [_structures.iloc[i]['proto_name'].replace('_','-') +
+                           '-' + '-'.join(pmg_structures[i].symbol_set) for i in range(len(_structures))]
     _structures.index = structure_uids
-
-    if n_max_atoms:
-        n_max_filter = [i.num_sites<=n_max_atoms for i in pmg_structures]
-        _structures = _structures[n_max_filter]
     return _structures
 
 

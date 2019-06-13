@@ -16,20 +16,8 @@ class Experiment(abc.ABC, MSONable):
     """
 
     def __init__(self, params):
-        self.state = 'unstarted'
         self._params = params
 
-    @abc.abstractmethod
-    def start(self):
-        """
-
-        Args:
-            params:
-
-        Returns:
-
-        """
-        self.state = "pending"
 
     @abc.abstractmethod
     def get_state(self):
@@ -39,12 +27,6 @@ class Experiment(abc.ABC, MSONable):
             str: 'unstarted', 'pending', 'completed'
 
         """
-
-    def _update_state(self):
-        """
-        Returns:
-        """
-        self.state = self.get_state()
 
     @abc.abstractmethod
     def get_results(self, indices):
@@ -71,36 +53,11 @@ class Experiment(abc.ABC, MSONable):
     def _update_results(self):
         self.results = self.get_results()
 
-    def _wait_until_complete(self, time_interval=120):
+    @abc.abstractmethod
+    def run_monitor(self):
         """
-
-        Args:
-            time_interval (float): time interval between
-                polling steps
-
-        Returns:
-            str: the ending state
-
+        Keeps track of jobs given the poll_time and timeout
         """
-        state = self.state
-        while self.state is not 'completed':
-            self._update_state()
-            sleep(time_interval)
-        return state
-
-    def run(self):
-        """
-
-        Args:
-            params:
-
-        Returns:
-
-        """
-        self.start()
-        self._wait_until_complete()
-        self._update_results()
-        return True
 
     @abc.abstractmethod
     def submit(self, unique_ids):
@@ -137,5 +94,5 @@ class ATFSampler(Experiment):
     def get_results(self, indices):
         return self.dataframe.loc[indices]
 
-    def submit(self, unique_ids):
+    def submit(self, unique_ids, *args):
         pass

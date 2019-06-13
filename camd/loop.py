@@ -51,6 +51,7 @@ class Loop(MSONable):
 
         self.stop = False
         self.submitted_experiment_requests = []
+        self.job_status = {}
 
     def run(self):
         """
@@ -72,6 +73,11 @@ class Loop(MSONable):
 
         print("1. Get new results")
         self.load('submitted_experiment_requests')
+
+        if not self.job_status:
+            self.load('job_status')
+            self.experiment = self.experiment.from_job_status(self.experiment_params, self.job_status)
+
         new_experimental_results = self.experiment.get_results(self.submitted_experiment_requests)
 
         print("2. Load, expand, save seed_data")
@@ -96,7 +102,9 @@ class Loop(MSONable):
         suggested_experiments = self.agent.get_hypotheses(self.candidate_data, self.seed_data)
 
         print("6. Submit new experiments")
-        self.experiment.submit(suggested_experiments)
+        self.job_status = self.experiment.submit(suggested_experiments)
+        self.save("job_status")
+
         self.submitted_experiment_requests = suggested_experiments
         self.save('submitted_experiment_requests')
 
@@ -105,30 +113,34 @@ class Loop(MSONable):
         with open(os.path.join(self.path, 'iteration.log'), 'w') as f:
             f.write(str(self.iteration))
 
-    def auto_loop(self, n_iterations=10, wait_time=10):
+    def auto_loop(self, n_iterations=10, timeout=10, run_monitor=False):
         """
         Runs the loop repeatedly
         TODO: Stopping criterion from Analyzer
         Args:
             n_iterations (int): Number of iterations.
-            wait_time (int): Time (in seconds) to wait on idle for submitted experiments to finish.
+            timeout (int): Time (in seconds) to wait on idle for submitted experiments to finish.
+            run_monitor (bool): Use Experiment's run_monitor method to keep track of requested experiments.
         """
         if self.create_seed:
             print("creating seed")
             self.initialize()
-            time.sleep(wait_time)
+            time.sleep(timeout)
             print("finished creating seed")
         while n_iterations - self.iteration >= 0:
             print("Iteration: {}".format(self.iteration))
             self.run()
             print("  Waiting for next round ...")
-            time.sleep(wait_time)
+            if run_monitor:
+                self.experiment.run_monitor()
+            time.sleep(timeout)
 
     def initialize(self, random_state=42):
         print("Initializing")
         np.random.seed(seed=random_state)
         suggested_experiments = np.random.choice(self.candidate_space, self.create_seed, replace=False).tolist()
-        self.experiment.submit(suggested_experiments)
+        self.job_status = self.experiment.submit(suggested_experiments)
+        self.save("job_status")
         self.submitted_experiment_requests = suggested_experiments
         self.save('submitted_experiment_requests')
         self.create_seed = False
@@ -152,3 +164,6 @@ class Loop(MSONable):
             _path = os.path.join(self.path, data_holder+'.pd')
         with open(_path, 'wb') as f:
             pickle.dump(self.__getattribute__(data_holder), f)
+
+    def get_state(self):
+        pass
