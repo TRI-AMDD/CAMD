@@ -1,6 +1,7 @@
 # Copyright Toyota Research Institute 2019
 import os
 import pickle
+import json
 import time
 import numpy as np
 import warnings
@@ -153,17 +154,43 @@ class Loop(MSONable):
                                                            np.sum(self.results_all_uids), len(self.candidate_data),
                                                            self.agent.cv_score))
 
-    def load(self, data_holder):
-        with open(os.path.join(self.path, data_holder+'.pd'), 'rb') as f:
-            self.__setattr__(data_holder, pickle.load(f))
+    def load(self, data_holder, method='pickle'):
+        with open(os.path.join(self.path, data_holder+'.'+method), 'rb') as f:
+            if method == 'pickle':
+                m = pickle
+            elif method == 'json':
+                m = json
+            else:
+                raise ValueError("Unknown data save method")
+            self.__setattr__(data_holder, m.load(f))
 
-    def save(self, data_holder, custom_name=None):
+    def save(self, data_holder, custom_name=None, method='pickle'):
         if custom_name:
             _path = os.path.join(self.path, custom_name)
         else:
-            _path = os.path.join(self.path, data_holder+'.pd')
+            _path = os.path.join(self.path, data_holder+'.'+method)
         with open(_path, 'wb') as f:
-            pickle.dump(self.__getattribute__(data_holder), f)
+            if method == 'pickle':
+                m = pickle
+            elif method == 'json':
+                m = json
+            else:
+                raise ValueError("Unknown data save method")
+            m.dump(self.__getattribute__(data_holder), f)
 
     def get_state(self):
         pass
+
+# a temporary helper function that first creates a domain and sets up a Loop
+def get_structure_campaign(domain_params, loop_params):
+    from camd.domain import StructureDomain
+    domain = StructureDomain(domain_params)
+    candidates = domain.candidates()
+    return Loop(candidate_data=candidates, **loop_params)
+
+# a temporary helper function that first creates a domain and sets up a Loop
+def get_structure_campaign_from_bounds(bounds, domain_params, loop_params):
+    from camd.domain import StructureDomain
+    domain = StructureDomain.from_bounds(bounds, **domain_params)
+    candidates = domain.candidates()
+    return Loop(candidate_data=candidates, **loop_params)
