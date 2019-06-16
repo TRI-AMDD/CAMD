@@ -8,11 +8,11 @@ from qmpy.analysis.thermodynamics.phase import Phase, PhaseData
 from qmpy.analysis.thermodynamics.space import PhaseSpace
 import multiprocessing
 
-ELEMENTS = ["Pr", "Ru", "Th", "Pt", "Ni", "S", "Na", "Nb", "Nd", "C", "Li", "Pb", "Y", "Tl", "Lu", "Rb", "Ti", "Np",
-            "Te", "Rh", "Tc", "La", "Ta", "Be", "Sr", "Sm", "Ba", "Tb", "Yb", "Bi", "Re", "Pu", "Fe", "Br", "Dy", "Pd",
-            "Hf", "Hg", "Ho", "Mg", "B", "Pm", "P", "F", "I", "H", "K", "Mn", "Ac", "O", "N", "Eu", "Si", "U", "Sn",
-            "W", "V", "Sc", "Sb", "Mo", "Os", "Se", "Zn", "Co", "Ge", "Ag", "Cl", "Ca", "Ir", "Al", "Ce", "Cd", "Pa",
-            "As", "Gd", "Au", "Cu", "Ga", "In", "Cs", "Cr", "Tm", "Zr", "Er"]
+ELEMENTS = ['Ru', 'Re', 'Rb', 'Rh', 'Be', 'Ba', 'Bi', 'Br', 'H', 'P', 'Os', 'Ge', 'Gd', 'Ga', 'Pr', 'Pt', 'Pu', 'C',
+            'Pb', 'Pa', 'Pd', 'Xe', 'Pm', 'Ho', 'Hf', 'Hg', 'He', 'Mg', 'K', 'Mn', 'O', 'S', 'W', 'Zn', 'Eu', 'Zr',
+            'Er', 'Ni', 'Na', 'Nb', 'Nd', 'Ne', 'Np', 'Fe', 'B', 'F', 'Sr', 'N', 'Kr', 'Si', 'Sn', 'Sm', 'V', 'Sc',
+            'Sb', 'Se', 'Co', 'Cl', 'Ca', 'Ce', 'Cd', 'Tm', 'Cs', 'Cr', 'Cu', 'La', 'Li', 'Tl', 'Lu', 'Th', 'Ti', 'Te',
+            'Tb', 'Tc', 'Ta', 'Yb', 'Dy', 'I', 'U', 'Y', 'Ac', 'Ag', 'Ir', 'Al', 'As', 'Ar', 'Au', 'In', 'Mo']
 
 
 #TODO: Eval Performance = start / stop?
@@ -75,6 +75,7 @@ class AnalyzeStability(AnalyzerBase):
             if _p.description in self.new_result_ids:
                 stabilities_of_new[_p.description] = _p.stability
 
+        self.stabilities_of_new = stabilities_of_new
         stabilities_of_new_uids = np.array([stabilities_of_new[uid] for uid in self.new_result_ids],
                                            dtype=np.float) <= self.hull_distance
 
