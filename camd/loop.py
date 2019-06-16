@@ -163,13 +163,16 @@ class Loop(MSONable):
             print(report_string)
 
     def load(self, data_holder, method='json'):
-        with open(os.path.join(self.path, data_holder+'.'+method), 'rb') as f:
-            if method == 'pickle':
-                m = pickle
-            elif method == 'json':
-                m = json
-            else:
-                raise ValueError("Unknown data save method")
+        if method == 'pickle':
+            m = pickle
+            mode = 'rb'
+        elif method == 'json':
+            m = json
+            mode = 'r'
+        else:
+            raise ValueError("Unknown data save method")
+        with open(os.path.join(self.path, data_holder+'.'+method), mode) as f:
+
             self.__setattr__(data_holder, m.load(f))
 
     def save(self, data_holder, custom_name=None, method='json'):

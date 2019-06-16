@@ -91,7 +91,8 @@ class ATFSampler(Experiment):
         return True
 
     def get_results(self, index_labels):
-        return self.dataframe.loc[index_labels]
+        dataframe = self.get_parameter('dataframe')
+        return dataframe.loc[index_labels]
 
     def submit(self, unique_ids, *args):
         self.unique_ids = unique_ids
