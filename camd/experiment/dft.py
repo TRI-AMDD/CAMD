@@ -77,7 +77,7 @@ class OqmdDFTonMC1(Experiment):
         self.job_status = submit_dft_calcs_to_mc1(self._structures_to_run)
         return self.job_status
 
-    def run_monitor(self):
+    def monitor(self):
         """
         Returns:
             (dict): calculation status, including results

@@ -55,7 +55,7 @@ class Experiment(abc.ABC, MSONable):
         self.results = self.get_results()
 
     @abc.abstractmethod
-    def run_monitor(self):
+    def monitor(self):
         """
         Keeps track of jobs given the poll_time and timeout
         """
@@ -68,6 +68,12 @@ class Experiment(abc.ABC, MSONable):
             str: 'unstarted', 'pending', 'completed'
 
         """
+
+    @classmethod
+    def from_job_status(cls, params, job_status):
+        params["job_status"] = job_status
+        params["unique_ids"] = list(job_status.keys())
+        return cls(params)
 
 
 class ATFSampler(Experiment):
@@ -82,11 +88,15 @@ class ATFSampler(Experiment):
 
     def get_state(self):
         """This experiment should be complete on construction"""
-        return 'completed'
+        return True
 
     def get_results(self, index_labels):
-        dataframe = self.get_parameter('dataframe')
-        return dataframe.loc[index_labels]
+        return self.dataframe.loc[index_labels]
 
     def submit(self, unique_ids, *args):
-        pass
+        self.unique_ids = unique_ids
+        return dict(zip(unique_ids, [{'status': 'SUCCEEDED'} for i in range(len(unique_ids))]))
+
+    def monitor(self):
+        unique_ids = self.unique_ids
+        return dict(zip(unique_ids, [{'status': 'SUCCEEDED'} for i in range(len(unique_ids))]))

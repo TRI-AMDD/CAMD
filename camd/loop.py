@@ -84,11 +84,11 @@ class Loop(MSONable):
 
         # Load, expand, save seed_data
         if self.iteration>0:
-            self.load('seed_data')
+            self.load('seed_data', method='pickle')
             self.seed_data = self.seed_data.append(new_experimental_results)
         else:
             self.seed_data = new_experimental_results
-        self.save('seed_data')
+        self.save('seed_data', method='pickle')
 
         # Augment candidate space
         self.candidate_space = list(set(self.candidate_data.index).difference(set(self.seed_data.index)))
@@ -99,7 +99,7 @@ class Loop(MSONable):
                                                                                         self.submitted_experiment_requests)
 
         self._discovered = np.array(self.submitted_experiment_requests)[self.results_new_uids].tolist()
-        self.save('_discovered', custom_name='discovered_{}.pd'.format(self.iteration))
+        self.save('_discovered', custom_name='discovered_{}.json'.format(self.iteration))
 
         print("Loop {} state: Agent hypothesizing".format(self.iteration))
         suggested_experiments = self.agent.get_hypotheses(self.candidate_data, self.seed_data)
@@ -120,14 +120,14 @@ class Loop(MSONable):
         with open(os.path.join(self.path, 'iteration.log'), 'w') as f:
             f.write(str(self.iteration))
 
-    def auto_loop(self, n_iterations=10, timeout=10, run_monitor=False):
+    def auto_loop(self, n_iterations=10, timeout=10, monitor=False):
         """
         Runs the loop repeatedly
         TODO: Stopping criterion from Analyzer
         Args:
             n_iterations (int): Number of iterations.
             timeout (int): Time (in seconds) to wait on idle for submitted experiments to finish.
-            run_monitor (bool): Use Experiment's run_monitor method to keep track of requested experiments.
+            monitor (bool): Use Experiment's monitor method to keep track of requested experiments.
         """
         if self.create_seed:
             print("creating seed")
@@ -138,8 +138,8 @@ class Loop(MSONable):
             print("Iteration: {}".format(self.iteration))
             self.run()
             print("  Waiting for next round ...")
-            if run_monitor:
-                self.experiment.run_monitor()
+            if monitor:
+                self.experiment.monitor()
             time.sleep(timeout)
 
     def initialize(self, random_state=42):
@@ -155,25 +155,24 @@ class Loop(MSONable):
     def report(self):
         with open(os.path.join(self.path, 'report.log'), 'a') as f:
             if self.iteration == 0:
-                f.write("Iteration N_Discovery Total_Discovery N_query N_candidates model-CV\n")
-            f.write("{:9} {:11} {:15} {:12} {:f}\n".format(self.iteration, np.sum(self.results_new_uids),
+                f.write("Iteration N_Discovery Total_Discovery N_candidates model-CV\n")
+            report_string = "{:9} {:11} {:15} {:12} {:f}\n".format(self.iteration, np.sum(self.results_new_uids),
                                                            np.sum(self.results_all_uids), len(self.candidate_data),
-                                                           self.agent.cv_score))
+                                                           self.agent.cv_score)
+            f.write(report_string)
+            print(report_string)
 
     def load(self, data_holder, method='json'):
-        if method == 'pickle':
-            m = pickle
-            mode = 'rb'
-        elif method == 'json':
-            m = json
-            mode = 'r'
-        else:
-            raise ValueError("Unknown data save method")
-        with open(os.path.join(self.path, data_holder+'.'+method), mode) as f:
-
+        with open(os.path.join(self.path, data_holder+'.'+method), 'rb') as f:
+            if method == 'pickle':
+                m = pickle
+            elif method == 'json':
+                m = json
+            else:
+                raise ValueError("Unknown data save method")
             self.__setattr__(data_holder, m.load(f))
 
-    def save(self, data_holder, custom_name=None, method='pickle'):
+    def save(self, data_holder, custom_name=None, method='json'):
         if custom_name:
             _path = os.path.join(self.path, custom_name)
         else:
