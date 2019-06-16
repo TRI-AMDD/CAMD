@@ -8,6 +8,8 @@ import warnings
 
 from monty.json import MSONable
 
+# TODO:
+#  - improve the stopping scheme
 
 class Loop(MSONable):
     def __init__(self, path, candidate_data, agent, experiment, analyzer,
@@ -72,16 +74,15 @@ class Loop(MSONable):
             with open(os.path.join(self.path, 'iteration.log'), 'r') as f:
                 self.iteration = int(f.readline().rstrip('\n'))
 
-        print("1. Get new results")
+        # Get new results
         self.load('submitted_experiment_requests')
-
         if not self.job_status:
             self.load('job_status')
             self.experiment = self.experiment.from_job_status(self.experiment_params, self.job_status)
 
         new_experimental_results = self.experiment.get_results(self.submitted_experiment_requests)
 
-        print("2. Load, expand, save seed_data")
+        # Load, expand, save seed_data
         if self.iteration>0:
             self.load('seed_data')
             self.seed_data = self.seed_data.append(new_experimental_results)
@@ -89,20 +90,25 @@ class Loop(MSONable):
             self.seed_data = new_experimental_results
         self.save('seed_data')
 
-        print("3. Augment candidate space")
+        # Augment candidate space
         self.candidate_space = list(set(self.candidate_data.index).difference(set(self.seed_data.index)))
         self.candidate_data = self.candidate_data.loc[self.candidate_space]
 
-        print("4. Analyze results")
+        print("Loop {} state: Analyzing results".format(self.iteration))
         self.results_new_uids, self.results_all_uids = self.analyzer.analyze(self.seed_data,
                                                                                         self.submitted_experiment_requests)
+
         self._discovered = np.array(self.submitted_experiment_requests)[self.results_new_uids].tolist()
         self.save('_discovered', custom_name='discovered_{}.pd'.format(self.iteration))
 
-        print("5. Hypothesize")
+        print("Loop {} state: Agent hypothesizing".format(self.iteration))
         suggested_experiments = self.agent.get_hypotheses(self.candidate_data, self.seed_data)
 
-        print("6. Submit new experiments")
+        # Stop-gap loop stopper.
+        if len(suggested_experiments) == 0:
+            raise ValueError("No space left to explore. Stopping the loop.")
+
+        print("Loop {} state: Running experiments".format(self.iteration))
         self.job_status = self.experiment.submit(suggested_experiments)
         self.save("job_status")
 
@@ -154,14 +160,17 @@ class Loop(MSONable):
                                                            np.sum(self.results_all_uids), len(self.candidate_data),
                                                            self.agent.cv_score))
 
-    def load(self, data_holder, method='pickle'):
-        with open(os.path.join(self.path, data_holder+'.'+method), 'rb') as f:
-            if method == 'pickle':
-                m = pickle
-            elif method == 'json':
-                m = json
-            else:
-                raise ValueError("Unknown data save method")
+    def load(self, data_holder, method='json'):
+        if method == 'pickle':
+            m = pickle
+            mode = 'rb'
+        elif method == 'json':
+            m = json
+            mode = 'r'
+        else:
+            raise ValueError("Unknown data save method")
+        with open(os.path.join(self.path, data_holder+'.'+method), mode) as f:
+
             self.__setattr__(data_holder, m.load(f))
 
     def save(self, data_holder, custom_name=None, method='pickle'):
@@ -169,13 +178,15 @@ class Loop(MSONable):
             _path = os.path.join(self.path, custom_name)
         else:
             _path = os.path.join(self.path, data_holder+'.'+method)
-        with open(_path, 'wb') as f:
-            if method == 'pickle':
-                m = pickle
-            elif method == 'json':
-                m = json
-            else:
-                raise ValueError("Unknown data save method")
+        if method == 'pickle':
+            m = pickle
+            mode = 'wb'
+        elif method == 'json':
+            m = json
+            mode = 'w'
+        else:
+            raise ValueError("Unknown data save method")
+        with open(_path, mode) as f:
             m.dump(self.__getattribute__(data_holder), f)
 
     def get_state(self):

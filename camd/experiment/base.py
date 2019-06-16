@@ -2,7 +2,6 @@
 
 import abc
 
-from time import sleep
 from monty.json import MSONable
 
 
@@ -17,6 +16,8 @@ class Experiment(abc.ABC, MSONable):
 
     def __init__(self, params):
         self._params = params
+        self.unique_ids = params['unique_ids'] if 'unique_ids' in params else []
+        self.job_status = params['job_status'] if 'job_status' in params else {}
 
 
     @abc.abstractmethod
@@ -74,14 +75,6 @@ class ATFSampler(Experiment):
     A simple after the fact sampler that just samples
     a dataframe according to index_values
     """
-    def __init__(self, dataframe):
-        """
-
-        Args:
-            params (dict):
-        """
-        self.dataframe = dataframe
-        super(ATFSampler, self).__init__(dataframe)
 
     def start(self):
         """There's no start procedure for this particular experiment"""
@@ -91,8 +84,9 @@ class ATFSampler(Experiment):
         """This experiment should be complete on construction"""
         return 'completed'
 
-    def get_results(self, indices):
-        return self.dataframe.loc[indices]
+    def get_results(self, index_labels):
+        dataframe = self.get_parameter('dataframe')
+        return dataframe.loc[index_labels]
 
     def submit(self, unique_ids, *args):
         pass

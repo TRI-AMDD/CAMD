@@ -46,7 +46,7 @@ class AftLoopTestLong(unittest.TestCase):
         analyzer = AnalyzeStability
         analyzer_params = {'hull_distance': 0.05}
         experiment = ATFSampler
-        experiment_params = {'dataframe': df}
+        experiment_params = {'params': {'dataframe': df}}
         candidate_data = df
         path = '.'
 
@@ -76,16 +76,15 @@ class AtfLoopTest(unittest.TestCase):
         shutil.rmtree(self.tempdir)
 
     def test_random_agent_loop(self):
-        df = pd.read_csv(os.path.join(CAMD_TEST_FILES, 'test_df.csv')).sample(frac=0.5)
+        df = pd.read_csv(os.path.join(CAMD_TEST_FILES, 'test_df.csv'))
         n_seed = 200  # Starting sample size
         n_query = 10  # This many new candidates are "calculated with DFT" (i.e. requested from Oracle -- DFT)
         agent = RandomAgent
-        agent_params = {'hull_distance': 0.05, 'N_query': n_query,
-                        'N_species': 2}  # Distance to hull to consider a finding as discovery (eV/atom)
+        agent_params = {'hull_distance': 0.05, 'N_query': n_query}
         analyzer = AnalyzeStability
         analyzer_params = {'hull_distance': 0.05}
         experiment = ATFSampler
-        experiment_params = {'dataframe': df}
+        experiment_params = {'params': {'dataframe': df}}
         candidate_data = df
         path = '.'
         new_loop = Loop(path, candidate_data, agent, experiment, analyzer,
@@ -117,7 +116,7 @@ class AtfLoopTest(unittest.TestCase):
         analyzer = AnalyzeStability
         analyzer_params = {'hull_distance': 0.05}
         experiment = ATFSampler
-        experiment_params = {'dataframe': df_sub}
+        experiment_params = {'params': {'dataframe': df_sub}}
         candidate_data = df_sub
         path = '.'
 
