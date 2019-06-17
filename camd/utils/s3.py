@@ -142,6 +142,7 @@ def iterate_bucket_items(bucket):
 # List of objects to sync upon running of this script
 MATRIO_S3_OBJS = [
     "camd/shared-data/oqmd_voro_March25_v2.csv",
+    "camd/shared-data/oqmd1.2_icsd_featurized_clean_v1.pickle",
     "camd/shared-data/protosearch-data/materials-db/oqmd/oqmd_ver3.db"
 ]
 
