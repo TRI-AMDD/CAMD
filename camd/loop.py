@@ -7,10 +7,12 @@ import numpy as np
 import warnings
 
 from monty.json import MSONable
+from camd.log import camd_traced
 
 # TODO:
 #  - improve the stopping scheme
 
+@camd_traced
 class Loop(MSONable):
     def __init__(self, path, candidate_data, agent, experiment, analyzer,
                  agent_params=None, experiment_params=None, analyzer_params=None, seed_data=None, create_seed=False):
