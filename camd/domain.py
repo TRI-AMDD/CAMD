@@ -185,6 +185,7 @@ class StructureDomain(DomainBase):
         self._features_df['N_species'] = n_species
         self._features_df['Composition'] = formula
         self.features = self._features_df.dropna(axis=0, how='any')
+        self.features = self.features.reindex(sorted(self.features.columns), axis=1)
 
         self._valid_structure_labels = list(self.features.index)
         self.valid_structures = self.hypo_structures.loc[self._valid_structure_labels]
