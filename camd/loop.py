@@ -5,8 +5,12 @@ import json
 import time
 import numpy as np
 import warnings
+import pandas as pd
 
 from monty.json import MSONable
+from camd.utils.s3 import cache_s3_objs
+from camd import S3_CACHE
+from camd.agent.base import RandomAgent
 
 # TODO:
 #  - improve the stopping scheme
@@ -32,29 +36,34 @@ class Loop(MSONable):
         self.agent = agent(**agent_params)
         self.agent_params = agent_params
 
-        self.experiment = experiment(**experiment_params)
+        self.experiment = experiment(experiment_params)
         self.experiment_params = experiment_params
 
         self.analyzer = analyzer(**analyzer_params)
         self.analyzer_params = analyzer_params
 
-        self.seed_data = seed_data
+        self.seed_data = seed_data if seed_data is not None else pd.DataFrame()
         self.create_seed = create_seed
 
         # Check if there exists earlier iterations
-        if os.path.exists(os.path.join(self.path, 'iteration.log')):
-            with open(os.path.join(self.path, 'iteration.log'), 'r') as f:
-                self.iteration = int(f.readline().rstrip('\n'))
+        if os.path.exists(os.path.join(self.path, 'iteration.json')):
+            self.load('iteration')
+            self.initialized = True
         else:
             self.iteration = 0
-        if self.iteration>0:
-            self.create_seed=False
-            warnings.warn("Turning off create_seed since there is existing iteration in path. Use clean folder to"
-                          "to reinitialize from scratch.")
+            self.initialized = False
 
-        self.stop = False
-        self.submitted_experiment_requests = []
-        self.job_status = {}
+        if self.initialized:
+            self.create_seed = False
+            self.load('job_status')
+            self.experiment = self.experiment.from_job_status(self.experiment_params, self.job_status)
+            self.load('submitted_experiment_requests')
+            self.load('seed_data', method='pickle')
+            self.initialized = True
+        else:
+            self.submitted_experiment_requests = []
+            self.job_status = {}
+            self.initialized = False
 
     def run(self):
         """
@@ -68,46 +77,39 @@ class Loop(MSONable):
             5. Hypothesize
             6. Submit new experiments
         """
-
-
-        if os.path.exists(os.path.join(self.path, 'iteration.log')):
-            with open(os.path.join(self.path, 'iteration.log'), 'r') as f:
-                self.iteration = int(f.readline().rstrip('\n'))
+        if not self.initialized:
+            raise ValueError("Loop needs to be properly initialized.")
 
         # Get new results
+        print("Loop {} state: Getting new results".format(self.iteration))
         self.load('submitted_experiment_requests')
-        if not self.job_status:
-            self.load('job_status')
-            self.experiment = self.experiment.from_job_status(self.experiment_params, self.job_status)
-
         new_experimental_results = self.experiment.get_results(self.submitted_experiment_requests)
 
         # Load, expand, save seed_data
-        if self.iteration>0:
-            self.load('seed_data', method='pickle')
-            self.seed_data = self.seed_data.append(new_experimental_results)
-        else:
-            self.seed_data = new_experimental_results
+        self.load('seed_data', method='pickle')
+        self.seed_data = self.seed_data.append(new_experimental_results)
         self.save('seed_data', method='pickle')
 
         # Augment candidate space
         self.candidate_space = list(set(self.candidate_data.index).difference(set(self.seed_data.index)))
         self.candidate_data = self.candidate_data.loc[self.candidate_space]
 
+        # Analyze results
         print("Loop {} state: Analyzing results".format(self.iteration))
         self.results_new_uids, self.results_all_uids = self.analyzer.analyze(self.seed_data,
-                                                                                        self.submitted_experiment_requests)
-
+                                                                            self.submitted_experiment_requests)
         self._discovered = np.array(self.submitted_experiment_requests)[self.results_new_uids].tolist()
         self.save('_discovered', custom_name='discovered_{}.json'.format(self.iteration))
 
-        print("Loop {} state: Agent hypothesizing".format(self.iteration))
+        # Agent suggests new experiments
+        print("Loop {} state: Agent {} hypothesizing".format(self.iteration, self.agent.__class__.__name__))
         suggested_experiments = self.agent.get_hypotheses(self.candidate_data, self.seed_data)
 
         # Stop-gap loop stopper.
         if len(suggested_experiments) == 0:
             raise ValueError("No space left to explore. Stopping the loop.")
 
+        # Experiments submitted
         print("Loop {} state: Running experiments".format(self.iteration))
         self.job_status = self.experiment.submit(suggested_experiments)
         self.save("job_status")
@@ -117,8 +119,7 @@ class Loop(MSONable):
 
         self.report()
         self.iteration+=1
-        with open(os.path.join(self.path, 'iteration.log'), 'w') as f:
-            f.write(str(self.iteration))
+        self.save("iteration")
 
     def auto_loop(self, n_iterations=10, timeout=10, monitor=False):
         """
@@ -129,11 +130,6 @@ class Loop(MSONable):
             timeout (int): Time (in seconds) to wait on idle for submitted experiments to finish.
             monitor (bool): Use Experiment's monitor method to keep track of requested experiments.
         """
-        if self.create_seed:
-            print("creating seed")
-            self.initialize()
-            time.sleep(timeout)
-            print("finished creating seed")
         while n_iterations - self.iteration >= 0:
             print("Iteration: {}".format(self.iteration))
             self.run()
@@ -143,14 +139,35 @@ class Loop(MSONable):
             time.sleep(timeout)
 
     def initialize(self, random_state=42):
-        print("Initializing")
-        np.random.seed(seed=random_state)
-        suggested_experiments = np.random.choice(self.candidate_space, self.create_seed, replace=False).tolist()
+        if self.initialized:
+            raise ValueError("Initialization may overwrite existing loop data. Exit.")
+        if not self.seed_data.empty and not self.create_seed:
+            print("Loop {} state: Agent {} hypothesizing".format('initialization', self.agent.__class__.__name__))
+            suggested_experiments = self.agent.get_hypotheses(self.candidate_data, self.seed_data)
+        elif self.create_seed:
+            np.random.seed(seed=random_state)
+            _agent = RandomAgent(self.candidate_data, N_query=self.create_seed)
+            print("Loop {} state: Agent {} hypothesizing".format('initialization', _agent.__class__.__name__))
+            suggested_experiments = _agent.get_hypotheses(self.candidate_data)
+        else:
+            raise ValueError("No seed data available. Either supply or ask for creation.")
+
+        print("Loop {} state: Running experiments".format(self.iteration))
         self.job_status = self.experiment.submit(suggested_experiments)
-        self.save("job_status")
         self.submitted_experiment_requests = suggested_experiments
-        self.save('submitted_experiment_requests')
         self.create_seed = False
+        self.initialized = True
+
+        self.save("job_status")
+        self.save("seed_data", method='pickle')
+        self.save('submitted_experiment_requests')
+        self.save("iteration")
+
+    def initialize_with_icsd_seed(self, random_state=42):
+        cache_s3_objs(["camd/shared-data/oqmd1.2_icsd_featurized_clean_v2.pickle"])
+        self.seed_data = pd.read_pickle(os.path.join(S3_CACHE,
+                                                     "camd/shared-data/oqmd1.2_icsd_featurized_clean_v2.pickle"))
+        self.initialize(random_state=random_state)
 
     def report(self):
         with open(os.path.join(self.path, 'report.log'), 'a') as f:
@@ -160,7 +177,6 @@ class Loop(MSONable):
                                                            np.sum(self.results_all_uids), len(self.candidate_data),
                                                            self.agent.cv_score)
             f.write(report_string)
-            print(report_string)
 
     def load(self, data_holder, method='json'):
         if method == 'pickle':

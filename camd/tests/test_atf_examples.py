@@ -46,7 +46,7 @@ class AftLoopTestLong(unittest.TestCase):
         analyzer = AnalyzeStability
         analyzer_params = {'hull_distance': 0.05}
         experiment = ATFSampler
-        experiment_params = {'params': {'dataframe': df}}
+        experiment_params = {'dataframe': df}
         candidate_data = df
         path = '.'
 
@@ -84,7 +84,7 @@ class AtfLoopTest(unittest.TestCase):
         analyzer = AnalyzeStability
         analyzer_params = {'hull_distance': 0.05}
         experiment = ATFSampler
-        experiment_params = {'params': {'dataframe': df}}
+        experiment_params = {'dataframe': df}
         candidate_data = df
         path = '.'
         new_loop = Loop(path, candidate_data, agent, experiment, analyzer,
@@ -98,6 +98,13 @@ class AtfLoopTest(unittest.TestCase):
         for _ in range(6):
             new_loop.run()
             self.assertTrue(True)
+
+        new_loop = Loop(path, candidate_data, agent, experiment, analyzer,
+                        agent_params=agent_params, analyzer_params=analyzer_params,
+                        experiment_params=experiment_params,
+                        create_seed=n_seed)
+        new_loop.run()
+        self.assertTrue(True)
 
     def test_qbc_agent_loop(self):
         df = pd.read_csv(os.path.join(CAMD_TEST_FILES, 'test_df.csv'))
@@ -116,7 +123,7 @@ class AtfLoopTest(unittest.TestCase):
         analyzer = AnalyzeStability
         analyzer_params = {'hull_distance': 0.05}
         experiment = ATFSampler
-        experiment_params = {'params': {'dataframe': df_sub}}
+        experiment_params = {'dataframe': df_sub}
         candidate_data = df_sub
         path = '.'
 
@@ -124,6 +131,9 @@ class AtfLoopTest(unittest.TestCase):
                         agent_params=agent_params, analyzer_params=analyzer_params,
                         experiment_params=experiment_params,
                         create_seed=n_seed)
+        new_loop.initialize()
+        self.assertTrue(new_loop.initialized)
+
         new_loop.auto_loop(6)
         self.assertTrue(True)
 
