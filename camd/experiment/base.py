@@ -92,7 +92,7 @@ class ATFSampler(Experiment):
 
     def get_results(self, index_labels):
         dataframe = self.get_parameter('dataframe')
-        return dataframe.loc[index_labels]
+        return dataframe.loc[index_labels].dropna(axis=0, how='any')
 
     def submit(self, unique_ids, *args):
         self.unique_ids = unique_ids

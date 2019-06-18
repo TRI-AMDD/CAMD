@@ -101,7 +101,7 @@ class Loop(MSONable):
         # Analyze results
         print("Loop {} state: Analyzing results".format(self.iteration))
         self.results_new_uids, self.results_all_uids = self.analyzer.analyze(self.seed_data,
-                                                                            self.submitted_experiment_requests)
+                                                                            self.consumed_candidates)
         self._discovered = np.array(self.submitted_experiment_requests)[self.results_new_uids].tolist()
         self.save('_discovered', custom_name='discovered_{}.json'.format(self.iteration))
 

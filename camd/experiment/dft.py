@@ -61,8 +61,6 @@ class OqmdDFTonMC1(Experiment):
                                                     calc['result']['pretty_formula'], 1)
 
                 results_dict[structure_id] = delta_e
-            else:
-                results_dict[structure_id] = None
 
         return results_dict
 

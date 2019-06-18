@@ -62,6 +62,7 @@ class AnalyzeStability(AnalyzerBase):
         pd = PhaseData()
         pd.add_phases(phases)
         space = PhaseSpaceAL(bounds=ELEMENTS, data=pd)
+
         if self.multiprocessing:
             space.compute_stabilities_multi()
         else:
