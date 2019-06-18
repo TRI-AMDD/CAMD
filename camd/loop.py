@@ -59,9 +59,12 @@ class Loop(MSONable):
             self.experiment = self.experiment.from_job_status(self.experiment_params, self.job_status)
             self.load('submitted_experiment_requests')
             self.load('seed_data', method='pickle')
+            self.load('consumed_candidates')
+
             self.initialized = True
         else:
             self.submitted_experiment_requests = []
+            self.consumed_candidates = []
             self.job_status = {}
             self.initialized = False
 
@@ -87,11 +90,12 @@ class Loop(MSONable):
 
         # Load, expand, save seed_data
         self.load('seed_data', method='pickle')
-        self.seed_data = self.seed_data.append(new_experimental_results)
+        self.seed_data = self.seed_data.append(new_experimental_results, sort=True)
         self.save('seed_data', method='pickle')
 
         # Augment candidate space
-        self.candidate_space = list(set(self.candidate_data.index).difference(set(self.seed_data.index)))
+        self.load("consumed_candidates")
+        self.candidate_space = list(set(self.candidate_data.index).difference(set(self.consumed_candidates)))
         self.candidate_data = self.candidate_data.loc[self.candidate_space]
 
         # Analyze results
@@ -116,6 +120,9 @@ class Loop(MSONable):
 
         self.submitted_experiment_requests = suggested_experiments
         self.save('submitted_experiment_requests')
+
+        self.consumed_candidates+=suggested_experiments
+        self.save('consumed_candidates')
 
         self.report()
         self.iteration+=1
@@ -155,12 +162,14 @@ class Loop(MSONable):
         print("Loop {} state: Running experiments".format(self.iteration))
         self.job_status = self.experiment.submit(suggested_experiments)
         self.submitted_experiment_requests = suggested_experiments
+        self.consumed_candidates = suggested_experiments
         self.create_seed = False
         self.initialized = True
 
         self.save("job_status")
         self.save("seed_data", method='pickle')
         self.save('submitted_experiment_requests')
+        self.save("consumed_candidates")
         self.save("iteration")
 
     def initialize_with_icsd_seed(self, random_state=42):

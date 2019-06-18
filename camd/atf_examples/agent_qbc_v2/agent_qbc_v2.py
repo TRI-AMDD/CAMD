@@ -10,11 +10,11 @@ from camd.utils.s3 import cache_s3_objs
 from camd import S3_CACHE
 import os
 
-cache_s3_objs(['camd/shared-data/oqmd_voro_March25_v2.csv'])
+cache_s3_objs(['camd/shared-data/oqmd_voro_v3.csv'])
 ##########################################################
 # Binary stable material discovery QBC based agent recipe
 ##########################################################
-df = pd.read_csv(os.path.join(S3_CACHE, 'camd/shared-data/oqmd_voro_March25_v2.csv')).sample(frac=0.2)
+df = pd.read_csv(os.path.join(S3_CACHE, 'camd/shared-data/oqmd_voro_v3.csv')).sample(frac=0.2)
 N_seed = 5000  # Starting sample size
 N_query = 200  # This many new candidates are "calculated with DFT" (i.e. requested from Oracle -- DFT)
 agent = QBCStabilityAgent
