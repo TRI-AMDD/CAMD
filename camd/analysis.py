@@ -43,6 +43,10 @@ class AnalyzerBase(abc.ABC):
 
 
 class AnalyzeStability(AnalyzerBase):
+    """
+    This the original stability analyzer. It will be replaced with AnalyzeStability_mod in the near future as
+    we finish adding the new functionality to the new class and fully test.
+    """
     def __init__(self, df=None, new_result_ids=None, hull_distance=None, multiprocessing=True):
         self.df = df
         self.new_result_ids = new_result_ids
@@ -50,7 +54,7 @@ class AnalyzeStability(AnalyzerBase):
         self.multiprocessing = multiprocessing
         super(AnalyzeStability, self).__init__()
 
-    def analyze(self, df=None, new_result_ids=None):
+    def analyze(self, df=None, new_result_ids=None, all_result_ids=None):
         self.df = df
         self.new_result_ids = new_result_ids
         phases = []
@@ -86,6 +90,65 @@ class AnalyzeStability(AnalyzerBase):
     def present(self):
         pass
 
+
+class AnalyzeStability_mod(AnalyzerBase):
+    def __init__(self, df=None, new_result_ids=None, hull_distance=None, multiprocessing=True):
+        self.df = df
+        self.new_result_ids = new_result_ids
+        self.hull_distance = hull_distance if hull_distance else 0.05
+        self.multiprocessing = multiprocessing
+        super(AnalyzeStability_mod, self).__init__()
+
+    def analyze(self, df=None, new_result_ids=None, all_result_ids=None):
+        self.df = df
+        self.all_result_ids = all_result_ids
+        self.new_result_ids = new_result_ids
+        phases = []
+        for data in self.df.iterrows():
+            phases.append(Phase(data[1]['Composition'], energy=data[1]['delta_e'], per_atom=True, description=data[0]))
+        for el in ELEMENTS:
+            phases.append(Phase(el, 0.0, per_atom=True))
+
+        pd = PhaseData()
+        pd.add_phases(phases)
+        space = PhaseSpaceAL(bounds=ELEMENTS, data=pd)
+
+        if all_result_ids:
+            all_new_phases = [p for p in space.phases if p.description in all_result_ids]
+        else:
+            all_new_phases = None
+
+        if self.multiprocessing:
+            space.compute_stabilities_multi(phases_to_evaluate=all_new_phases)
+        else:
+            space.compute_stabilities_mod(phases_to_evaluate=all_new_phases)
+
+        # Add dtype so that None values can be compared
+        stabilities_of_space_uids = np.array([p.stability for p in all_new_phases],
+                                             dtype=np.float) <= self.hull_distance
+        stabilities_of_new = {}
+        for _p in all_new_phases:
+            if _p.description in self.new_result_ids:
+                stabilities_of_new[_p.description] = _p.stability
+
+        self.stabilities_of_new = stabilities_of_new
+
+        stabilities_of_new_uids = []
+        for uid in self.new_result_ids:
+            if uid in stabilities_of_new:
+                stabilities_of_new_uids.append(stabilities_of_new[uid])
+            else:
+                stabilities_of_new_uids.append(np.nan)
+        stabilities_of_new_uids = np.array(stabilities_of_new_uids, dtype=np.float) <= self.hull_distance
+
+        # stabilities_of_new_uids = np.array([stabilities_of_new[uid] for uid in self.new_result_ids],
+        #                                    dtype=np.float) <= self.hull_distance
+
+        # array of bools for stable vs not for new uids, and all experiments, respectively
+        return stabilities_of_new_uids, stabilities_of_space_uids
+
+    def present(self):
+        pass
 
 class PhaseSpaceAL(PhaseSpace):
     """

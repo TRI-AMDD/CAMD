@@ -33,7 +33,7 @@ class QBCStabilityAgent(HypothesisAgent):
 
         super(QBCStabilityAgent, self).__init__()
 
-    def get_hypotheses(self, candidate_data, seed_data=None, retrain_committee=False):
+    def get_hypotheses(self, candidate_data, seed_data=None, retrain_committee=True):
         if self.N_species:
             self.candidate_data = candidate_data[ candidate_data['N_species'] == self.N_species ]
         else:

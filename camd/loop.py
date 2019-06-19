@@ -90,7 +90,7 @@ class Loop(MSONable):
 
         # Load, expand, save seed_data
         self.load('seed_data', method='pickle')
-        self.seed_data = self.seed_data.append(new_experimental_results, sort=True)
+        self.seed_data = self.seed_data.append(new_experimental_results)
         self.save('seed_data', method='pickle')
 
         # Augment candidate space
@@ -101,7 +101,9 @@ class Loop(MSONable):
         # Analyze results
         print("Loop {} state: Analyzing results".format(self.iteration))
         self.results_new_uids, self.results_all_uids = self.analyzer.analyze(self.seed_data,
-                                                                            self.consumed_candidates)
+                                                                             self.submitted_experiment_requests,
+                                                                             self.consumed_candidates)
+
         self._discovered = np.array(self.submitted_experiment_requests)[self.results_new_uids].tolist()
         self.save('_discovered', custom_name='discovered_{}.json'.format(self.iteration))
 
@@ -128,7 +130,7 @@ class Loop(MSONable):
         self.iteration+=1
         self.save("iteration")
 
-    def auto_loop(self, n_iterations=10, timeout=10, monitor=False):
+    def auto_loop(self, n_iterations=10, timeout=10, monitor=False, initialize=False, with_icsd=False):
         """
         Runs the loop repeatedly
         TODO: Stopping criterion from Analyzer
@@ -136,7 +138,14 @@ class Loop(MSONable):
             n_iterations (int): Number of iterations.
             timeout (int): Time (in seconds) to wait on idle for submitted experiments to finish.
             monitor (bool): Use Experiment's monitor method to keep track of requested experiments.
+
         """
+        if initialize:
+            if with_icsd:
+                self.initialize_with_icsd_seed()
+            else:
+                self.initialize()
+            time.sleep(timeout)
         while n_iterations - self.iteration >= 0:
             print("Iteration: {}".format(self.iteration))
             self.run()
