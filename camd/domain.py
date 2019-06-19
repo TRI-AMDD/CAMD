@@ -194,10 +194,10 @@ class StructureDomain(DomainBase):
                                                                              self._features_df.shape[0]))
         return self.features
 
-    def candidates(self, include_formula=True):
+    def candidates(self, include_composition=True):
         """
         Args:
-            include_formula (bool): Adds a column named "formula" to the dataframe.
+            include_composition (bool): Adds a column named "formula" to the dataframe.
         Returns:
             feature vectors of valid hypothetical structures.
         """
@@ -206,9 +206,10 @@ class StructureDomain(DomainBase):
 
         if self.features is None:
             self.featurize_structures()
-        if include_formula:
+        if include_composition:
             _features = self.features.copy()
-            _features['formula'] = self.reduced_formulas
+            _features['Composition'] = self.reduced_formulas
+            _features = _features.reindex(sorted(_features.columns), axis=1)
             return _features
         return self.features
 

@@ -12,6 +12,7 @@ from pymatgen.io.vasp.outputs import Vasprun
 import subprocess
 import traceback
 import warnings
+import pandas as pd
 
 
 from camd.experiment.base import Experiment
@@ -50,7 +51,7 @@ class OqmdDFTonMC1(Experiment):
         return all([doc['status'] in ['SUCCEEDED', 'FAILED']
                     for doc in self.job_status.values()])
 
-    def get_results(self, indices):
+    def get_results(self, indices, populate_candidate_data=True):
         # This gets the formation energies.
         if not self.get_state():
             warnings.warn("Some calculations did not finish.")
@@ -62,7 +63,14 @@ class OqmdDFTonMC1(Experiment):
 
                 results_dict[structure_id] = delta_e
 
-        return results_dict
+        if populate_candidate_data:
+            candidate_data = self.get_parameter("candidate_data")
+            _df = candidate_data.loc[results_dict.keys()]
+            _df['delta_e'] = pd.Series(results_dict)
+            _df = _df.reindex(sorted(_df.columns), axis=1)
+            return _df
+        else:
+            return results_dict
 
     def submit(self, unique_ids=None):
         """
