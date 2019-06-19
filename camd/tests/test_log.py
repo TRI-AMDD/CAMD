@@ -34,9 +34,9 @@ class LogTest(unittest.TestCase):
         log_contents = self.log_capture_string.getvalue()
         self.assertEqual(
             log_contents,
-            "TRACE:root.LogTest.test_traced_class.<locals>.print_and_return:"
+            "TRACE:root:print_and_return:"
             "CALL *() **{'something': 'Hello world!'}\n"
-            "TRACE:root.LogTest.test_traced_class.<locals>.print_and_return:RETURN None\n")
+            "TRACE:root:print_and_return:RETURN 'Hello world!'\n")
 
     def test_traced_class(self):
         @traced(CAMD_LOGGER)
