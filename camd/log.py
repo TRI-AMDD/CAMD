@@ -21,7 +21,7 @@ CAMD_KINESIS_STREAM_NAME (str): stream name for CAMD kinesis
 
 """
 import logging, sys, os
-from autologging import TRACE
+from autologging import TRACE, traced
 import boto3
 
 
@@ -66,3 +66,8 @@ if "kinesis" in CAMD_LOG_CONFIG:
 
 if "stdout" in CAMD_LOG_CONFIG:
     CAMD_LOGGER.addHandler(STREAM_HANDLER)
+
+
+def camd_traced(obj):
+    """Custom decorator that ensures tracing decorator uses camd logger"""
+    return traced(CAMD_LOGGER)(obj)
