@@ -62,7 +62,7 @@ class Loop(MSONable):
             self.load('submitted_experiment_requests')
             self.load('seed_data', method='pickle')
             self.load('consumed_candidates')
-
+            self.load('loop_state')
             self.initialized = True
         else:
             self.submitted_experiment_requests = []
@@ -168,14 +168,20 @@ class Loop(MSONable):
 
         """
         if initialize:
+            self.loop_state = 'AGENT'
+            self.save("loop_state")
             if with_icsd:
                 self.initialize_with_icsd_seed()
             else:
                 self.initialize()
 
+            self.loop_state = 'EXPERIMENT STARTED'
+            self.save("loop_state")
             if monitor:
                 self.experiment.monitor()
             time.sleep(timeout)
+            self.loop_state = 'EXPERIMENT COMPLETED'
+            self.save("loop_state")
 
             if self.experiment.get_state():
                 self._exp_raw_results = self.experiment.job_status
@@ -184,16 +190,28 @@ class Loop(MSONable):
             loop_backup(self.path, 'initialize')
 
         while n_iterations - self.iteration >= 0:
-            print("Iteration: {}".format(self.iteration))
-            self.run()
-            print("  Waiting for next round ...")
+
+            self.load("loop_state")
+            if "COMPLETED" in self.loop_state:
+                print("Iteration: {}".format(self.iteration))
+                self.loop_state = 'AGENT'
+                self.save("loop_state")
+                self.run()
+                print("  Waiting for next round ...")
+
+            self.loop_state = 'EXPERIMENT STARTED'
+            self.save("loop_state")
             if monitor:
                 self.experiment.monitor()
             time.sleep(timeout)
+            self.loop_state = 'EXPERIMENT COMPLETED'
+            self.save("loop_state")
+
             if self.experiment.get_state():
                 self._exp_raw_results = self.experiment.job_status
                 self.save('_exp_raw_results')
             loop_backup(self.path, str(self.iteration-1))
+
 
     def initialize(self, random_state=42):
         if self.initialized:
@@ -223,6 +241,8 @@ class Loop(MSONable):
         self.save("iteration")
 
     def initialize_with_icsd_seed(self, random_state=42):
+        if self.initialized:
+            raise ValueError("Initialization may overwrite existing loop data. Exit.")
         cache_s3_objs(["camd/shared-data/oqmd1.2_icsd_featurized_clean_v2.pickle"])
         self.seed_data = pd.read_pickle(os.path.join(S3_CACHE,
                                                      "camd/shared-data/oqmd1.2_icsd_featurized_clean_v2.pickle"))
