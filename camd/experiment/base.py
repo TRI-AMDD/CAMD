@@ -2,8 +2,8 @@
 
 import abc
 
-from time import sleep
 from monty.json import MSONable
+from camd.log import camd_traced
 
 
 class Experiment(abc.ABC, MSONable):
@@ -17,6 +17,8 @@ class Experiment(abc.ABC, MSONable):
 
     def __init__(self, params):
         self._params = params
+        self.unique_ids = params['unique_ids'] if 'unique_ids' in params else []
+        self.job_status = params['job_status'] if 'job_status' in params else {}
 
 
     @abc.abstractmethod
@@ -54,7 +56,7 @@ class Experiment(abc.ABC, MSONable):
         self.results = self.get_results()
 
     @abc.abstractmethod
-    def run_monitor(self):
+    def monitor(self):
         """
         Keeps track of jobs given the poll_time and timeout
         """
@@ -68,20 +70,19 @@ class Experiment(abc.ABC, MSONable):
 
         """
 
+    @classmethod
+    def from_job_status(cls, params, job_status):
+        params["job_status"] = job_status
+        params["unique_ids"] = list(job_status.keys())
+        return cls(params)
 
+
+@camd_traced
 class ATFSampler(Experiment):
     """
     A simple after the fact sampler that just samples
     a dataframe according to index_values
     """
-    def __init__(self, dataframe):
-        """
-
-        Args:
-            params (dict):
-        """
-        self.dataframe = dataframe
-        super(ATFSampler, self).__init__(dataframe)
 
     def start(self):
         """There's no start procedure for this particular experiment"""
@@ -89,10 +90,16 @@ class ATFSampler(Experiment):
 
     def get_state(self):
         """This experiment should be complete on construction"""
-        return 'completed'
+        return True
 
-    def get_results(self, indices):
-        return self.dataframe.loc[indices]
+    def get_results(self, index_labels):
+        dataframe = self.get_parameter('dataframe')
+        return dataframe.loc[index_labels]
 
     def submit(self, unique_ids, *args):
-        pass
+        self.unique_ids = unique_ids
+        return dict(zip(unique_ids, [{'status': 'SUCCEEDED'} for i in range(len(unique_ids))]))
+
+    def monitor(self):
+        unique_ids = self.unique_ids
+        return dict(zip(unique_ids, [{'status': 'SUCCEEDED'} for i in range(len(unique_ids))]))

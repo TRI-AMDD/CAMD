@@ -1,13 +1,18 @@
 # Copyright Toyota Research Institute 2019
 import os
 import pickle
+import json
 import time
 import numpy as np
 import warnings
 
 from monty.json import MSONable
+from camd.log import camd_traced
 
+# TODO:
+#  - improve the stopping scheme
 
+@camd_traced
 class Loop(MSONable):
     def __init__(self, path, candidate_data, agent, experiment, analyzer,
                  agent_params=None, experiment_params=None, analyzer_params=None, seed_data=None, create_seed=False):
@@ -71,37 +76,41 @@ class Loop(MSONable):
             with open(os.path.join(self.path, 'iteration.log'), 'r') as f:
                 self.iteration = int(f.readline().rstrip('\n'))
 
-        print("1. Get new results")
+        # Get new results
         self.load('submitted_experiment_requests')
-
         if not self.job_status:
             self.load('job_status')
             self.experiment = self.experiment.from_job_status(self.experiment_params, self.job_status)
 
         new_experimental_results = self.experiment.get_results(self.submitted_experiment_requests)
 
-        print("2. Load, expand, save seed_data")
+        # Load, expand, save seed_data
         if self.iteration>0:
-            self.load('seed_data')
+            self.load('seed_data', method='pickle')
             self.seed_data = self.seed_data.append(new_experimental_results)
         else:
             self.seed_data = new_experimental_results
-        self.save('seed_data')
+        self.save('seed_data', method='pickle')
 
-        print("3. Augment candidate space")
+        # Augment candidate space
         self.candidate_space = list(set(self.candidate_data.index).difference(set(self.seed_data.index)))
         self.candidate_data = self.candidate_data.loc[self.candidate_space]
 
-        print("4. Analyze results")
+        print("Loop {} state: Analyzing results".format(self.iteration))
         self.results_new_uids, self.results_all_uids = self.analyzer.analyze(self.seed_data,
                                                                                         self.submitted_experiment_requests)
-        self._discovered = np.array(self.submitted_experiment_requests)[self.results_new_uids].tolist()
-        self.save('_discovered', custom_name='discovered_{}.pd'.format(self.iteration))
 
-        print("5. Hypothesize")
+        self._discovered = np.array(self.submitted_experiment_requests)[self.results_new_uids].tolist()
+        self.save('_discovered', custom_name='discovered_{}.json'.format(self.iteration))
+
+        print("Loop {} state: Agent hypothesizing".format(self.iteration))
         suggested_experiments = self.agent.get_hypotheses(self.candidate_data, self.seed_data)
 
-        print("6. Submit new experiments")
+        # Stop-gap loop stopper.
+        if len(suggested_experiments) == 0:
+            raise ValueError("No space left to explore. Stopping the loop.")
+
+        print("Loop {} state: Running experiments".format(self.iteration))
         self.job_status = self.experiment.submit(suggested_experiments)
         self.save("job_status")
 
@@ -113,14 +122,14 @@ class Loop(MSONable):
         with open(os.path.join(self.path, 'iteration.log'), 'w') as f:
             f.write(str(self.iteration))
 
-    def auto_loop(self, n_iterations=10, timeout=10, run_monitor=False):
+    def auto_loop(self, n_iterations=10, timeout=10, monitor=False):
         """
         Runs the loop repeatedly
         TODO: Stopping criterion from Analyzer
         Args:
             n_iterations (int): Number of iterations.
             timeout (int): Time (in seconds) to wait on idle for submitted experiments to finish.
-            run_monitor (bool): Use Experiment's run_monitor method to keep track of requested experiments.
+            monitor (bool): Use Experiment's monitor method to keep track of requested experiments.
         """
         if self.create_seed:
             print("creating seed")
@@ -131,8 +140,8 @@ class Loop(MSONable):
             print("Iteration: {}".format(self.iteration))
             self.run()
             print("  Waiting for next round ...")
-            if run_monitor:
-                self.experiment.run_monitor()
+            if monitor:
+                self.experiment.monitor()
             time.sleep(timeout)
 
     def initialize(self, random_state=42):
@@ -148,22 +157,55 @@ class Loop(MSONable):
     def report(self):
         with open(os.path.join(self.path, 'report.log'), 'a') as f:
             if self.iteration == 0:
-                f.write("Iteration N_Discovery Total_Discovery N_query N_candidates model-CV\n")
-            f.write("{:9} {:11} {:15} {:12} {:f}\n".format(self.iteration, np.sum(self.results_new_uids),
+                f.write("Iteration N_Discovery Total_Discovery N_candidates model-CV\n")
+            report_string = "{:9} {:11} {:15} {:12} {:f}\n".format(self.iteration, np.sum(self.results_new_uids),
                                                            np.sum(self.results_all_uids), len(self.candidate_data),
-                                                           self.agent.cv_score))
+                                                           self.agent.cv_score)
+            f.write(report_string)
+            print(report_string)
 
-    def load(self, data_holder):
-        with open(os.path.join(self.path, data_holder+'.pd'), 'rb') as f:
-            self.__setattr__(data_holder, pickle.load(f))
+    def load(self, data_holder, method='json'):
+        if method == 'pickle':
+            m = pickle
+            mode = 'rb'
+        elif method == 'json':
+            m = json
+            mode = 'r'
+        else:
+            raise ValueError("Unknown data save method")
+        with open(os.path.join(self.path, data_holder+'.'+method), mode) as f:
 
-    def save(self, data_holder, custom_name=None):
+            self.__setattr__(data_holder, m.load(f))
+
+    def save(self, data_holder, custom_name=None, method='json'):
         if custom_name:
             _path = os.path.join(self.path, custom_name)
         else:
-            _path = os.path.join(self.path, data_holder+'.pd')
-        with open(_path, 'wb') as f:
-            pickle.dump(self.__getattribute__(data_holder), f)
+            _path = os.path.join(self.path, data_holder+'.'+method)
+        if method == 'pickle':
+            m = pickle
+            mode = 'wb'
+        elif method == 'json':
+            m = json
+            mode = 'w'
+        else:
+            raise ValueError("Unknown data save method")
+        with open(_path, mode) as f:
+            m.dump(self.__getattribute__(data_holder), f)
 
     def get_state(self):
         pass
+
+# a temporary helper function that first creates a domain and sets up a Loop
+def get_structure_campaign(domain_params, loop_params):
+    from camd.domain import StructureDomain
+    domain = StructureDomain(domain_params)
+    candidates = domain.candidates()
+    return Loop(candidate_data=candidates, **loop_params)
+
+# a temporary helper function that first creates a domain and sets up a Loop
+def get_structure_campaign_from_bounds(bounds, domain_params, loop_params):
+    from camd.domain import StructureDomain
+    domain = StructureDomain.from_bounds(bounds, **domain_params)
+    candidates = domain.candidates()
+    return Loop(candidate_data=candidates, **loop_params)

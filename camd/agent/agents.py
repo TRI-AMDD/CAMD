@@ -5,10 +5,12 @@ from qmpy.analysis.thermodynamics.phase import Phase, PhaseData
 from copy import deepcopy
 from camd.analysis import PhaseSpaceAL, ELEMENTS
 from camd.agent.base import HypothesisAgent, QBC
+from camd.log import camd_traced
 
 # TODO: Adaptive N_query and subsampling of candidate space
 
 
+@camd_traced
 class QBCStabilityAgent(HypothesisAgent):
 
     def __init__(self, candidate_data=None, seed_data=None, N_query=None,
@@ -99,6 +101,7 @@ class QBCStabilityAgent(HypothesisAgent):
         self.pd.add_phases(phases)
 
 
+@camd_traced
 class AgentStabilityML5(HypothesisAgent):
     """
     An agent that does a certain fraction of full exploration an exploitation in each iteration.

@@ -29,7 +29,7 @@ agent_params = {
 analyzer = AnalyzeStability
 analyzer_params = {'hull_distance': 0.05}
 experiment = ATFSampler
-experiment_params = {'dataframe': df}
+experiment_params = {"params": {'dataframe': df}}
 candidate_data = df
 path = '.'
 ##########################################################
