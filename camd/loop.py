@@ -182,7 +182,7 @@ class Loop(MSONable):
             else:
                 self.initialize()
 
-            self.loop_state = 'EXPERIMENT STARTED'
+            self.loop_state = 'EXPERIMENTS STARTED'
             self.save("loop_state")
 
             if monitor:
@@ -195,20 +195,21 @@ class Loop(MSONable):
                 self.save('_exp_raw_results')
 
             loop_backup(self.path, '-1')
-            self.loop_state = 'EXPERIMENT COMPLETED'
+            self.loop_state = 'EXPERIMENTS COMPLETED'
             self.save("loop_state")
 
         while n_iterations - self.iteration >= 0:
 
             self.load("loop_state")
-            if "COMPLETED" in self.loop_state:
+
+            if self.loop_state in ["EXPERIMENTS COMPLETED", "AGENT"]:
                 print("Iteration: {}".format(self.iteration))
                 self.loop_state = 'AGENT'
                 self.save("loop_state")
                 self.run()
                 print("  Waiting for next round ...")
 
-            self.loop_state = 'EXPERIMENT STARTED'
+            self.loop_state = 'EXPERIMENTS STARTED'
             self.save("loop_state")
             if monitor:
                 self.experiment.monitor()
@@ -219,7 +220,7 @@ class Loop(MSONable):
                 self.save('_exp_raw_results')
 
             loop_backup(self.path, str(self.iteration - 1))
-            self.loop_state = 'EXPERIMENT COMPLETED'
+            self.loop_state = 'EXPERIMENTS COMPLETED'
             self.save("loop_state")
 
 
