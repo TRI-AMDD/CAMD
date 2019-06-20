@@ -4,8 +4,8 @@ import pickle
 import json
 import time
 import numpy as np
-import warnings
 import pandas as pd
+import shutil
 
 from monty.json import MSONable
 from camd.utils.s3 import cache_s3_objs
@@ -16,19 +16,21 @@ from camd.agent.base import RandomAgent
 #  - improve the stopping scheme
 
 class Loop(MSONable):
-    def __init__(self, path, candidate_data, agent, experiment, analyzer,
-                 agent_params=None, experiment_params=None, analyzer_params=None, seed_data=None, create_seed=False):
+    def __init__(self, candidate_data, agent, experiment, analyzer,
+                 agent_params=None, experiment_params=None, analyzer_params=None, path=None,
+                 seed_data=None, create_seed=False):
         """
 
         Args:
-            path (str): path in which to execute the loop
             candidate_data (pd.DataFrame): List of uids for candidate search space for active learning
             agent (HypothesisAgent): a subclass of HypothesisAgent
             experiment (Experiment): a subclass of Experiment
             analyzer (Analyzer): a subclass of Analyzer
             seed_data (pandas.DataFrame): Seed Data for active learning, index is to be the assumed uid
+            path (str): path in which to execute the loop
         """
-        self.path = path
+        self.path = path if path else '.'
+        self.path = os.path.abspath(self.path)
 
         self.candidate_data = candidate_data
         self.candidate_space = list(candidate_data.index)
@@ -154,6 +156,45 @@ class Loop(MSONable):
                 self.experiment.monitor()
             time.sleep(timeout)
 
+    def auto_loop_in_directories(self, n_iterations=10, timeout=10, monitor=False, initialize=False, with_icsd=False):
+        """
+        Runs the loop repeatedly
+        TODO: Stopping criterion from Analyzer
+        Args:
+            n_iterations (int): Number of iterations.
+            timeout (int): Time (in seconds) to wait on idle for submitted experiments to finish.
+            monitor (bool): Use Experiment's monitor method to keep track of requested experiments. Note, if this is set
+                            True, timeout also needs to be adjusted.
+
+        """
+        if initialize:
+            if with_icsd:
+                self.initialize_with_icsd_seed()
+            else:
+                self.initialize()
+
+            if monitor:
+                self.experiment.monitor()
+            time.sleep(timeout)
+
+            if self.experiment.get_state():
+                self._exp_raw_results = self.experiment.job_status
+                self.save('_exp_raw_results')
+
+            loop_backup(self.path, 'initialize')
+
+        while n_iterations - self.iteration >= 0:
+            print("Iteration: {}".format(self.iteration))
+            self.run()
+            print("  Waiting for next round ...")
+            if monitor:
+                self.experiment.monitor()
+            time.sleep(timeout)
+            if self.experiment.get_state():
+                self._exp_raw_results = self.experiment.job_status
+                self.save('_exp_raw_results')
+            loop_backup(self.path, str(self.iteration-1))
+
     def initialize(self, random_state=42):
         if self.initialized:
             raise ValueError("Initialization may overwrite existing loop data. Exit.")
@@ -227,6 +268,25 @@ class Loop(MSONable):
 
     def get_state(self):
         pass
+
+
+def loop_backup(src, new_dir_name):
+    """
+    Helper method to backup finished loop iterations.
+    Args:
+        src:
+        new_dir_name:
+
+    Returns:
+
+    """
+    os.mkdir(os.path.join(src, new_dir_name))
+    _files = os.listdir(src)
+    for file_name in _files:
+        full_file_name = os.path.join(src, file_name)
+        if os.path.isfile(full_file_name):
+            shutil.copy(full_file_name, new_dir_name)
+
 
 # a temporary helper function that first creates a domain and sets up a Loop
 def get_structure_campaign(domain_params, loop_params):
