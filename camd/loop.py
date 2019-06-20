@@ -136,7 +136,8 @@ class Loop(MSONable):
 
     def auto_loop(self, n_iterations=10, timeout=10, monitor=False, initialize=False, with_icsd=False):
         """
-        Runs the loop repeatedly
+        Runs the loop repeatedly, and locally. Pretty light weight, but recommended method
+        is auto_loop_in_directories.
         TODO: Stopping criterion from Analyzer
         Args:
             n_iterations (int): Number of iterations.
