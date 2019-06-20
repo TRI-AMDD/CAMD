@@ -69,6 +69,7 @@ class Loop(MSONable):
             self.consumed_candidates = []
             self.job_status = {}
             self.initialized = False
+            self.loop_state = "UNSTARTED"
 
     def run(self):
         """
@@ -287,7 +288,7 @@ class Loop(MSONable):
             m.dump(self.__getattribute__(data_holder), f)
 
     def get_state(self):
-        pass
+        return self.loop_state
 
 
 def loop_backup(src, new_dir_name):
