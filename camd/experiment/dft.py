@@ -13,6 +13,7 @@ import subprocess
 import traceback
 import warnings
 import pandas as pd
+import datetime
 
 
 from camd.experiment.base import Experiment
@@ -95,9 +96,13 @@ class OqmdDFTonMC1(Experiment):
             while not finished:
                 time.sleep(self.poll_time)
                 finished = self.get_state()
-                status_string = "\n".join(["{}: {}".format(key, value["status"])
+                for doc in self.job_status.values():
+                    doc["elapsed_time"] = time.time() - doc["start_time"]
+                status_string = "\n".join(["{}: {} {}".format(key, value["status"],
+                                                              datetime.timedelta(0,value["elapsed_time"]))
                                            for key, value in self.job_status.items()])
                 print("Calc status:\n{}".format(status_string))
+                print("Timeout is set as {}.".format(datetime.timedelta(0, self.timeout)))
 
                 for doc in self.job_status.values():
                     doc["elapsed_time"] = time.time() - doc["start_time"]
