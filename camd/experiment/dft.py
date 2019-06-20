@@ -115,6 +115,7 @@ class OqmdDFTonMC1(Experiment):
                             kill_cmd = "aws batch terminate-job --job-id {} --reason camd_timeout".format(
                                 doc['jobId'])
                             kill_result = subprocess.check_output(shlex.split(kill_cmd))
+
         return self.job_status
 
     @classmethod

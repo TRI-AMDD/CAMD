@@ -50,7 +50,7 @@ class AftLoopTestLong(unittest.TestCase):
         candidate_data = df
         path = '.'
 
-        new_loop = Loop(path, candidate_data, agent, experiment, analyzer,
+        new_loop = Loop(candidate_data, agent, experiment, analyzer,
                         agent_params=agent_params, analyzer_params=analyzer_params, experiment_params=experiment_params,
                         create_seed=N_seed)
 
@@ -87,7 +87,7 @@ class AtfLoopTest(unittest.TestCase):
         experiment_params = {'dataframe': df}
         candidate_data = df
         path = '.'
-        new_loop = Loop(path, candidate_data, agent, experiment, analyzer,
+        new_loop = Loop(candidate_data, agent, experiment, analyzer,
                         agent_params=agent_params, analyzer_params=analyzer_params,
                         experiment_params=experiment_params,
                         create_seed=n_seed)
@@ -99,7 +99,7 @@ class AtfLoopTest(unittest.TestCase):
             new_loop.run()
             self.assertTrue(True)
 
-        new_loop = Loop(path, candidate_data, agent, experiment, analyzer,
+        new_loop = Loop(candidate_data, agent, experiment, analyzer,
                         agent_params=agent_params, analyzer_params=analyzer_params,
                         experiment_params=experiment_params,
                         create_seed=n_seed)
@@ -127,7 +127,7 @@ class AtfLoopTest(unittest.TestCase):
         candidate_data = df_sub
         path = '.'
 
-        new_loop = Loop(path, candidate_data, agent, experiment, analyzer,
+        new_loop = Loop(candidate_data, agent, experiment, analyzer,
                         agent_params=agent_params, analyzer_params=analyzer_params,
                         experiment_params=experiment_params,
                         create_seed=n_seed)

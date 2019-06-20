@@ -31,6 +31,7 @@ class Loop(MSONable):
         """
         self.path = path if path else '.'
         self.path = os.path.abspath(self.path)
+        os.chdir(self.path)
 
         self.candidate_data = candidate_data
         self.candidate_space = list(candidate_data.index)
@@ -165,7 +166,8 @@ class Loop(MSONable):
             n_iterations (int): Number of iterations.
             timeout (int): Time (in seconds) to wait on idle for submitted experiments to finish.
             monitor (bool): Use Experiment's monitor method to keep track of requested experiments. Note, if this is set
-                            True, timeout also needs to be adjusted.
+                            True, timeout also needs to be adjusted. If this is not set True, make sure timeout is
+                            sufficiently long.
 
         """
         self.load("loop_state")
@@ -184,6 +186,7 @@ class Loop(MSONable):
 
             if monitor:
                 self.experiment.monitor()
+                os.chdir(self.path)
             time.sleep(timeout)
 
             if self.experiment.get_state():
@@ -208,14 +211,15 @@ class Loop(MSONable):
             self.save("loop_state")
             if monitor:
                 self.experiment.monitor()
+                os.chdir(self.path)
             time.sleep(timeout)
-            self.loop_state = 'EXPERIMENT COMPLETED'
-            self.save("loop_state")
-
             if self.experiment.get_state():
                 self._exp_raw_results = self.experiment.job_status
                 self.save('_exp_raw_results')
+
             loop_backup(self.path, str(self.iteration - 1))
+            self.loop_state = 'EXPERIMENT COMPLETED'
+            self.save("loop_state")
 
 
     def initialize(self, random_state=42):
@@ -308,6 +312,7 @@ def loop_backup(src, new_dir_name):
     """
     os.mkdir(os.path.join(src, new_dir_name))
     _files = os.listdir(src)
+    print(_files)
     for file_name in _files:
         full_file_name = os.path.join(src, file_name)
         if os.path.isfile(full_file_name):
