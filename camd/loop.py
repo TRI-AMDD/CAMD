@@ -312,7 +312,6 @@ def loop_backup(src, new_dir_name):
     """
     os.mkdir(os.path.join(src, new_dir_name))
     _files = os.listdir(src)
-    print(_files)
     for file_name in _files:
         full_file_name = os.path.join(src, file_name)
         if os.path.isfile(full_file_name):
