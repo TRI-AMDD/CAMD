@@ -168,20 +168,25 @@ class Loop(MSONable):
                             True, timeout also needs to be adjusted.
 
         """
+        self.load("loop_state")
+
         if initialize:
             self.loop_state = 'AGENT'
             self.save("loop_state")
+
             if with_icsd:
                 self.initialize_with_icsd_seed()
             else:
                 self.initialize()
 
-            self.loop_state = 'EXPERIMENT STARTED'
+            self.loop_state = 'INITIALIZATION EXPERIMENT STARTED'
             self.save("loop_state")
+
             if monitor:
                 self.experiment.monitor()
             time.sleep(timeout)
-            self.loop_state = 'EXPERIMENT COMPLETED'
+
+            self.loop_state = 'INITIALIZATION EXPERIMENT COMPLETED'
             self.save("loop_state")
 
             if self.experiment.get_state():
@@ -200,6 +205,11 @@ class Loop(MSONable):
                 self.run()
                 print("  Waiting for next round ...")
 
+            if "INITIALIZATION" in self.loop_state:
+                stage = "initialize"
+            else:
+                stage = str(self.iteration - 1)
+
             self.loop_state = 'EXPERIMENT STARTED'
             self.save("loop_state")
             if monitor:
@@ -211,7 +221,7 @@ class Loop(MSONable):
             if self.experiment.get_state():
                 self._exp_raw_results = self.experiment.job_status
                 self.save('_exp_raw_results')
-            loop_backup(self.path, str(self.iteration-1))
+            loop_backup(self.path,stage)
 
 
     def initialize(self, random_state=42):
@@ -230,6 +240,9 @@ class Loop(MSONable):
 
         print("Loop {} state: Running experiments".format(self.iteration))
         self.job_status = self.experiment.submit(suggested_experiments)
+        self.loop_state = 'EXPERIMENT STARTED'
+        self.save("loop_state")
+
         self.submitted_experiment_requests = suggested_experiments
         self.consumed_candidates = suggested_experiments
         self.create_seed = False
