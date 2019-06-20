@@ -63,7 +63,7 @@ class Loop(MSONable):
             self.load('submitted_experiment_requests')
             self.load('seed_data', method='pickle')
             self.load('consumed_candidates')
-            self.load('loop_state')
+            self.load('loop_state', no_exist_fail=False)
             self.initialized = True
         else:
             self.submitted_experiment_requests = []
@@ -268,7 +268,7 @@ class Loop(MSONable):
                                                            self.agent.cv_score)
             f.write(report_string)
 
-    def load(self, data_holder, method='json'):
+    def load(self, data_holder, method='json', no_exist_fail=True):
         if method == 'pickle':
             m = pickle
             mode = 'rb'
@@ -277,9 +277,18 @@ class Loop(MSONable):
             mode = 'r'
         else:
             raise ValueError("Unknown data save method")
-        with open(os.path.join(self.path, data_holder+'.'+method), mode) as f:
 
-            self.__setattr__(data_holder, m.load(f))
+        file_name = os.path.join(self.path, data_holder+'.'+method)
+        exists = os.path.exists(file_name)
+
+        if exists:
+            with open(file_name, mode) as f:
+                self.__setattr__(data_holder, m.load(f))
+        else:
+            if no_exist_fail:
+                raise IOError("No {} file exists".format(data_holder))
+            else:
+                self.__setattr__(data_holder, None)
 
     def save(self, data_holder, custom_name=None, method='json'):
         if custom_name:

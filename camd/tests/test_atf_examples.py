@@ -86,7 +86,6 @@ class AtfLoopTest(unittest.TestCase):
         experiment = ATFSampler
         experiment_params = {'dataframe': df}
         candidate_data = df
-        path = '.'
         new_loop = Loop(candidate_data, agent, experiment, analyzer,
                         agent_params=agent_params, analyzer_params=analyzer_params,
                         experiment_params=experiment_params,
@@ -99,12 +98,18 @@ class AtfLoopTest(unittest.TestCase):
             new_loop.run()
             self.assertTrue(True)
 
+        # Testing the continuation
         new_loop = Loop(candidate_data, agent, experiment, analyzer,
                         agent_params=agent_params, analyzer_params=analyzer_params,
                         experiment_params=experiment_params,
                         create_seed=n_seed)
+        self.assertTrue(new_loop.initialized)
+        self.assertEqual(new_loop.iteration, 5)
+        self.assertTrue(new_loop.loop_state, None)
+
         new_loop.run()
         self.assertTrue(True)
+        self.assertEqual(new_loop.iteration, 6)
 
     def test_qbc_agent_loop(self):
         df = pd.read_csv(os.path.join(CAMD_TEST_FILES, 'test_df.csv'))
