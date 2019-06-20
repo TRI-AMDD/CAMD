@@ -26,7 +26,7 @@ analyzer = AnalyzeStability_mod     # Analyzer for stability
 analyzer_params = {'hull_distance': 0.1}
 experiment = OqmdDFTonMC1           # This is the Experiment method to run OQMD compatible DFT on AWS-MC1
 experiment_params = {'structure_dict': structure_dict,  # Parameters of this experiment class include structures.
-                     'dataframe': candidate_data, 'timeout': 30000}
+                     'candidate_data': candidate_data, 'timeout': 30000}
 
 # Loop class puts all the above pieces together.
 new_loop = Loop(candidate_data, agent, experiment, analyzer,

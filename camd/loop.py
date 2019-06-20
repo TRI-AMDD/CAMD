@@ -171,7 +171,7 @@ class Loop(MSONable):
         self.load("loop_state")
 
         if initialize:
-            self.loop_state = 'AGENT'
+            self.loop_state = 'INITIALIZATION AGENT'
             self.save("loop_state")
 
             if with_icsd:
@@ -186,14 +186,13 @@ class Loop(MSONable):
                 self.experiment.monitor()
             time.sleep(timeout)
 
-            self.loop_state = 'INITIALIZATION EXPERIMENT COMPLETED'
-            self.save("loop_state")
-
             if self.experiment.get_state():
                 self._exp_raw_results = self.experiment.job_status
                 self.save('_exp_raw_results')
 
-            loop_backup(self.path, 'initialize')
+            loop_backup(self.path, '-1')
+            self.loop_state = 'INITIALIZATION EXPERIMENT COMPLETED'
+            self.save("loop_state")
 
         while n_iterations - self.iteration >= 0:
 
@@ -204,11 +203,6 @@ class Loop(MSONable):
                 self.save("loop_state")
                 self.run()
                 print("  Waiting for next round ...")
-
-            if "INITIALIZATION" in self.loop_state:
-                stage = "initialize"
-            else:
-                stage = str(self.iteration - 1)
 
             self.loop_state = 'EXPERIMENT STARTED'
             self.save("loop_state")
@@ -221,7 +215,7 @@ class Loop(MSONable):
             if self.experiment.get_state():
                 self._exp_raw_results = self.experiment.job_status
                 self.save('_exp_raw_results')
-            loop_backup(self.path,stage)
+            loop_backup(self.path, str(self.iteration - 1))
 
 
     def initialize(self, random_state=42):
@@ -240,8 +234,6 @@ class Loop(MSONable):
 
         print("Loop {} state: Running experiments".format(self.iteration))
         self.job_status = self.experiment.submit(suggested_experiments)
-        self.loop_state = 'EXPERIMENT STARTED'
-        self.save("loop_state")
 
         self.submitted_experiment_requests = suggested_experiments
         self.consumed_candidates = suggested_experiments
