@@ -171,7 +171,7 @@ class Loop(MSONable):
         self.load("loop_state")
 
         if initialize:
-            self.loop_state = 'INITIALIZATION AGENT'
+            self.loop_state = 'AGENT'
             self.save("loop_state")
 
             if with_icsd:
@@ -179,7 +179,7 @@ class Loop(MSONable):
             else:
                 self.initialize()
 
-            self.loop_state = 'INITIALIZATION EXPERIMENT STARTED'
+            self.loop_state = 'EXPERIMENT STARTED'
             self.save("loop_state")
 
             if monitor:
@@ -191,7 +191,7 @@ class Loop(MSONable):
                 self.save('_exp_raw_results')
 
             loop_backup(self.path, '-1')
-            self.loop_state = 'INITIALIZATION EXPERIMENT COMPLETED'
+            self.loop_state = 'EXPERIMENT COMPLETED'
             self.save("loop_state")
 
         while n_iterations - self.iteration >= 0:
