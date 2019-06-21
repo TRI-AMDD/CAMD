@@ -171,8 +171,6 @@ class Loop(MSONable):
                             sufficiently long.
 
         """
-        self.load("loop_state")
-
         if initialize:
             self.loop_state = 'AGENT'
             self.save("loop_state")
@@ -199,7 +197,6 @@ class Loop(MSONable):
             self.save("loop_state")
 
         while n_iterations - self.iteration >= 0:
-
             self.load("loop_state")
 
             if self.loop_state in ["EXPERIMENTS COMPLETED", "AGENT"]:

@@ -7,6 +7,7 @@ from camd import tqdm
 from qmpy.analysis.thermodynamics.phase import Phase, PhaseData
 from qmpy.analysis.thermodynamics.space import PhaseSpace
 import multiprocessing
+from pymatgen import Composition
 
 ELEMENTS = ['Ru', 'Re', 'Rb', 'Rh', 'Be', 'Ba', 'Bi', 'Br', 'H', 'P', 'Os', 'Ge', 'Gd', 'Ga', 'Pr', 'Pt', 'Pu', 'C',
             'Pb', 'Pa', 'Pd', 'Xe', 'Pm', 'Ho', 'Hf', 'Hg', 'He', 'Mg', 'K', 'Mn', 'O', 'S', 'W', 'Zn', 'Eu', 'Zr',
@@ -92,19 +93,35 @@ class AnalyzeStability(AnalyzerBase):
 
 
 class AnalyzeStability_mod(AnalyzerBase):
-    def __init__(self, df=None, new_result_ids=None, hull_distance=None, multiprocessing=True):
+    def __init__(self, df=None, new_result_ids=None, hull_distance=None, multiprocessing=True, entire_space=False):
         self.df = df
         self.new_result_ids = new_result_ids
         self.hull_distance = hull_distance if hull_distance else 0.05
         self.multiprocessing = multiprocessing
+        self.entire_space = entire_space
         super(AnalyzeStability_mod, self).__init__()
 
     def analyze(self, df=None, new_result_ids=None, all_result_ids=None):
-        self.df = df
+        self.df = df.drop_duplicates(keep='last').dropna()
         self.all_result_ids = all_result_ids
         self.new_result_ids = new_result_ids
+
+        if not self.entire_space:
+            comps = self.df.loc[all_result_ids]['Composition'].dropna()
+            system_elements = []
+            for comp in comps:
+                system_elements += list(Composition(comp).as_dict().keys())
+            elems = set(system_elements)
+            ind_to_include = []
+            for ind in self.df.index:
+                if set(Composition(self.df.loc[ind]['Composition']).as_dict().keys()).issubset(elems):
+                    ind_to_include.append(ind)
+            _df = self.df.loc[ind_to_include]
+        else:
+            _df = self.df
+
         phases = []
-        for data in self.df.iterrows():
+        for data in _df.iterrows():
             phases.append(Phase(data[1]['Composition'], energy=data[1]['delta_e'], per_atom=True, description=data[0]))
         for el in ELEMENTS:
             phases.append(Phase(el, 0.0, per_atom=True))
