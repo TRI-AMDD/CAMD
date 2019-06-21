@@ -103,10 +103,14 @@ class AnalyzeStability_mod(AnalyzerBase):
 
     def analyze(self, df=None, new_result_ids=None, all_result_ids=None):
         self.df = df.drop_duplicates(keep='last').dropna()
+        # Note some of id's in all_result_ids may not have corresponding experiment, if those exps. failed.
         self.all_result_ids = all_result_ids
         self.new_result_ids = new_result_ids
 
         if not self.entire_space:
+            # This option constraints the phase space to that of the target compounds. This should be more efficient
+            # when searching in a specified chemistry, less efficient if larger spaces are being scanned without chemistry
+            # focus.
             comps = self.df.loc[all_result_ids]['Composition'].dropna()
             system_elements = []
             for comp in comps:

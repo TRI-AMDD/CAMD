@@ -7,6 +7,7 @@ import abc
 import warnings
 import itertools
 import numpy as np
+import uuid
 
 from camd import S3_CACHE
 from camd.utils.s3 import cache_s3_objs
@@ -262,8 +263,14 @@ def get_structures_from_protosearch(formulas, source='icsd', db_interface=None):
                       for i in range(len(_structures))]
     _structures['pmg_structures'] = pmg_structures
 
+    # The uuid below is probably an overkill. But want the strings are unique
+    # Sometimes in spaces with similar stoichiometries they may clash e.g. IrSb2O2 and Ir2SbO2 may
+    # End up producing the same string, despite differnet substitutions on same structure.
+    # We just need to figure out a way to get the right order from protosearch.
     structure_uids = [_structures.iloc[i]['proto_name'].replace('_','-') +
-                           '-' + '-'.join(pmg_structures[i].symbol_set) for i in range(len(_structures))]
+                           '-' + '-'.join(pmg_structures[i].symbol_set) + '-'+
+                            str(uuid.uuid4()).replace('-', '')
+                      for i in range(len(_structures))]
     _structures.index = structure_uids
     return _structures
 
