@@ -30,9 +30,8 @@ analyzer_params = {'hull_distance': 0.05}
 experiment = ATFSampler
 experiment_params = {'dataframe': df}
 candidate_data = df
-path = '.'
 ##########################################################
-new_loop = Loop(path, candidate_data, agent, experiment, analyzer,
+new_loop = Loop(candidate_data, agent, experiment, analyzer,
                agent_params=agent_params, analyzer_params=analyzer_params, experiment_params=experiment_params,
                create_seed=N_seed)
 
