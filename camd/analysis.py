@@ -111,6 +111,11 @@ class AnalyzeStability_mod(AnalyzerBase):
             # This option constraints the phase space to that of the target compounds. This should be more efficient
             # when searching in a specified chemistry, less efficient if larger spaces are being scanned without chemistry
             # focus.
+
+            # Note this line needs to be fixed later to be compatible with later versions of pandas (i.e.
+            # b/c all_result_ids may contain things not in df currently (b/c of failed experiments).
+            # We should test comps = self.df.loc[self.df.index.intersection(all_result_ids)]
+
             comps = self.df.loc[all_result_ids]['Composition'].dropna()
             system_elements = []
             for comp in comps:

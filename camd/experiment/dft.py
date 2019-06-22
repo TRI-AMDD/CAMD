@@ -160,7 +160,11 @@ def submit_dft_calcs_to_mc1(structure_dict):
             # Submit to mc1
             # TODO: ensure this is checked for failure to submit
             print("Submitting job: {}".format(structure_id))
-            calc = subprocess.check_output(["trisub", "-q", "oqmd_test_queue", "-r", "2000", "-c", "8"])
+            try:
+                calc = subprocess.check_output(["trisub", "-q", "oqmd_test_queue", "-r", "4000", "-c", "8"])
+            except subprocess.CalledProcessError as e:
+                print(e.output)
+
             calc = calc.decode('utf-8')
             calc = re.findall("({.+})", calc, re.DOTALL)[0]
             calc = json.loads(calc)

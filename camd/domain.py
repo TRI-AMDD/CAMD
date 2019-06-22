@@ -269,7 +269,7 @@ def get_structures_from_protosearch(formulas, source='icsd', db_interface=None):
     # We just need to figure out a way to get the right order from protosearch.
     structure_uids = [_structures.iloc[i]['proto_name'].replace('_','-') +
                            '-' + '-'.join(pmg_structures[i].symbol_set) + '-'+
-                            str(uuid.uuid4()).replace('-', '')
+                            str(uuid.uuid4()).replace('-', '')[:6]
                       for i in range(len(_structures))]
     _structures.index = structure_uids
     return _structures
