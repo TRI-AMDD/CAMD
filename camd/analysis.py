@@ -53,6 +53,7 @@ class AnalyzeStability(AnalyzerBase):
         self.new_result_ids = new_result_ids
         self.hull_distance = hull_distance if hull_distance else 0.05
         self.multiprocessing = multiprocessing
+        self.space = None
         super(AnalyzeStability, self).__init__()
 
     def analyze(self, df=None, new_result_ids=None, all_result_ids=None):
@@ -72,6 +73,7 @@ class AnalyzeStability(AnalyzerBase):
             space.compute_stabilities_multi()
         else:
             space.compute_stabilities_mod()
+        self.space = space
 
         # Add dtype so that None values can be compared
         stabilities_of_space_uids = np.array([p.stability for p in space.phases],
@@ -99,6 +101,7 @@ class AnalyzeStability_mod(AnalyzerBase):
         self.hull_distance = hull_distance if hull_distance else 0.05
         self.multiprocessing = multiprocessing
         self.entire_space = entire_space
+        self.space = None
         super(AnalyzeStability_mod, self).__init__()
 
     def analyze(self, df=None, new_result_ids=None, all_result_ids=None):
@@ -148,6 +151,7 @@ class AnalyzeStability_mod(AnalyzerBase):
             space.compute_stabilities_multi(phases_to_evaluate=all_new_phases)
         else:
             space.compute_stabilities_mod(phases_to_evaluate=all_new_phases)
+        self.space = space
 
         # Add dtype so that None values can be compared
         stabilities_of_space_uids = np.array([p.stability for p in all_new_phases],
