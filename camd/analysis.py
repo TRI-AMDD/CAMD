@@ -155,14 +155,10 @@ class AnalyzeStability_mod(AnalyzerBase):
             space.compute_stabilities_mod(phases_to_evaluate=all_new_phases)
         self.space = space
 
-        # Add dtype so that None values can be compared
-        stabilities_of_space_uids = np.array([p.stability for p in all_new_phases],
-                                             dtype=np.float) <= self.hull_distance
         stabilities_of_new = {}
         for _p in all_new_phases:
             if _p.description in self.new_result_ids:
                 stabilities_of_new[_p.description] = _p.stability
-
         self.stabilities_of_new = stabilities_of_new
 
         stabilities_of_new_uids = []
@@ -172,6 +168,21 @@ class AnalyzeStability_mod(AnalyzerBase):
             else:
                 stabilities_of_new_uids.append(np.nan)
         stabilities_of_new_uids = np.array(stabilities_of_new_uids, dtype=np.float) <= self.hull_distance
+
+
+        stabilities_of_all = {}
+        for _p in all_new_phases:
+            if _p.description in self.all_result_ids:
+                stabilities_of_all[_p.description] = _p.stability
+        self.stabilities_of_all = stabilities_of_all
+
+        stabilities_of_space_uids = []
+        for uid in self.all_result_ids:
+            if uid in stabilities_of_all:
+                stabilities_of_space_uids.append(stabilities_of_all[uid])
+            else:
+                stabilities_of_space_uids.append(np.nan)
+        stabilities_of_space_uids = np.array(stabilities_of_space_uids, dtype=np.float) <= self.hull_distance
 
         # stabilities_of_new_uids = np.array([stabilities_of_new[uid] for uid in self.new_result_ids],
         #                                    dtype=np.float) <= self.hull_distance
