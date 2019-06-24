@@ -9,11 +9,11 @@ from camd.utils.s3 import cache_s3_objs
 from camd import S3_CACHE
 import os
 
-cache_s3_objs(['camd/shared-data/oqmd_1.2_voronoi_magpie_fingerprints.csv'])
+cache_s3_objs(['camd/shared-data/oqmd_1.2_voronoi_magpie_fingerprints.pickle'])
 ##########################################################
 # Binary stable material discovery QBC based agent recipe
 ##########################################################
-df = pd.read_csv(os.path.join(S3_CACHE, 'camd/shared-data/oqmd_1.2_voronoi_magpie_fingerprints.csv')).sample(frac=0.2)
+df = pd.read_pickle(os.path.join(S3_CACHE, 'camd/shared-data/oqmd_1.2_voronoi_magpie_fingerprints.pickle')).sample(frac=0.2)
 N_seed = 5000  # Starting sample size
 N_query = 200  # This many new candidates are "calculated with DFT" (i.e. requested from Oracle -- DFT)
 agent = RandomAgent
