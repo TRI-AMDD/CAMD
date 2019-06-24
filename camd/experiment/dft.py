@@ -17,6 +17,7 @@ import datetime
 
 
 from camd.experiment.base import Experiment
+from camd.experiment.base import camd_traced
 
 
 class OqmdDFTonMC1(Experiment):

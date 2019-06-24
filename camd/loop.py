@@ -11,10 +11,13 @@ from monty.json import MSONable
 from camd.utils.s3 import cache_s3_objs
 from camd import S3_CACHE
 from camd.agent.base import RandomAgent
+from camd.log import camd_traced
 
 # TODO:
 #  - improve the stopping scheme
 
+
+@camd_traced
 class Loop(MSONable):
     def __init__(self, candidate_data, agent, experiment, analyzer,
                  agent_params=None, experiment_params=None, analyzer_params=None, path=None,

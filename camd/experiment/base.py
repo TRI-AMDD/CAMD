@@ -3,6 +3,7 @@
 import abc
 
 from monty.json import MSONable
+from camd.log import camd_traced
 
 
 class Experiment(abc.ABC, MSONable):
@@ -76,6 +77,8 @@ class Experiment(abc.ABC, MSONable):
         return cls(params)
 
 
+
+@camd_traced
 class ATFSampler(Experiment):
     """
     A simple after the fact sampler that just samples

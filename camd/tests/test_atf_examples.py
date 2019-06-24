@@ -46,7 +46,7 @@ class AftLoopTestLong(unittest.TestCase):
         analyzer = AnalyzeStability
         analyzer_params = {'hull_distance': 0.05}
         experiment = ATFSampler
-        experiment_params = {'dataframe': df}
+        experiment_params = {'params': {'dataframe': df}}
         candidate_data = df
         path = '.'
 
@@ -84,7 +84,7 @@ class AtfLoopTest(unittest.TestCase):
         analyzer = AnalyzeStability
         analyzer_params = {'hull_distance': 0.05}
         experiment = ATFSampler
-        experiment_params = {'dataframe': df}
+        experiment_params = {'params': {'dataframe': df}}
         candidate_data = df
         new_loop = Loop(candidate_data, agent, experiment, analyzer,
                         agent_params=agent_params, analyzer_params=analyzer_params,
@@ -128,7 +128,7 @@ class AtfLoopTest(unittest.TestCase):
         analyzer = AnalyzeStability
         analyzer_params = {'hull_distance': 0.05}
         experiment = ATFSampler
-        experiment_params = {'dataframe': df_sub}
+        experiment_params = {'params': {'dataframe': df_sub}}
         candidate_data = df_sub
         path = '.'
 

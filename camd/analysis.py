@@ -4,6 +4,7 @@ import abc
 
 import numpy as np
 from camd import tqdm
+from camd.log import camd_traced
 from qmpy.analysis.thermodynamics.phase import Phase, PhaseData
 from qmpy.analysis.thermodynamics.space import PhaseSpace
 import multiprocessing
@@ -43,6 +44,7 @@ class AnalyzerBase(abc.ABC):
         """
 
 
+@camd_traced
 class AnalyzeStability(AnalyzerBase):
     """
     This the original stability analyzer. It will be replaced with AnalyzeStability_mod in the near future as
