@@ -39,7 +39,7 @@ class OqmdDFTonMC1(Experiment):
         if self.get_state() and self.job_status:
             return "completed"
         elif sum([doc['status'] in ['SUCCEEDED', 'FAILED']
-                    for doc in self.job_status.values()]) > 0:
+                  for doc in self.job_status.values()]) > 0:
             return "active"
         else:
             return "unstarted"
