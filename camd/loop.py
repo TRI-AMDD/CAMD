@@ -54,7 +54,7 @@ class Loop(MSONable):
         self.experiment = experiment(experiment_params)
         self.experiment_params = experiment_params
 
-        self.analyzer = analyzer
+        self.analyzer = analyzer(**analyzer_params)
         self.analyzer_params = analyzer_params
 
         self.seed_data = seed_data if seed_data is not None else pd.DataFrame()

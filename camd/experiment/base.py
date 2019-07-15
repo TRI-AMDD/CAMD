@@ -92,14 +92,13 @@ class ATFSampler(Experiment):
         """This experiment should be complete on construction"""
         return "completed"
 
-    def get_results(self):
+    def get_results(self, index_values):
         dataframe = self.get_parameter('dataframe')
-        index_values = self.get_parameter('index_values')
         return dataframe.loc[index_values].dropna(axis=0, how='any')
 
     def submit(self, index_values):
-        """This does nothing, since the """
-        self._params['index_values'] = index_values
+        """This does nothing, since the "experiments" are already done"""
+        return {index_value: "completed" for index_value in index_values}
 
     def monitor(self):
         return True
