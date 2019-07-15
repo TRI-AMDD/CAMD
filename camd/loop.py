@@ -42,8 +42,8 @@ class Loop(MSONable):
         self.path = os.path.abspath(self.path)
         os.chdir(self.path)
 
-        self.s3_prefix = self.s3_prefix
-        self.s3_bucket = self.s3_bucket
+        self.s3_prefix = s3_prefix
+        self.s3_bucket = s3_bucket
 
         self.candidate_data = candidate_data
         self.candidate_space = list(candidate_data.index)
@@ -54,7 +54,7 @@ class Loop(MSONable):
         self.experiment = experiment(experiment_params)
         self.experiment_params = experiment_params
 
-        self.analyzer = analyzer(**analyzer_params)
+        self.analyzer = analyzer
         self.analyzer_params = analyzer_params
 
         self.seed_data = seed_data if seed_data is not None else pd.DataFrame()
@@ -334,9 +334,15 @@ class Loop(MSONable):
 
         # Walk paths and subdirectories, uploading files
         for path, subdirs, files in os.walk(self.path):
+            # Get relative path prefix
+            relpath = os.path.relpath(path, self.path)
+            if not relpath.startswith('.'):
+                prefix = os.path.join(self.s3_prefix, relpath)
+            else:
+                prefix = self.s3_prefix
+
             for file in files:
-                file_key = os.path.join(
-                    self.s3_prefix, os.path.relpath(path, self.path), file)
+                file_key = os.path.join(prefix, file)
                 bucket.upload_file(os.path.join(path, file), file_key)
 
 

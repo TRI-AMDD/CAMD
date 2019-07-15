@@ -97,9 +97,9 @@ class ATFSampler(Experiment):
         index_values = self.get_parameter('index_values')
         return dataframe.loc[index_values].dropna(axis=0, how='any')
 
-    def submit(self):
+    def submit(self, index_values):
         """This does nothing, since the """
-        pass
+        self._params['index_values'] = index_values
 
     def monitor(self):
         return True

@@ -2,19 +2,18 @@
 
 import os
 
+from camd import CAMD_RUN_LOC
 from camd.domain import StructureDomain
 from camd.loop import Loop
 from camd.agent.agents import QBCStabilityAgent, AgentStabilityML5
 from camd.analysis import AnalyzeStability_mod
 from camd.experiment.dft import OqmdDFTonMC1
 from sklearn.neural_network import MLPRegressor
+from monty.os import makedirs_p
 import pickle
 
 
 __version__ = "2019.07.15"
-
-
-CAMD_RUN_LOC = os.environ.get("CAMD_RUN_LOC", ".")
 
 
 def run_structure_discovery_campaign(chemsys):
@@ -28,9 +27,14 @@ def run_structure_discovery_campaign(chemsys):
         (bool): True if run exits
 
     """
+    # Get to directory
+    os.chdir(CAMD_RUN_LOC)
+    chemsys_string = '-'.join(sorted(chemsys))
+    makedirs_p(os.path.join("structure-discovery", chemsys_string))
+
     # Get structure domain
     domain = StructureDomain.from_bounds(
-        chemsys, n_max_atoms=12, **{'grid': range(1,3)})
+        chemsys, n_max_atoms=12, **{'grid': range(1, 3)})
     candidate_data = domain.candidates()
     structure_dict = domain.hypo_structures_dict
 
@@ -62,3 +66,5 @@ def run_structure_discovery_campaign(chemsys):
     new_loop.auto_loop_in_directories(
         n_iterations=5, timeout=10, monitor=True, initialize=True, with_icsd=True)
     return True
+
+
