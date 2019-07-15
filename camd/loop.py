@@ -6,6 +6,7 @@ import time
 import numpy as np
 import pandas as pd
 import shutil
+import boto3
 
 from monty.json import MSONable
 from camd.utils.s3 import cache_s3_objs
@@ -130,14 +131,17 @@ class Loop(MSONable):
         self.submitted_experiment_requests = suggested_experiments
         self.save('submitted_experiment_requests')
 
-        self.consumed_candidates+=suggested_experiments
+        self.consumed_candidates += suggested_experiments
         self.save('consumed_candidates')
 
         self.report()
-        self.iteration+=1
+        self.iteration += 1
         self.save("iteration")
+        if self.s3_prefix is not None:
+            self.s3_sync()
 
-    def auto_loop(self, n_iterations=10, timeout=10, monitor=False, initialize=False, with_icsd=False):
+    def auto_loop(self, n_iterations=10, timeout=10, monitor=False,
+                  initialize=False, with_icsd=False):
         """
         Runs the loop repeatedly, and locally. Pretty light weight, but recommended method
         is auto_loop_in_directories.
@@ -309,6 +313,21 @@ class Loop(MSONable):
 
     def get_state(self):
         return self.loop_state
+
+    def s3_sync(self):
+        """
+        Syncs current run to s3_prefix and bucket
+        """
+        # Get bucket
+        s3_resource = boto3.resource("s3")
+        bucket = s3_resource.Bucket(self.s3_bucket_name)
+
+        # Walk paths and subdirectories, uploading files
+        for path, subdirs, files in os.walk(self.path):
+            for file in files:
+                file_key = os.path.join(
+                    self.s3_prefix, os.path.relpath(path, self.path), file)
+                bucket.upload_file(os.path.join(path, file), file_key)
 
 
 def loop_backup(src, new_dir_name):
