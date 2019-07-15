@@ -346,18 +346,3 @@ def loop_backup(src, new_dir_name):
         full_file_name = os.path.join(src, file_name)
         if os.path.isfile(full_file_name):
             shutil.copy(full_file_name, new_dir_name)
-
-
-# a temporary helper function that first creates a domain and sets up a Loop
-def get_structure_campaign(domain_params, loop_params):
-    from camd.domain import StructureDomain
-    domain = StructureDomain(domain_params)
-    candidates = domain.candidates()
-    return Loop(candidate_data=candidates, **loop_params)
-
-# a temporary helper function that first creates a domain and sets up a Loop
-def get_structure_campaign_from_bounds(bounds, domain_params, loop_params):
-    from camd.domain import StructureDomain
-    domain = StructureDomain.from_bounds(bounds, **domain_params)
-    candidates = domain.candidates()
-    return Loop(candidate_data=candidates, **loop_params)
