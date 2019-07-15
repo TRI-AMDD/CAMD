@@ -49,7 +49,7 @@ class Experiment(abc.ABC, MSONable):
             parameter value
 
         """
-        return self._params.get(parameter_name)
+        return self._params[parameter_name]
 
 
     def _update_results(self):
@@ -90,16 +90,16 @@ class ATFSampler(Experiment):
 
     def get_state(self):
         """This experiment should be complete on construction"""
-        return True
+        return "completed"
 
-    def get_results(self, index_labels):
+    def get_results(self):
         dataframe = self.get_parameter('dataframe')
-        return dataframe.loc[index_labels]
+        index_values = self.get_parameter('index_values')
+        return dataframe.loc[index_values].dropna(axis=0, how='any')
 
-    def submit(self, unique_ids, *args):
-        self.unique_ids = unique_ids
-        return dict(zip(unique_ids, [{'status': 'SUCCEEDED'} for i in range(len(unique_ids))]))
+    def submit(self):
+        """This does nothing, since the """
+        pass
 
     def monitor(self):
-        unique_ids = self.unique_ids
-        return dict(zip(unique_ids, [{'status': 'SUCCEEDED'} for i in range(len(unique_ids))]))
+        return True

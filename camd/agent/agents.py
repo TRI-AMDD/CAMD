@@ -35,7 +35,7 @@ class QBCStabilityAgent(HypothesisAgent):
 
         super(QBCStabilityAgent, self).__init__()
 
-    def get_hypotheses(self, candidate_data, seed_data=None, retrain_committee=False):
+    def get_hypotheses(self, candidate_data, seed_data=None, retrain_committee=True):
         if self.N_species:
             self.candidate_data = candidate_data[ candidate_data['N_species'] == self.N_species ]
         else:
@@ -45,11 +45,19 @@ class QBCStabilityAgent(HypothesisAgent):
             self.qbc.trained = False
 
         if not self.qbc.trained:
-            self.qbc.fit(self.seed_data, self.seed_data['delta_e'], ignore_columns=['Composition', 'N_species', 'delta_e'])
+            self.qbc.fit(self.seed_data, self.seed_data['delta_e'], ignore_columns=['Composition',
+                                                                                    'N_species', 'delta_e'])
         self.cv_score = self.qbc.cv_score
 
+        # Dropping columns not relevant for ML predictions, but also
+        # 'delta_e' column, if exists. The latter is to ensure delta_e does not end up in features if using
+        # after the fact data.
+        columns_to_drop = ['Composition', 'N_species']
+        if 'delta_e' in self.candidate_data:
+            columns_to_drop.append('delta_e')
+
         # QBC makes predictions for Hf and uncertainty on candidate data
-        preds, stds = self.qbc.predict(self.candidate_data)
+        preds, stds = self.qbc.predict(self.candidate_data, ignore_columns=columns_to_drop)
         expected = preds - stds
 
         # This is just curbing outrageously negative predictions
@@ -132,7 +140,7 @@ class AgentStabilityML5(HypothesisAgent):
             self.candidate_data = candidate_data
         self.seed_data = seed_data
         overall_model = self.ML_algorithm(**self.ML_algorithm_params)
-        X = self.seed_data.drop(['Composition', 'delta_e', 'N_species'], axis=1)
+        X = self.seed_data.drop(['Composition', 'N_species', 'delta_e'], axis=1)
 
         from sklearn.preprocessing import StandardScaler
         overall_scaler = StandardScaler()
@@ -144,7 +152,13 @@ class AgentStabilityML5(HypothesisAgent):
                                    cv=KFold(5, shuffle=True), scoring='neg_mean_absolute_error')
         self.cv_score = np.mean(cv_score)*-1
 
-        cand_X = self.candidate_data.drop(['Composition', 'delta_e', 'N_species'], axis=1)
+        # Dropping columns not relevant for ML predictions, but also
+        # 'delta_e' column, if exists. The latter is to ensure delta_e does not end up in features if using
+        # after the fact data.
+        columns_to_drop = ['Composition', 'N_species']
+        if 'delta_e' in self.candidate_data:
+            columns_to_drop.append('delta_e')
+        cand_X = self.candidate_data.drop(columns_to_drop, axis=1)
         cand_X = overall_scaler.transform(cand_X)
         expected = overall_model.predict(cand_X)
 

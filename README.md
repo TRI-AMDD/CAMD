@@ -61,16 +61,3 @@ Then use the included setup.py procedure, from the cloned directory.
 ```angular2
 python setup.py develop
 ```
-
-## Data download
-
-Dataset for featurized OQMD entries for after-the-fact testing can be 
-downloaded from dedicated S3 bucket.
-
-If you are in the vaspUsers group (e. g. SUNCAT), you can use the shell command:
-
-```angular2
-aws s3 cp s3://matr.io/materials-data-external/OQMD_data/oqmd_voro_March25_v2.csv .
-```
-
-To download the data into your current directory.

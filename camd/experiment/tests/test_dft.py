@@ -1,11 +1,10 @@
-import unittest
-import time
+#  Copyright (c) 2019 Toyota Research Institute.  All rights reserved.
 
-from monty.tempfile import ScratchDir
+import unittest
+
 from pymatgen.util.testing import PymatgenTest
 from pymatgen import MPRester
-from camd.experiment.dft import submit_dft_calcs_to_mc1, check_dft_calcs,\
-    run_dft_experiments
+from camd.experiment.dft import OqmdDFTonMC1
 
 
 # This test is still inconsistent because of issues with
@@ -21,12 +20,17 @@ class Mc1Test(unittest.TestCase):
         bad_silicon.append("Si", [0.1, 0.1, 0.15])
         bad_silicon.append("Si", [0.1, 0.333, 0.15])
         self.assertEqual(len(bad_silicon), 4)
-        calc_status = run_dft_experiments({
-            "good": good_silicon, "bad": bad_silicon},
-             poll_time=30, timeout=150)
+        params = {"structure_dict": {"good": good_silicon,
+                                     "bad": bad_silicon},
+                  "poll_time": 30, "timeout": 150}
 
-        self.assertEqual(calc_status['good']['status'], 'SUCCEEDED')
-        self.assertEqual(calc_status['bad']['status'], 'FAILED')
+        experiment = OqmdDFTonMC1(params)
+        experiment.submit()
+        status = experiment.monitor()
+        results = experiment.get_results()
+
+        self.assertEqual(results['good']['status'], 'SUCCEEDED')
+        self.assertEqual(results['bad']['status'], 'FAILED')
 
     @unittest.skipUnless(False, "toggle this test")
     def test_structure_suite(self):
@@ -39,7 +43,13 @@ class Mc1Test(unittest.TestCase):
         with MPRester() as mpr:
             structure_dict = {mp_id: mpr.get_structure_by_material_id(mp_id)
                               for mp_id in mp_ids}
-        status = run_dft_experiments(structure_dict, poll_time=25)
+        params = {"structure_dict": structure_dict,
+                  "poll_time": 25}
+
+        experiment = OqmdDFTonMC1(params)
+        experiment.submit()
+        status = experiment.monitor()
+        results = experiment.get_results()
         self.assertTrue(all([run['status'] == "SUCCEEDED" for run in status]))
 
 
