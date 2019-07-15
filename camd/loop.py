@@ -10,7 +10,7 @@ import boto3
 
 from monty.json import MSONable
 from camd.utils.s3 import cache_s3_objs
-from camd import S3_CACHE
+from camd import S3_CACHE, CAMD_S3_BUCKET
 from camd.agent.base import RandomAgent
 from camd.log import camd_traced
 
@@ -21,8 +21,9 @@ from camd.log import camd_traced
 @camd_traced
 class Loop(MSONable):
     def __init__(self, candidate_data, agent, experiment, analyzer,
-                 agent_params=None, experiment_params=None, analyzer_params=None, path=None,
-                 seed_data=None, create_seed=False):
+                 agent_params=None, experiment_params=None, analyzer_params=None,
+                 path=None, seed_data=None, create_seed=False, s3_prefix=None,
+                 s3_bucket=CAMD_S3_BUCKET):
         """
 
         Args:
@@ -30,12 +31,19 @@ class Loop(MSONable):
             agent (HypothesisAgent): a subclass of HypothesisAgent
             experiment (Experiment): a subclass of Experiment
             analyzer (Analyzer): a subclass of Analyzer
-            seed_data (pandas.DataFrame): Seed Data for active learning, index is to be the assumed uid
             path (str): path in which to execute the loop
+            seed_data (pandas.DataFrame): Seed Data for active learning, index is to be the assumed uid
+            s3_prefix (str): prefix which to prepend all s3 synced files with,
+                if None is specified, s3 syncing will not occur
+            s3_bucket (str): bucket name for s3 sync.  If not specified,
+                CAMD will sync to the specified environment variable.
         """
         self.path = path if path else '.'
         self.path = os.path.abspath(self.path)
         os.chdir(self.path)
+
+        self.s3_prefix = self.s3_prefix
+        self.s3_bucket = self.s3_bucket
 
         self.candidate_data = candidate_data
         self.candidate_space = list(candidate_data.index)
@@ -255,6 +263,8 @@ class Loop(MSONable):
         self.save('submitted_experiment_requests')
         self.save("consumed_candidates")
         self.save("iteration")
+        if self.s3_prefix:
+            self.s3_sync()
 
     def initialize_with_icsd_seed(self, random_state=42):
         if self.initialized:
@@ -320,7 +330,7 @@ class Loop(MSONable):
         """
         # Get bucket
         s3_resource = boto3.resource("s3")
-        bucket = s3_resource.Bucket(self.s3_bucket_name)
+        bucket = s3_resource.Bucket(self.s3_bucket)
 
         # Walk paths and subdirectories, uploading files
         for path, subdirs, files in os.walk(self.path):
