@@ -1,18 +1,15 @@
 import unittest
+import os
 from camd.domain import StructureDomain, get_structures_from_protosearch
-from camd.utils.s3 import s3_connection_broken
 from pymatgen import Structure
 
 
-if not s3_connection_broken("matr.io", "camd/shared-data"):
-    S3_CONNECTION = True
-else:
-    S3_CONNECTION = False
+CAMD_LONG_TESTS = os.environ.get("CAMD_LONG_TESTS", False)
+SKIP_MSG = "Long tests disabled, set CAMD_LONG_TESTS to run long tests"
 
 
-# TODO:
-# - Add StructureDomain tests
-@unittest.skipUnless(S3_CONNECTION, "S3 connection broken")
+# TODO: add lightweight version of these?
+@unittest.skipUnless(CAMD_LONG_TESTS, SKIP_MSG)
 class DomainTest(unittest.TestCase):
 
     def test_get_structures_from_protosearch(self):
