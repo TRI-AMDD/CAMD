@@ -29,6 +29,9 @@ def s3_connection_broken(bucket, prefix):
         s3 = boto3.client('s3')
         s3.list_objects_v2(Bucket=bucket, Prefix=prefix)
         return False
+    # Could add client error here, but I'm reluctant to because
+    # it could lead to soft errors if we don't have permissions
+    # properly set up - jhmontoya
     except NoCredentialsError as e:
         return True
 

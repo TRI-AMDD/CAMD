@@ -64,13 +64,17 @@ class DomainBase(abc.ABC):
 
 class StructureDomain(DomainBase):
     """
-    Provides machine learning ready candidate domains (search spaces) for hypothetical structures.
-    If scanning an entire system, use the StructureDomain.from_bounds method. If scanning for formula(s),
+    Provides machine learning ready candidate domains (search spaces) for
+    hypothetical structures.  If scanning an entire system, use the
+    StructureDomain.from_bounds method. If scanning for formula(s),
     provide a list of formulas directly to StructureDomain.
-    Once the StructureDomain is initialized, the method candidates returns a fully-featurized hypothetical
-    materials set subject to n_max_atoms.
+
+    Once the StructureDomain is initialized, the method candidates returns
+    a fully-featurized hypothetical materials set subject to n_max_atoms.
+
     Args:
-        formulas ([str]): list of chemical formulas to create new material candidates.
+        formulas ([str]): list of chemical formulas to create new
+            material candidates.
     """
     def __init__(self, formulas, n_max_atoms=None):
         self.formulas = formulas

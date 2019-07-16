@@ -6,10 +6,11 @@ import time
 import numpy as np
 import pandas as pd
 import shutil
+import boto3
 
 from monty.json import MSONable
 from camd.utils.s3 import cache_s3_objs
-from camd import S3_CACHE
+from camd import S3_CACHE, CAMD_S3_BUCKET
 from camd.agent.base import RandomAgent
 from camd.log import camd_traced
 
@@ -20,8 +21,9 @@ from camd.log import camd_traced
 @camd_traced
 class Loop(MSONable):
     def __init__(self, candidate_data, agent, experiment, analyzer,
-                 agent_params=None, experiment_params=None, analyzer_params=None, path=None,
-                 seed_data=None, create_seed=False):
+                 agent_params=None, experiment_params=None, analyzer_params=None,
+                 path=None, seed_data=None, create_seed=False, s3_prefix=None,
+                 s3_bucket=CAMD_S3_BUCKET):
         """
 
         Args:
@@ -29,12 +31,19 @@ class Loop(MSONable):
             agent (HypothesisAgent): a subclass of HypothesisAgent
             experiment (Experiment): a subclass of Experiment
             analyzer (Analyzer): a subclass of Analyzer
-            seed_data (pandas.DataFrame): Seed Data for active learning, index is to be the assumed uid
             path (str): path in which to execute the loop
+            seed_data (pandas.DataFrame): Seed Data for active learning, index is to be the assumed uid
+            s3_prefix (str): prefix which to prepend all s3 synced files with,
+                if None is specified, s3 syncing will not occur
+            s3_bucket (str): bucket name for s3 sync.  If not specified,
+                CAMD will sync to the specified environment variable.
         """
         self.path = path if path else '.'
         self.path = os.path.abspath(self.path)
         os.chdir(self.path)
+
+        self.s3_prefix = s3_prefix
+        self.s3_bucket = s3_bucket
 
         self.candidate_data = candidate_data
         self.candidate_space = list(candidate_data.index)
@@ -130,14 +139,17 @@ class Loop(MSONable):
         self.submitted_experiment_requests = suggested_experiments
         self.save('submitted_experiment_requests')
 
-        self.consumed_candidates+=suggested_experiments
+        self.consumed_candidates += suggested_experiments
         self.save('consumed_candidates')
 
         self.report()
-        self.iteration+=1
+        self.iteration += 1
         self.save("iteration")
+        if self.s3_prefix is not None:
+            self.s3_sync()
 
-    def auto_loop(self, n_iterations=10, timeout=10, monitor=False, initialize=False, with_icsd=False):
+    def auto_loop(self, n_iterations=10, timeout=10, monitor=False,
+                  initialize=False, with_icsd=False):
         """
         Runs the loop repeatedly, and locally. Pretty light weight, but recommended method
         is auto_loop_in_directories.
@@ -251,6 +263,8 @@ class Loop(MSONable):
         self.save('submitted_experiment_requests')
         self.save("consumed_candidates")
         self.save("iteration")
+        if self.s3_prefix:
+            self.s3_sync()
 
     def initialize_with_icsd_seed(self, random_state=42):
         if self.initialized:
@@ -310,6 +324,27 @@ class Loop(MSONable):
     def get_state(self):
         return self.loop_state
 
+    def s3_sync(self):
+        """
+        Syncs current run to s3_prefix and bucket
+        """
+        # Get bucket
+        s3_resource = boto3.resource("s3")
+        bucket = s3_resource.Bucket(self.s3_bucket)
+
+        # Walk paths and subdirectories, uploading files
+        for path, subdirs, files in os.walk(self.path):
+            # Get relative path prefix
+            relpath = os.path.relpath(path, self.path)
+            if not relpath.startswith('.'):
+                prefix = os.path.join(self.s3_prefix, relpath)
+            else:
+                prefix = self.s3_prefix
+
+            for file in files:
+                file_key = os.path.join(prefix, file)
+                bucket.upload_file(os.path.join(path, file), file_key)
+
 
 def loop_backup(src, new_dir_name):
     """
@@ -327,18 +362,3 @@ def loop_backup(src, new_dir_name):
         full_file_name = os.path.join(src, file_name)
         if os.path.isfile(full_file_name):
             shutil.copy(full_file_name, new_dir_name)
-
-
-# a temporary helper function that first creates a domain and sets up a Loop
-def get_structure_campaign(domain_params, loop_params):
-    from camd.domain import StructureDomain
-    domain = StructureDomain(domain_params)
-    candidates = domain.candidates()
-    return Loop(candidate_data=candidates, **loop_params)
-
-# a temporary helper function that first creates a domain and sets up a Loop
-def get_structure_campaign_from_bounds(bounds, domain_params, loop_params):
-    from camd.domain import StructureDomain
-    domain = StructureDomain.from_bounds(bounds, **domain_params)
-    candidates = domain.candidates()
-    return Loop(candidate_data=candidates, **loop_params)
