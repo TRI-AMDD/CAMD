@@ -16,12 +16,11 @@ class DomainTest(unittest.TestCase):
         structure_df = get_structures_from_protosearch(["V3O7"], source='icsd')
 
         self.assertEqual(structure_df.shape, (20, 4))
-        # self.assertIn("A3B7_2_b2_a2b4_146_O_V", list(structure_df.index))
 
     def test_StructureDomain(self):
         sd = StructureDomain.from_bounds(['Ir', 'O'], charge_balanced=False)
 
-        self.assertEqual(sd.bounds, {'O', 'Ir'} )
+        self.assertEqual(sd.bounds, {'O', 'Ir'})
         self.assertTrue(len(sd.formulas), 35)
         self.assertIn('Ir7O4', sd.formulas)
 
@@ -49,12 +48,10 @@ class DomainTest(unittest.TestCase):
         self.assertEqual(len(sd.formulas), 1)
         sd.get_structures()
         self.assertEqual(len(sd.hypo_structures), 43)
-        self.assertEqual(type(sd.hypo_structures['pmg_structures'][3]),Structure)
+        self.assertEqual(type(sd.hypo_structures['pmg_structures'][3]), Structure)
 
         sd.featurize_structures()
         self.assertEqual(sd.features.shape, (43, 275))
-        # self.assertAlmostEqual(sd.features.loc['ABCD3_2_g_i_i_ij_12_Ba_Cu_O_Y']['range CN_VoronoiNN'],
-        #                        6.6949386, places=6)
 
 
 if __name__ == '__main__':
