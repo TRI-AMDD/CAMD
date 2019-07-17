@@ -1,11 +1,18 @@
 #  Copyright (c) 2019 Toyota Research Institute.  All rights reserved.
 
 import traceback
+import pandas as pd
+import os
 
 from monty.serialization import dumpfn
 from camd.domain import StructureDomain
+from camd.agent.agents import AgentStabilityML5
+from camd.agent.base import RandomAgent
+from camd.analysis import AnalyzeStability
+from camd.experiment import ATFSampler
 from camd.loop import Loop
-from camd.agent.agents import QBCStabilityAgent, AgentStabilityML5
+from camd import CAMD_TEST_FILES
+
 from camd.analysis import AnalyzeStability_mod
 from camd.experiment.dft import OqmdDFTonMC1
 from sklearn.neural_network import MLPRegressor
@@ -66,8 +73,30 @@ def run_dft_campaign(chemsys, s3_prefix=None):
         error_msg = {"error": "{}".format(e),
                      "traceback": traceback.format_exc()}
         dumpfn(error_msg, "error.json")
+        new_loop.s3_sync()
 
     return True
 
+
 def run_atf_campaign(s3_prefix):
-    pass
+    df = pd.read_csv(os.path.join(CAMD_TEST_FILES, 'test_df.csv'))
+    n_seed = 200  # Starting sample size
+    n_query = 10  # This many new candidates are "calculated with DFT" (i.e. requested from Oracle -- DFT)
+    agent = RandomAgent
+    agent_params = {'hull_distance': 0.05, 'N_query': n_query}
+    analyzer = AnalyzeStability
+    analyzer_params = {'hull_distance': 0.05}
+    experiment = ATFSampler
+    experiment_params = {'dataframe': df}
+    candidate_data = df
+    new_loop = Loop(candidate_data, agent, experiment, analyzer,
+                    agent_params=agent_params, analyzer_params=analyzer_params,
+                    experiment_params=experiment_params,
+                    create_seed=n_seed, s3_prefix=s3_prefix)
+
+    new_loop.initialize()
+
+    for _ in range(3):
+        new_loop.run()
+
+    return True
