@@ -1,22 +1,21 @@
 #  Copyright (c) 2019 Toyota Research Institute.  All rights reserved.
 
-import os
+import traceback
 
-from camd import CAMD_RUN_LOC
+from monty.serialization import dumpfn
 from camd.domain import StructureDomain
 from camd.loop import Loop
 from camd.agent.agents import QBCStabilityAgent, AgentStabilityML5
 from camd.analysis import AnalyzeStability_mod
 from camd.experiment.dft import OqmdDFTonMC1
 from sklearn.neural_network import MLPRegressor
-from monty.os import makedirs_p
 import pickle
 
 
 __version__ = "2019.07.15"
 
 
-def run_structure_discovery_campaign(chemsys):
+def run_dft_campaign(chemsys, s3_prefix=None):
     """
 
     Args:
@@ -27,11 +26,6 @@ def run_structure_discovery_campaign(chemsys):
         (bool): True if run exits
 
     """
-    # Get to directory
-    os.chdir(CAMD_RUN_LOC)
-    chemsys_string = '-'.join(sorted(chemsys))
-    makedirs_p(os.path.join("structure-discovery", chemsys_string))
-
     # Get structure domain
     domain = StructureDomain.from_bounds(
         chemsys, n_max_atoms=12, **{'grid': range(1, 3)})
@@ -62,9 +56,18 @@ def run_structure_discovery_campaign(chemsys):
     # Construct and start loop
     new_loop = Loop(
         candidate_data, agent, experiment, analyzer, agent_params=agent_params,
-        analyzer_params=analyzer_params, experiment_params=experiment_params)
-    new_loop.auto_loop_in_directories(
-        n_iterations=5, timeout=10, monitor=True, initialize=True, with_icsd=True)
+        analyzer_params=analyzer_params, experiment_params=experiment_params,
+        s3_prefix=s3_prefix)
+    try:
+        new_loop.auto_loop_in_directories(
+            n_iterations=5, timeout=10, monitor=True,
+            initialize=True, with_icsd=True)
+    except Exception as e:
+        error_msg = {"error": "{}".format(e),
+                     "traceback": traceback.format_exc()}
+        dumpfn(error_msg, "error.json")
+
     return True
 
-
+def run_atf_campaign(s3_prefix):
+    pass
