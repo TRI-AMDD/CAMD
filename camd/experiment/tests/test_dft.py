@@ -1,16 +1,21 @@
 #  Copyright (c) 2019 Toyota Research Institute.  All rights reserved.
 
 import unittest
+import os
 
 from pymatgen.util.testing import PymatgenTest
 from pymatgen import MPRester
 from camd.experiment.dft import OqmdDFTonMC1
 
 
+CAMD_DFT_TESTS = os.environ.get("CAMD_DFT_TESTS", False)
+SKIP_MSG = "Long tests disabled, set CAMD_DFT_TESTS to run long tests"
+
+
 # This test is still inconsistent because of issues with
 # batch AWS jobs and database communications
 class Mc1Test(unittest.TestCase):
-    @unittest.skipUnless(False, "toggle this test")
+    @unittest.skipUnless(CAMD_DFT_TESTS, SKIP_MSG)
     def test_get(self):
 
         good_silicon = PymatgenTest.get_structure("Si")
@@ -32,7 +37,7 @@ class Mc1Test(unittest.TestCase):
         self.assertEqual(results['good']['status'], 'SUCCEEDED')
         self.assertEqual(results['bad']['status'], 'FAILED')
 
-    @unittest.skipUnless(False, "toggle this test")
+    @unittest.skipUnless(CAMD_DFT_TESTS, SKIP_MSG)
     def test_structure_suite(self):
         # TODO: fix the formation energy calculation
         mp_ids = ["mp-702",
