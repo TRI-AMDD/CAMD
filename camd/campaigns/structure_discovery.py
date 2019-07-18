@@ -22,20 +22,20 @@ import pickle
 __version__ = "2019.07.15"
 
 
-def run_dft_campaign(chemsys, s3_prefix=None):
+def run_proto_dft_campaign(chemsys):
     """
 
     Args:
-        chemsys (List): list of elements in which to do
-            the chemsys
+        chemsys (str): chemical system for the campaign
 
     Returns:
         (bool): True if run exits
 
     """
     # Get structure domain
+    element_list = chemsys.split('-')
     domain = StructureDomain.from_bounds(
-        chemsys, n_max_atoms=12, **{'grid': range(1, 3)})
+        element_list, n_max_atoms=12, **{'grid': range(1, 3)})
     candidate_data = domain.candidates()
     structure_dict = domain.hypo_structures_dict
 
@@ -64,7 +64,7 @@ def run_dft_campaign(chemsys, s3_prefix=None):
     new_loop = Loop(
         candidate_data, agent, experiment, analyzer, agent_params=agent_params,
         analyzer_params=analyzer_params, experiment_params=experiment_params,
-        s3_prefix=s3_prefix)
+        s3_prefix="proto-dft/runs/{}".format(chemsys))
     try:
         new_loop.auto_loop_in_directories(
             n_iterations=5, timeout=10, monitor=True,
@@ -78,7 +78,14 @@ def run_dft_campaign(chemsys, s3_prefix=None):
     return True
 
 
-def run_atf_campaign(s3_prefix):
+def run_atf_campaign(chemsys):
+    """
+    A very simple test campaign
+
+    Returns:
+        True
+
+    """
     df = pd.read_csv(os.path.join(CAMD_TEST_FILES, 'test_df.csv'))
     n_seed = 200  # Starting sample size
     n_query = 10  # This many new candidates are "calculated with DFT" (i.e. requested from Oracle -- DFT)
@@ -91,8 +98,8 @@ def run_atf_campaign(s3_prefix):
     candidate_data = df
     new_loop = Loop(candidate_data, agent, experiment, analyzer,
                     agent_params=agent_params, analyzer_params=analyzer_params,
-                    experiment_params=experiment_params,
-                    create_seed=n_seed, s3_prefix=s3_prefix)
+                    experiment_params=experiment_params, create_seed=n_seed,
+                    s3_prefix="oqmd-atf/runs/{}".format(chemsys))
 
     new_loop.initialize()
 
