@@ -145,6 +145,8 @@ class Loop(MSONable):
         self.report()
         self.iteration += 1
         self.save("iteration")
+
+        # Do s3 sync
         if self.s3_prefix is not None:
             self.s3_sync()
 

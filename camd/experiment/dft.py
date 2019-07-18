@@ -113,7 +113,7 @@ class OqmdDFTonMC1(Experiment):
                             doc.update({"status": "FAILED",
                                         "error": "timeout"})
                             # Kill AWS job
-                            kill_cmd = "aws batch terminate-job --job-id {} --reason camd_timeout".format(
+                            kill_cmd = "aws batch terminate-job --region=us-east-1 --job-id {} --reason camd_timeout".format(
                                 doc['jobId'])
                             kill_result = subprocess.check_output(shlex.split(kill_cmd))
 
@@ -192,7 +192,7 @@ def check_dft_calcs(calc_status):
             continue
         path = calc['path']
         print("Checking status of {}: {}".format(path, structure_id))
-        aws_cmd = "aws batch describe-jobs --jobs {}".format(calc['jobId'])
+        aws_cmd = "aws batch describe-jobs --jobs --region=us-east-1 {}".format(calc['jobId'])
         result = subprocess.check_output(shlex.split(aws_cmd))
         result = json.loads(result)
         aws_status = result["jobs"][0]["status"]
