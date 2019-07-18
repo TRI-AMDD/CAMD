@@ -82,3 +82,8 @@ class Worker(object):
         latest_unstarted = sorted(unstarted, key=lambda x: submission_times[x])
 
         return latest_unstarted[-1] if latest_unstarted else None
+
+
+if __name__ == "__main__":
+    worker = Worker("proto-dft")
+    worker.start()
