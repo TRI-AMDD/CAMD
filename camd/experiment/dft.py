@@ -192,7 +192,7 @@ def check_dft_calcs(calc_status):
             continue
         path = calc['path']
         print("Checking status of {}: {}".format(path, structure_id))
-        aws_cmd = "aws batch describe-jobs --jobs {} --region=us-east-1".format(calc['jobId'])
+        aws_cmd = "aws batch describe-jobs --jobs --region=us-east-1 {}".format(calc['jobId'])
         result = subprocess.check_output(shlex.split(aws_cmd))
         result = json.loads(result)
         aws_status = result["jobs"][0]["status"]
