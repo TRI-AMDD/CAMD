@@ -17,7 +17,6 @@ SKIP_MSG = "Long tests disabled, set CAMD_DFT_TESTS to run long tests"
 class Mc1Test(unittest.TestCase):
     @unittest.skipUnless(CAMD_DFT_TESTS, SKIP_MSG)
     def test_get(self):
-
         good_silicon = PymatgenTest.get_structure("Si")
         bad_silicon = good_silicon.copy()
 
@@ -32,10 +31,10 @@ class Mc1Test(unittest.TestCase):
         experiment = OqmdDFTonMC1(params)
         experiment.submit()
         status = experiment.monitor()
-        results = experiment.get_results()
+        results = experiment.get_results(['good', 'bad'], populate_candidate_data=False)
 
-        self.assertEqual(results['good']['status'], 'SUCCEEDED')
-        self.assertEqual(results['bad']['status'], 'FAILED')
+        self.assertAlmostEqual(results['good'], 0, 5)
+        self.assertIsNone(results.get('bad'))
 
     @unittest.skipUnless(CAMD_DFT_TESTS, SKIP_MSG)
     def test_structure_suite(self):
