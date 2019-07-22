@@ -39,7 +39,6 @@ class WorkerTest(unittest.TestCase):
             obj = s3_resource.Object(CAMD_S3_BUCKET, key)
             obj.put(Body=json.dumps({"status": "started"}))
 
-
     def test_get_latest_chemsys(self):
         self.submit_chemsyses(["O-V", "O-Ti", "Fe-O"])
         worker = Worker("oqmd-atf")
@@ -53,7 +52,6 @@ class WorkerTest(unittest.TestCase):
         self.put_runs(["O-V", "O-Ti"])
         latest_chemsys = worker.get_latest_chemsys()
         self.assertIsNone(latest_chemsys)
-
 
     def test_run_atf_campaign(self):
         self.submit_chemsyses(["O-Ti", "Fe-O"])

@@ -67,7 +67,8 @@ class Worker(object):
         submit_objects = s3_client.list_objects(
             Bucket=CAMD_S3_BUCKET, Prefix=submission_prefix)
         submission_times = {obj['Key'].split('/')[-2]: obj['LastModified']
-                            for obj in submit_objects['Contents']}
+                            for obj in submit_objects['Contents']
+                            if obj != "{}/submit/".format(self.campaign)}
 
         # Get started jobs
         start_prefix = '/'.join([self.campaign, "runs"])
