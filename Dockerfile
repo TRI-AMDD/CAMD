@@ -27,8 +27,6 @@ RUN /etc/init.d/postgresql start && \
   createdb local
 USER root
 
-# Set TQDM to be off in tests
-ENV TQDM_OFF=1
 
 # Goofy numpy pre-install
 # RUN pip install numpy
