@@ -53,7 +53,7 @@ class Mc1Test(unittest.TestCase):
         experiment = OqmdDFTonMC1(params)
         experiment.submit()
         status = experiment.monitor()
-        results = experiment.get_results()
+        results = experiment.get_results(mp_ids)
         self.assertTrue(all([run['status'] == "SUCCEEDED" for run in status]))
 
 
