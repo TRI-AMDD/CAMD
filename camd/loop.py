@@ -9,7 +9,7 @@ import shutil
 import boto3
 
 from monty.json import MSONable
-from camd.utils.s3 import cache_s3_objs
+from camd.utils.s3 import cache_s3_objs, s3_sync
 from camd import S3_CACHE, CAMD_S3_BUCKET
 from camd.agent.base import RandomAgent
 from camd.log import camd_traced
@@ -145,10 +145,6 @@ class Loop(MSONable):
         self.report()
         self.iteration += 1
         self.save("iteration")
-
-        # Do s3 sync
-        if self.s3_prefix is not None:
-            self.s3_sync()
 
     def auto_loop(self, n_iterations=10, timeout=10, monitor=False,
                   initialize=False, with_icsd=False):
@@ -323,6 +319,10 @@ class Loop(MSONable):
         with open(_path, mode) as f:
             m.dump(self.__getattribute__(data_holder), f)
 
+        # Do s3 sync if present
+        if self.s3_prefix:
+            self.s3_sync()
+
     def get_state(self):
         return self.loop_state
 
@@ -330,22 +330,7 @@ class Loop(MSONable):
         """
         Syncs current run to s3_prefix and bucket
         """
-        # Get bucket
-        s3_resource = boto3.resource("s3")
-        bucket = s3_resource.Bucket(self.s3_bucket)
-
-        # Walk paths and subdirectories, uploading files
-        for path, subdirs, files in os.walk(self.path):
-            # Get relative path prefix
-            relpath = os.path.relpath(path, self.path)
-            if not relpath.startswith('.'):
-                prefix = os.path.join(self.s3_prefix, relpath)
-            else:
-                prefix = self.s3_prefix
-
-            for file in files:
-                file_key = os.path.join(prefix, file)
-                bucket.upload_file(os.path.join(path, file), file_key)
+        s3_sync(self.s3_bucket, self.s3_prefix, self.path)
 
 
 def loop_backup(src, new_dir_name):

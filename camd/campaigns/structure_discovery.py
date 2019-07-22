@@ -61,11 +61,11 @@ def run_proto_dft_campaign(chemsys):
     experiment_params.update({'timeout': 30000})
 
     # Construct and start loop
-    new_loop = Loop(
-        candidate_data, agent, experiment, analyzer, agent_params=agent_params,
-        analyzer_params=analyzer_params, experiment_params=experiment_params,
-        s3_prefix="proto-dft/runs/{}".format(chemsys))
     try:
+        new_loop = Loop(
+            candidate_data, agent, experiment, analyzer, agent_params=agent_params,
+            analyzer_params=analyzer_params, experiment_params=experiment_params,
+            s3_prefix="proto-dft/runs/{}".format(chemsys))
         new_loop.auto_loop_in_directories(
             n_iterations=5, timeout=10, monitor=True,
             initialize=True, with_icsd=True)
