@@ -76,6 +76,7 @@ def run_proto_dft_campaign(chemsys):
         error_msg = {"error": "{}".format(e),
                      "traceback": traceback.format_exc()}
         dumpfn(error_msg, "error.json")
+        dumpfn({"status": "error"}, "job_status.json")
         s3_sync(s3_bucket=CAMD_S3_BUCKET, s3_prefix=s3_prefix, sync_path='.')
 
     return True
