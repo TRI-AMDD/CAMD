@@ -34,8 +34,8 @@ class Worker(object):
         for campaign_num in itertools.count():
             latest_chemsys = self.get_latest_chemsys()
             if latest_chemsys:
-                print("Running {}".format(latest_chemsys))
-                with ScratchDir('.'):
+                with ScratchDir('.') as sd:
+                    print("Running {} in {}".format(latest_chemsys, sd))
                     self.run_campaign(latest_chemsys)
             else:
                 print("No new campaigns submitted, sleeping for 60 seconds")
