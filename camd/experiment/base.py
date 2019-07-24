@@ -51,9 +51,8 @@ class Experiment(abc.ABC, MSONable):
         """
         return self._params[parameter_name]
 
-
-    def _update_results(self):
-        self.results = self.get_results()
+    def _update_results(self, indices):
+        self.results = self.get_results(indices)
 
     @abc.abstractmethod
     def monitor(self):

@@ -34,9 +34,11 @@ class Worker(object):
         for campaign_num in itertools.count():
             latest_chemsys = self.get_latest_chemsys()
             if latest_chemsys:
-                with ScratchDir('.'):
+                with ScratchDir('.') as sd:
+                    print("Running {} in {}".format(latest_chemsys, sd))
                     self.run_campaign(latest_chemsys)
             else:
+                print("No new campaigns submitted, sleeping for 60 seconds")
                 time.sleep(60)
             if num_loops and campaign_num >= num_loops - 1:
                 break
@@ -67,7 +69,8 @@ class Worker(object):
         submit_objects = s3_client.list_objects(
             Bucket=CAMD_S3_BUCKET, Prefix=submission_prefix)
         submission_times = {obj['Key'].split('/')[-2]: obj['LastModified']
-                            for obj in submit_objects['Contents']}
+                            for obj in submit_objects['Contents']
+                            if obj['Key'] != "{}/submit/".format(self.campaign)}
 
         # Get started jobs
         start_prefix = '/'.join([self.campaign, "runs"])
