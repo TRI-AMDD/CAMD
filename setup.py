@@ -36,7 +36,6 @@ setup(
                       "protosearch",
                       "autologging",
                       "awscli",
-                      "ase==3.17"  # pin ase temporarily to fix bug in protosearch
                       ],
     # TODO: make this materials?
     dependency_links=[
