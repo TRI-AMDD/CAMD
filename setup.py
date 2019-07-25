@@ -28,9 +28,19 @@ setup(
                       "tqdm",
                       "pandas",
                       "sklearn",
-                      "boto3"],
+                      "boto3",
+                      "monty",
+                      "sqlalchemy",
+                      "matminer",
+                      "psycopg2",
+                      "protosearch",
+                      "autologging",
+                      "awscli",
+                      ],
     # TODO: make this materials?
     dependency_links=[
-        "http://github.com/JosephMontoya-TRI/qmpy_py3/tarball/master#egg=qmpy"
+        "http://github.com/JosephMontoya-TRI/qmpy_py3/tarball/master#egg=qmpy",
+        "http://github.com/ToyotaResearchInstitute/bulk_enumerator/tarball/master#egg=bulk_enumerator",
+        "http://github.com/ToyotaResearchInstitute/protosearch/tarball/master#egg=protosearch",
     ]
 )
