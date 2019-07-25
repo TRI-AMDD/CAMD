@@ -5,7 +5,7 @@ def dockerTagWithoutBuildNumber = "external-${env.BRANCH_NAME}".toLowerCase().re
 def dockerTag = "${dockerTagWithoutBuildNumber}-${env.BUILD_NUMBER}"
 def dockerTagLatest = "${dockerTagWithoutBuildNumber}-latest"
 def awsRegion = "us-west-2"
-def githubOrg = "materials"
+def githubOrg = "ToyotaResearchInstitute"
 def dockerRegistry = "251589461219.dkr.ecr.${awsRegion}.amazonaws.com"
 def dockerRegistryPrefix = "camd-worker"
 def dockerfile = "Dockerfile"
@@ -19,7 +19,7 @@ node {
       try {
         properties properties: [
           [$class: 'BuildDiscarderProperty', strategy: [$class: 'LogRotator', artifactDaysToKeepStr: '100', artifactNumToKeepStr: '1000', daysToKeepStr: '100', numToKeepStr: '1000']],
-          [$class: 'GithubProjectProperty', displayName: '', projectUrlStr: "https://github.awsinternal.tri.global/$githubOrg/${buildEnv.shortName}"],
+          [$class: 'GithubProjectProperty', displayName: '', projectUrlStr: "https://github.com/$githubOrg/${buildEnv.shortName}"],
           disableConcurrentBuilds()
         ]
         slackSend color: 'warning', message: "build $buildLink started", channel: "materials-dev"
