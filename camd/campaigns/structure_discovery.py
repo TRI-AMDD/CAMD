@@ -4,6 +4,7 @@ import traceback
 import pandas as pd
 import os
 
+from datetime import datetime
 from monty.serialization import dumpfn
 from camd.domain import StructureDomain, heuristic_setup
 from camd.agent.agents import AgentStabilityML5
@@ -23,6 +24,8 @@ import pickle
 __version__ = "2019.08.07"
 
 
+# TODO: abstract campaign?
+
 def run_proto_dft_campaign(chemsys):
     """
 
@@ -34,6 +37,10 @@ def run_proto_dft_campaign(chemsys):
 
     """
     s3_prefix = "proto-dft/runs/{}".format(chemsys)
+
+    # Initialize s3
+    dumpfn({"started": datetime.now().isoformat()}, "start.json")
+    s3_sync(s3_bucket=CAMD_S3_BUCKET, s3_prefix=s3_prefix, sync_path='.')
 
     try:
         # Get structure domain
@@ -91,6 +98,7 @@ def run_atf_campaign(chemsys):
         True
 
     """
+    s3_prefix = "oqmd-atf/runs/{}".format(chemsys)
     df = pd.read_csv(os.path.join(CAMD_TEST_FILES, 'test_df.csv'))
     n_seed = 200  # Starting sample size
     n_query = 10  # This many new candidates are "calculated with DFT" (i.e. requested from Oracle -- DFT)
@@ -104,7 +112,7 @@ def run_atf_campaign(chemsys):
     new_loop = Loop(candidate_data, agent, experiment, analyzer,
                     agent_params=agent_params, analyzer_params=analyzer_params,
                     experiment_params=experiment_params, create_seed=n_seed,
-                    s3_prefix="oqmd-atf/runs/{}".format(chemsys))
+                    s3_prefix=s3_prefix)
 
     new_loop.initialize()
 
