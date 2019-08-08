@@ -39,7 +39,8 @@ def run_proto_dft_campaign(chemsys):
     s3_prefix = "proto-dft/runs/{}".format(chemsys)
 
     # Initialize s3
-    dumpfn({"started": datetime.now().isoformat()}, "start.json")
+    dumpfn({"started": datetime.now().isoformat(),
+            "version": __version__}, "start.json")
     s3_sync(s3_bucket=CAMD_S3_BUCKET, s3_prefix=s3_prefix, sync_path='.')
 
     try:
