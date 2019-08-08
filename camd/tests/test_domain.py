@@ -9,7 +9,7 @@ SKIP_MSG = "Long tests disabled, set CAMD_LONG_TESTS to run long tests"
 
 
 # TODO: add lightweight version of these?
-# @unittest.skipUnless(CAMD_LONG_TESTS, SKIP_MSG)
+@unittest.skipUnless(CAMD_LONG_TESTS, SKIP_MSG)
 class DomainTest(unittest.TestCase):
 
     def test_get_structures_from_protosearch(self):
