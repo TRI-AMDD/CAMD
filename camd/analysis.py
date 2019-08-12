@@ -97,7 +97,8 @@ class AnalyzeStability(AnalyzerBase):
 
 
 class AnalyzeStability_mod(AnalyzerBase):
-    def __init__(self, df=None, new_result_ids=None, hull_distance=None, multiprocessing=True, entire_space=False):
+    def __init__(self, df=None, new_result_ids=None, hull_distance=None,
+                 multiprocessing=True, entire_space=False):
         self.df = df
         self.new_result_ids = new_result_ids
         self.hull_distance = hull_distance if hull_distance else 0.05
@@ -108,17 +109,20 @@ class AnalyzeStability_mod(AnalyzerBase):
 
     def analyze(self, df=None, new_result_ids=None, all_result_ids=None):
         self.df = df.drop_duplicates(keep='last').dropna()
-        # Note some of id's in all_result_ids may not have corresponding experiment, if those exps. failed.
+        # Note some of id's in all_result_ids may not have corresponding
+        # experiment, if those exps. failed.
         self.all_result_ids = all_result_ids
         self.new_result_ids = new_result_ids
 
         if not self.entire_space:
-            # This option constraints the phase space to that of the target compounds. This should be more efficient
-            # when searching in a specified chemistry, less efficient if larger spaces are being scanned without chemistry
-            # focus.
+            # This option constraints the phase space to that of the target
+            # compounds. This should be more efficient when searching in
+            # a specified chemistry, less efficient if larger spaces are
+            # being scanned without chemistry focus.
 
-            # Note this line needs to be fixed later to be compatible with later versions of pandas (i.e.
-            # b/c all_result_ids may contain things not in df currently (b/c of failed experiments).
+            # TODO: Fix this line to be compatible with
+            # later versions of pandas (i.e. b/c all_result_ids may contain
+            # things not in df currently (b/c of failed experiments).
             # We should test comps = self.df.loc[self.df.index.intersection(all_result_ids)]
 
             comps = self.df.loc[all_result_ids]['Composition'].dropna()
@@ -153,6 +157,7 @@ class AnalyzeStability_mod(AnalyzerBase):
             space.compute_stabilities_multi(phases_to_evaluate=all_new_phases)
         else:
             space.compute_stabilities_mod(phases_to_evaluate=all_new_phases)
+
         self.space = space
 
         stabilities_of_new = {}
