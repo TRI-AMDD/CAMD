@@ -119,6 +119,9 @@ class Loop(MSONable):
         self.results_new_uids, self.results_all_uids = self.analyzer.analyze(self.seed_data,
                                                                              self.submitted_experiment_requests,
                                                                              self.consumed_candidates)
+        self.analyzer.present(
+            self.seed_data, self.submitted_experiment_requests, self.consumed_candidates,
+            filename="iteration_{}.png".format(self.iteration))
 
         self._discovered = np.array(self.submitted_experiment_requests)[self.results_new_uids].tolist()
         self.save('_discovered', custom_name='discovered_{}.json'.format(self.iteration))
@@ -270,18 +273,37 @@ class Loop(MSONable):
         if self.initialized:
             raise ValueError("Initialization may overwrite existing loop data. Exit.")
         cache_s3_objs(["camd/shared-data/oqmd1.2_icsd_featurized_clean_v2.pickle"])
-        self.seed_data = pd.read_pickle(os.path.join(S3_CACHE,
-                                                     "camd/shared-data/oqmd1.2_icsd_featurized_clean_v2.pickle"))
+        self.seed_data = pd.read_pickle(
+            os.path.join(S3_CACHE, "camd/shared-data/oqmd1.2_icsd_featurized_clean_v2.pickle"))
         self.initialize(random_state=random_state)
 
     def report(self):
         with open(os.path.join(self.path, 'report.log'), 'a') as f:
             if self.iteration == 0:
                 f.write("Iteration N_Discovery Total_Discovery N_candidates model-CV\n")
-            report_string = "{:9} {:11} {:15} {:12} {:f}\n".format(self.iteration, np.sum(self.results_new_uids),
-                                                           np.sum(self.results_all_uids), len(self.candidate_data),
-                                                           self.agent.cv_score)
+            report_string = "{:9} {:11} {:15} {:12} {:f}\n".format(
+                self.iteration, np.sum(self.results_new_uids),
+                np.sum(self.results_all_uids), len(self.candidate_data),
+                self.agent.cv_score)
             f.write(report_string)
+
+        self.generate_report_plot()
+
+    @staticmethod
+    def generate_report_plot(self, filename=None):
+        """
+        Quick method for generating report plots
+
+        Returns:
+            (pyplot) pyplot object corresponding to bar plot
+
+        """
+        # Generate plot
+        data = pd.read_csv("report.log", delimiter=" ")
+        plt = data.plot(kind='bar', x='Iteration', y='Total_Discovery')
+        if filename:
+            plt.savefig(filename)
+        return plt
 
     def load(self, data_holder, method='json', no_exist_fail=True):
         if method == 'pickle':
