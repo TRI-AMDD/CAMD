@@ -1,6 +1,7 @@
 # Copyright Toyota Research Institute 2019
 
 import abc
+import warnings
 
 import numpy as np
 from camd import tqdm
@@ -227,6 +228,9 @@ class AnalyzeStability_mod(AnalyzerBase):
         for comp in comps:
             system_elements += list(Composition(comp).as_dict().keys())
         elems = set(system_elements)
+        if len(elems) > 4:
+            warnings.warn("Number of elements too high for phase diagram plotting")
+            return None
         ind_to_include = []
         for ind in df.index:
             if set(Composition(df.loc[ind]['Composition']).as_dict().keys()).issubset(elems):
