@@ -279,9 +279,6 @@ class AnalyzeStability_mod(AnalyzerBase):
             plot.savefig(filename)
         return plot
 
-    def postprocess_present(self, df=None, result_ids_by_iteration=None):
-        pass
-
 
 class PhaseSpaceAL(PhaseSpace):
     """
