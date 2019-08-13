@@ -9,6 +9,9 @@ from qmpy.analysis.thermodynamics.phase import Phase, PhaseData
 from qmpy.analysis.thermodynamics.space import PhaseSpace
 import multiprocessing
 from pymatgen import Composition
+from pymatgen.entries.computed_entries import ComputedEntry
+from pymatgen.analysis.phase_diagram import PhaseDiagram, PDPlotter, tet_coord,\
+    triangular_coord
 
 ELEMENTS = ['Ru', 'Re', 'Rb', 'Rh', 'Be', 'Ba', 'Bi', 'Br', 'H', 'P', 'Os', 'Ge', 'Gd', 'Ga', 'Pr', 'Pt', 'Pu', 'C',
             'Pb', 'Pa', 'Pd', 'Xe', 'Pm', 'Ho', 'Hf', 'Hg', 'He', 'Mg', 'K', 'Mn', 'O', 'S', 'W', 'Zn', 'Eu', 'Zr',
@@ -115,7 +118,7 @@ class AnalyzeStability_mod(AnalyzerBase):
         self.new_result_ids = new_result_ids
 
         if not self.entire_space:
-            # This option constraints the phase space to that of the target
+            # This option constrains the phase space to that of the target
             # compounds. This should be more efficient when searching in
             # a specified chemistry, less efficient if larger spaces are
             # being scanned without chemistry focus.
@@ -195,8 +198,90 @@ class AnalyzeStability_mod(AnalyzerBase):
         # array of bools for stable vs not for new uids, and all experiments, respectively
         return stabilities_of_new_uids, stabilities_of_space_uids
 
-    def present(self):
+    def present(self, df=None, new_result_ids=None, all_result_ids=None,
+                filename=None):
+        """
+        Generate plots of convex hulls for each of the runs
+
+        Args:
+            df (DataFrame): dataframe with formation energies, compositions, ids
+            new_result_ids ([]): list of new result ids (i. e. indexes
+                in the updated dataframe)
+            all_result_ids ([]): list of all result ids associated
+                with the current run
+            filename (str): filename to output, if None, no file output
+                is produced
+
+        Returns:
+            (pyplot): plotter instance
+        """
+        df = df if df is not None else self.df
+        new_result_ids = new_result_ids if new_result_ids is not None else self.new_result_ids
+        all_result_ids = all_result_ids if all_result_ids is not None else self.all_result_ids
+
+        # TODO: remove duplicated code here
+        # TODO: good lord we need a database
+        # Generate all entries
+        comps = df.loc[all_result_ids]['Composition'].dropna()
+        system_elements = []
+        for comp in comps:
+            system_elements += list(Composition(comp).as_dict().keys())
+        elems = set(system_elements)
+        ind_to_include = []
+        for ind in df.index:
+            if set(Composition(df.loc[ind]['Composition']).as_dict().keys()).issubset(elems):
+                ind_to_include.append(ind)
+        _df = df.loc[ind_to_include]
+
+        # Create computed entry column
+        _df['entry'] = [
+            ComputedEntry(
+                row['Composition'],
+                row['delta_e'] * row['Composition'].num_atoms,  # un-normalize the energy
+                entry_id=index
+            )
+            for index, row in _df.iterrows()]
+        # Partition ids into sets of prior to CAMD run, from CAMD but prior to
+        # current iteration, and new ids
+        ids_prior_to_camd = list(set(_df.index) - set(all_result_ids))
+        ids_prior_to_run = list(set(all_result_ids) - set(new_result_ids))
+
+        # Create phase diagram based on everything prior to current run
+        entries = list(_df.loc[ids_prior_to_run + ids_prior_to_camd]['entry'])
+        pd = PhaseDiagram(entries)
+        plotkwargs = {
+            "markerfacecolor": "white",
+            "markersize": 7,
+            "linewidth": 2
+        }
+        plotter = PDPlotter(pd, **plotkwargs)
+        plot = plotter.get_plot()
+        for entry in _df.loc[new_result_ids]['entry']:
+            # Get energy above hull
+            e_hull = pd.get_e_above_hull(entry)
+            if e_hull < self.hull_distance:
+                color = 'g'
+            else:
+                color = 'r'
+
+            # Get coords
+            coords = [entry.composition.get_atomic_fraction(el)
+                      for el in pd.elements][1:]
+            if pd.dim == 2:
+                coords = coords + [pd.get_form_energy_per_atom(entry)]
+            if pd.dim == 3:
+                coords = triangular_coord(coords)
+            elif pd.dim == 4:
+                coords = tet_coord(coords)
+            plot.plot(*coords, 'x', color=color, markersize=10)
+
+        if filename is not None:
+            plot.savefig(filename)
+        return plot
+
+    def postprocess_present(self, df=None, result_ids_by_iteration=None):
         pass
+
 
 class PhaseSpaceAL(PhaseSpace):
     """

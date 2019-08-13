@@ -156,6 +156,8 @@ class Loop(MSONable):
             n_iterations (int): Number of iterations.
             timeout (int): Time (in seconds) to wait on idle for submitted experiments to finish.
             monitor (bool): Use Experiment's monitor method to keep track of requested experiments.
+            initialize (bool): whether to initialize the loop before starting
+            with_icsd (bool): whether to initialize from icsd
 
         """
         if initialize:
