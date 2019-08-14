@@ -5,9 +5,10 @@ import shutil
 import pandas as pd
 
 from sklearn.neural_network import MLPRegressor
+from pymatgen import Composition
 from camd.agent.agents import QBCStabilityAgent
 from camd.agent.base import RandomAgent
-from camd.analysis import AnalyzeStability
+from camd.analysis import AnalyzeStability_mod as AnalyzeStability
 from camd.experiment import ATFSampler
 from camd.loop import Loop
 from camd.utils.s3 import cache_s3_objs
@@ -140,6 +141,50 @@ class AtfLoopTest(unittest.TestCase):
 
         new_loop.auto_loop(6)
         self.assertTrue(True)
+
+    def test_mp_loop(self):
+        df = pd.read_csv(os.path.join(CAMD_TEST_FILES, 'test_df_analysis.csv'),
+                         index_col="id")
+        df['Composition'] = [Composition(formula) for formula in df['formula']]
+        # Just use the Ti-O-N chemsys
+        seed_data = df.iloc[:171]
+        candidate_data = df.iloc[171:209]
+        n_query = 5  # This many new candidates are "calculated with DFT" (i.e. requested from Oracle -- DFT)
+        agent = RandomAgent
+        agent_params = {'hull_distance': 0.05, 'N_query': n_query}
+        analyzer = AnalyzeStability
+        analyzer_params = {'hull_distance': 0.05}
+        experiment = ATFSampler
+        experiment_params = {'dataframe': df}
+        # candidate_data = df
+        new_loop = Loop(candidate_data, agent, experiment, analyzer,
+                        agent_params=agent_params, analyzer_params=analyzer_params,
+                        experiment_params=experiment_params, seed_data=seed_data)
+
+        new_loop.initialize()
+        self.assertFalse(new_loop.create_seed)
+
+        for iteration in range(6):
+            new_loop.run()
+            self.assertTrue(
+                os.path.isfile("iteration_{}.png".format(iteration)))
+            import nose; nose.tools.set_trace()
+            if iteration >= 1:
+                self.assertTrue(
+                    os.path.isfile("report.png"))
+
+        # Testing the continuation
+        new_loop = Loop(candidate_data, agent, experiment, analyzer,
+                        agent_params=agent_params, analyzer_params=analyzer_params,
+                        experiment_params=experiment_params)
+        self.assertTrue(new_loop.initialized)
+        self.assertEqual(new_loop.iteration, 6)
+        self.assertEqual(new_loop.loop_state, None)
+
+        new_loop.run()
+        self.assertTrue(True)
+        self.assertEqual(new_loop.iteration, 7)
+
 
 if __name__ == '__main__':
     unittest.main()

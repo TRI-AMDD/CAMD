@@ -262,7 +262,8 @@ class AnalyzeStability_mod(AnalyzerBase):
         plot = plotter.get_plot()
         for entry in _df.loc[new_result_ids]['entry']:
             # Get energy above hull
-            e_hull = pd.get_e_above_hull(entry)
+            decomp, e_hull = pd.get_decomp_and_e_above_hull(
+                entry, allow_negative=True)
             if e_hull < self.hull_distance:
                 color = 'g'
             else:

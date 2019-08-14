@@ -290,20 +290,27 @@ class Loop(MSONable):
         self.generate_report_plot()
 
     @staticmethod
-    def generate_report_plot(self, filename=None):
+    def generate_report_plot(filename="report.png",
+                             report_filename="report.log"):
         """
         Quick method for generating report plots
 
+        Args:
+            filename (str): output filename for plot to be saved
+            report_filename (str): filename for the report to be read in
+
         Returns:
-            (pyplot) pyplot object corresponding to bar plot
+            (AxesSubplot) pyplot object corresponding to bar plot
 
         """
         # Generate plot
-        data = pd.read_csv("report.log", delimiter=" ")
-        plt = data.plot(kind='bar', x='Iteration', y='Total_Discovery')
+        data = pd.read_csv(report_filename, delim_whitespace=True)
+        ax = data.plot(kind='bar', x='Iteration', y='Total_Discovery',
+                       legend=False)
+        ax.set_ylabel("Total materials discovered")
         if filename:
-            plt.savefig(filename)
-        return plt
+            ax.get_figure().savefig(filename)
+        return ax
 
     def load(self, data_holder, method='json', no_exist_fail=True):
         if method == 'pickle':
