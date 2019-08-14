@@ -168,7 +168,6 @@ class AtfLoopTest(unittest.TestCase):
             new_loop.run()
             self.assertTrue(
                 os.path.isfile("iteration_{}.png".format(iteration)))
-            import nose; nose.tools.set_trace()
             if iteration >= 1:
                 self.assertTrue(
                     os.path.isfile("report.png"))
