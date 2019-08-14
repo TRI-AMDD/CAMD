@@ -333,3 +333,30 @@ def create_formulas(bounds, charge_balanced=True, oxi_states_extend=None, oxi_st
         return charge_balanced_formulas
     else:
         return formulas
+
+
+def heuristic_setup(elements):
+    """
+    Helper function to setup a default structure_domain
+    """
+    grid_defaults = {2:5, 3:5}
+    Ncomp = len(elements)
+    _g = grid_defaults.get(Ncomp, 4)
+    if {"O", "Cl", "F", "S", "N", "Br", "I"}.intersection(set(elements)):
+        charge_balanced = True
+    else:
+        charge_balanced = False
+    if not charge_balanced:
+        return (_g, charge_balanced)
+    else:
+        g_max_max = 8
+        while True:
+            sd = StructureDomain.from_bounds(elements, charge_balanced=True, **{'grid':range(1,_g)})
+            N = len(sd.formulas)
+            if N>=20:
+                return (_g, charge_balanced)
+            else:
+                if _g < g_max_max:
+                    _g+=1
+                else:
+                    return (_g, charge_balanced)

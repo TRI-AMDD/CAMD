@@ -1,6 +1,6 @@
 import unittest
 import os
-from camd.domain import StructureDomain, get_structures_from_protosearch
+from camd.domain import StructureDomain, get_structures_from_protosearch, heuristic_setup
 from pymatgen import Structure
 
 
@@ -52,6 +52,66 @@ class DomainTest(unittest.TestCase):
 
         sd.featurize_structures()
         self.assertEqual(sd.features.shape, (43, 275))
+
+    def test_heuristic_setup(self):
+        element_list = ['Al', 'Fe']
+        g_max, charge_balanced = heuristic_setup(element_list)
+        self.assertEqual(g_max, 5)
+        self.assertFalse(charge_balanced)
+        sd = StructureDomain.from_bounds(element_list, charge_balanced=charge_balanced,
+                                             **{'grid': range(1, g_max)})
+        self.assertEqual(len(sd.formulas), 11)
+        self.assertIn('Al3Fe4', sd.formulas)
+
+        element_list = ['Al', 'Fe', 'Ti']
+        g_max, charge_balanced = heuristic_setup(element_list)
+        self.assertEqual(g_max, 5)
+        self.assertFalse(charge_balanced)
+        sd = StructureDomain.from_bounds(element_list, charge_balanced=charge_balanced,
+                                             **{'grid': range(1, g_max)})
+        self.assertEqual(len(sd.formulas), 55)
+        self.assertIn('Al3Fe2Ti2', sd.formulas)
+
+        element_list = ['Al', 'Fe', 'Ti', 'Mn']
+        g_max, charge_balanced = heuristic_setup(element_list)
+        self.assertEqual(g_max, 4)
+        self.assertFalse(charge_balanced)
+        sd = StructureDomain.from_bounds(element_list, charge_balanced=charge_balanced,
+                                             **{'grid': range(1, g_max)})
+        self.assertEqual(len(sd.formulas), 79)
+        self.assertIn('Al2Fe2Ti2Mn3', sd.formulas)
+
+        element_list = ['Al', 'O']
+        g_max, charge_balanced = heuristic_setup(element_list)
+        self.assertTrue(charge_balanced)
+        sd = StructureDomain.from_bounds(element_list, charge_balanced=charge_balanced,
+                                             **{'grid': range(1, g_max)})
+        self.assertEqual(len(sd.formulas), 1)
+        self.assertIn('Al2O3', sd.formulas)
+
+        element_list = ['Fe', 'O']
+        g_max, charge_balanced = heuristic_setup(element_list)
+        self.assertTrue(charge_balanced)
+        sd = StructureDomain.from_bounds(element_list, charge_balanced=charge_balanced,
+                                             **{'grid': range(1, g_max)})
+        self.assertEqual(len(sd.formulas), 7)
+        self.assertIn('Fe3O4', sd.formulas)
+
+        element_list = ['Al', 'Fe', 'O']
+        g_max, charge_balanced = heuristic_setup(element_list)
+        self.assertTrue(charge_balanced)
+        sd = StructureDomain.from_bounds(element_list, charge_balanced=charge_balanced,
+                                             **{'grid': range(1, g_max)})
+        self.assertEqual(len(sd.formulas), 15)
+        self.assertIn('Al2Fe2O5', sd.formulas)
+
+        element_list = ['Al', 'Fe', 'Ti', 'O']
+        g_max, charge_balanced = heuristic_setup(element_list)
+        self.assertTrue(charge_balanced)
+        sd = StructureDomain.from_bounds(element_list, charge_balanced=charge_balanced,
+                                             **{'grid': range(1, g_max)})
+        self.assertEqual(len(sd.formulas), 27)
+        self.assertIn('Al2Fe1Ti3O7', sd.formulas)
 
 
 if __name__ == '__main__':
