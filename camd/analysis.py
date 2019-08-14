@@ -240,8 +240,8 @@ class AnalyzeStability_mod(AnalyzerBase):
         # Create computed entry column
         _df['entry'] = [
             ComputedEntry(
-                row['Composition'],
-                row['delta_e'] * row['Composition'].num_atoms,  # un-normalize the energy
+                Composition(row['Composition']),
+                row['delta_e'] * Composition(row['Composition']).num_atoms,  # un-normalize the energy
                 entry_id=index
             )
             for index, row in _df.iterrows()]

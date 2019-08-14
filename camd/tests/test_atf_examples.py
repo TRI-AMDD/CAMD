@@ -143,13 +143,17 @@ class AtfLoopTest(unittest.TestCase):
         self.assertTrue(True)
 
     def test_mp_loop(self):
-        df = pd.read_csv(os.path.join(CAMD_TEST_FILES, 'test_df_analysis.csv'),
-                         index_col="id")
-        df['Composition'] = [Composition(formula) for formula in df['formula']]
+        df = pd.read_csv(os.path.join(CAMD_TEST_FILES, 'test_df_analysis.csv'),)
+                         # index_col="id")
+        df['id'] = [int(mp_id.replace("mp-", "").replace('mvc-', ''))
+                    for mp_id in df['id']]
+        df.set_index("id")
+        df['Composition'] = df['formula']
+
         # Just use the Ti-O-N chemsys
-        seed_data = df.iloc[:171]
-        candidate_data = df.iloc[171:209]
-        n_query = 5  # This many new candidates are "calculated with DFT" (i.e. requested from Oracle -- DFT)
+        seed_data = df.iloc[:38]
+        candidate_data = df.iloc[38:209]
+        n_query = 20  # This many new candidates are "calculated with DFT" (i.e. requested from Oracle -- DFT)
         agent = RandomAgent
         agent_params = {'hull_distance': 0.05, 'N_query': n_query}
         analyzer = AnalyzeStability
