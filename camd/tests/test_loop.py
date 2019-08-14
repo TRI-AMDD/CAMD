@@ -53,6 +53,7 @@ class LoopTest(unittest.TestCase):
                             )
             new_loop.generate_report_plot(
                 "report.png", os.path.join(CAMD_TEST_FILES, "report.log"))
+            self.assertTrue(os.path.isfile("report.png"))
 
 
 if __name__ == '__main__':
