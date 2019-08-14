@@ -6,7 +6,7 @@ import os
 
 from datetime import datetime
 from monty.serialization import dumpfn
-from camd.domain import StructureDomain
+from camd.domain import StructureDomain, heuristic_setup
 from camd.agent.agents import AgentStabilityML5
 from camd.agent.base import RandomAgent
 from camd.analysis import AnalyzeStability
@@ -21,7 +21,7 @@ from sklearn.neural_network import MLPRegressor
 import pickle
 
 
-__version__ = "2019.07.15"
+__version__ = "2019.08.07"
 
 
 # TODO: abstract campaign?
@@ -39,14 +39,16 @@ def run_proto_dft_campaign(chemsys):
     s3_prefix = "proto-dft/runs/{}".format(chemsys)
 
     # Initialize s3
-    dumpfn({"started": datetime.now().isoformat()}, "start.json")
+    dumpfn({"started": datetime.now().isoformat(),
+            "version": __version__}, "start.json")
     s3_sync(s3_bucket=CAMD_S3_BUCKET, s3_prefix=s3_prefix, sync_path='.')
 
     try:
         # Get structure domain
         element_list = chemsys.split('-')
+        g_max, charge_balanced = heuristic_setup(element_list)
         domain = StructureDomain.from_bounds(
-            element_list, n_max_atoms=12, **{'grid': range(1, 3)})
+            element_list, charge_balanced=charge_balanced, n_max_atoms=20, **{'grid': range(1, g_max)})
         candidate_data = domain.candidates()
         structure_dict = domain.hypo_structures_dict
 
