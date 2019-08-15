@@ -171,7 +171,7 @@ class AtfLoopTest(unittest.TestCase):
         for iteration in range(6):
             new_loop.run()
             self.assertTrue(
-                os.path.isfile("iteration_{}.png".format(iteration)))
+                os.path.isfile("hull_{}.png".format(iteration)))
             if iteration >= 1:
                 self.assertTrue(
                     os.path.isfile("report.png"))
