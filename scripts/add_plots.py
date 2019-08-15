@@ -40,26 +40,30 @@ def update_run(folder):
     """
     with cd(folder):
         analyzer = AnalyzeStability_mod(hull_distance=0.2)
-        with open("seed_data.pickle", "rb") as f:
-            result_df = pickle.load(f)
+        if os.path.isfile("error.json"):
+            error = loadfn("error.json")
+            print("{} ERROR: {}".format(folder, error))
+        if not os.path.isdir("0"):
+            with open("seed_data.pickle", "rb") as f:
+                result_df = pickle.load(f)
 
-        # Generate report plots
-        for iteration in range(0, 6):
-            print("{}: {}".format(folder, iteration))
-            if not os.path.isdir(str(iteration)):
-                continue
-            all_result_ids = loadfn(
-                os.path.join(str(iteration), "consumed_candidates.json"))
-            new_result_ids = loadfn(
-                os.path.join(str(iteration), "submitted_experiment_requests.json"))
-            analyzer.present(
-                df=result_df,
-                new_result_ids=new_result_ids,
-                all_result_ids=all_result_ids,
-                filename="hull_{}.png".format(iteration)
-            )
+            # Generate report plots
+            for iteration in range(0, 6):
+                print("{}: {}".format(folder, iteration))
+                if not os.path.isdir(str(iteration)):
+                    continue
+                all_result_ids = loadfn(
+                    os.path.join(str(iteration), "consumed_candidates.json"))
+                new_result_ids = loadfn(
+                    os.path.join(str(iteration), "submitted_experiment_requests.json"))
+                analyzer.present(
+                    df=result_df,
+                    new_result_ids=new_result_ids,
+                    all_result_ids=all_result_ids,
+                    filename="hull_{}.png".format(iteration)
+                )
 
-        Loop.generate_report_plot()
+            Loop.generate_report_plot()
 
 
 def update_s3(s3_folder, bucket=CAMD_S3_BUCKET,
