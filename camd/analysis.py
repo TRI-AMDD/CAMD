@@ -1,6 +1,7 @@
 # Copyright Toyota Research Institute 2019
 
 import abc
+import warnings
 
 import numpy as np
 from camd import tqdm
@@ -9,6 +10,9 @@ from qmpy.analysis.thermodynamics.phase import Phase, PhaseData
 from qmpy.analysis.thermodynamics.space import PhaseSpace
 import multiprocessing
 from pymatgen import Composition
+from pymatgen.entries.computed_entries import ComputedEntry
+from pymatgen.analysis.phase_diagram import PhaseDiagram, PDPlotter, tet_coord,\
+    triangular_coord
 
 ELEMENTS = ['Ru', 'Re', 'Rb', 'Rh', 'Be', 'Ba', 'Bi', 'Br', 'H', 'P', 'Os', 'Ge', 'Gd', 'Ga', 'Pr', 'Pt', 'Pu', 'C',
             'Pb', 'Pa', 'Pd', 'Xe', 'Pm', 'Ho', 'Hf', 'Hg', 'He', 'Mg', 'K', 'Mn', 'O', 'S', 'W', 'Zn', 'Eu', 'Zr',
@@ -97,7 +101,8 @@ class AnalyzeStability(AnalyzerBase):
 
 
 class AnalyzeStability_mod(AnalyzerBase):
-    def __init__(self, df=None, new_result_ids=None, hull_distance=None, multiprocessing=True, entire_space=False):
+    def __init__(self, df=None, new_result_ids=None, hull_distance=None,
+                 multiprocessing=True, entire_space=False):
         self.df = df
         self.new_result_ids = new_result_ids
         self.hull_distance = hull_distance if hull_distance else 0.05
@@ -108,17 +113,20 @@ class AnalyzeStability_mod(AnalyzerBase):
 
     def analyze(self, df=None, new_result_ids=None, all_result_ids=None):
         self.df = df.drop_duplicates(keep='last').dropna()
-        # Note some of id's in all_result_ids may not have corresponding experiment, if those exps. failed.
+        # Note some of id's in all_result_ids may not have corresponding
+        # experiment, if those exps. failed.
         self.all_result_ids = all_result_ids
         self.new_result_ids = new_result_ids
 
         if not self.entire_space:
-            # This option constraints the phase space to that of the target compounds. This should be more efficient
-            # when searching in a specified chemistry, less efficient if larger spaces are being scanned without chemistry
-            # focus.
+            # This option constrains the phase space to that of the target
+            # compounds. This should be more efficient when searching in
+            # a specified chemistry, less efficient if larger spaces are
+            # being scanned without chemistry focus.
 
-            # Note this line needs to be fixed later to be compatible with later versions of pandas (i.e.
-            # b/c all_result_ids may contain things not in df currently (b/c of failed experiments).
+            # TODO: Fix this line to be compatible with
+            # later versions of pandas (i.e. b/c all_result_ids may contain
+            # things not in df currently (b/c of failed experiments).
             # We should test comps = self.df.loc[self.df.index.intersection(all_result_ids)]
 
             comps = self.df.loc[all_result_ids]['Composition'].dropna()
@@ -153,6 +161,7 @@ class AnalyzeStability_mod(AnalyzerBase):
             space.compute_stabilities_multi(phases_to_evaluate=all_new_phases)
         else:
             space.compute_stabilities_mod(phases_to_evaluate=all_new_phases)
+
         self.space = space
 
         stabilities_of_new = {}
@@ -190,8 +199,95 @@ class AnalyzeStability_mod(AnalyzerBase):
         # array of bools for stable vs not for new uids, and all experiments, respectively
         return stabilities_of_new_uids, stabilities_of_space_uids
 
-    def present(self):
-        pass
+    def present(self, df=None, new_result_ids=None, all_result_ids=None,
+                filename=None):
+        """
+        Generate plots of convex hulls for each of the runs
+
+        Args:
+            df (DataFrame): dataframe with formation energies, compositions, ids
+            new_result_ids ([]): list of new result ids (i. e. indexes
+                in the updated dataframe)
+            all_result_ids ([]): list of all result ids associated
+                with the current run
+            filename (str): filename to output, if None, no file output
+                is produced
+
+        Returns:
+            (pyplot): plotter instance
+        """
+        df = df if df is not None else self.df
+        new_result_ids = new_result_ids if new_result_ids is not None else self.new_result_ids
+        all_result_ids = all_result_ids if all_result_ids is not None else self.all_result_ids
+
+        # TODO: remove duplicated code here
+        # TODO: good lord we need a database
+        # Generate all entries
+        comps = df.loc[all_result_ids]['Composition'].dropna()
+        system_elements = []
+        for comp in comps:
+            system_elements += list(Composition(comp).as_dict().keys())
+        elems = set(system_elements)
+        if len(elems) > 4:
+            warnings.warn("Number of elements too high for phase diagram plotting")
+            return None
+        ind_to_include = []
+        for ind in df.index:
+            if set(Composition(df.loc[ind]['Composition']).as_dict().keys()).issubset(elems):
+                ind_to_include.append(ind)
+        _df = df.loc[ind_to_include]
+
+        # Create computed entry column
+        _df['entry'] = [
+            ComputedEntry(
+                Composition(row['Composition']),
+                row['delta_e'] * Composition(row['Composition']).num_atoms,  # un-normalize the energy
+                entry_id=index
+            )
+            for index, row in _df.iterrows()]
+        # Partition ids into sets of prior to CAMD run, from CAMD but prior to
+        # current iteration, and new ids
+        ids_prior_to_camd = list(set(_df.index) - set(all_result_ids))
+        ids_prior_to_run = list(set(all_result_ids) - set(new_result_ids))
+
+        # Create phase diagram based on everything prior to current run
+        entries = list(_df.loc[ids_prior_to_run + ids_prior_to_camd]['entry'])
+        # Filter for nans by checking if it's a computed entry
+        entries = [entry for entry in entries if isinstance(entry, ComputedEntry)]
+        pd = PhaseDiagram(entries)
+        plotkwargs = {
+            "markerfacecolor": "white",
+            "markersize": 7,
+            "linewidth": 2
+        }
+        plotter = PDPlotter(pd, **plotkwargs)
+        plot = plotter.get_plot()
+        # Get valid results
+        valid_results = [new_result_id for new_result_id in new_result_ids
+                         if new_result_id in _df.index]
+        for entry in _df['entry'][valid_results]:
+            decomp, e_hull = pd.get_decomp_and_e_above_hull(
+                    entry, allow_negative=True)
+            if e_hull < self.hull_distance:
+                color = 'g'
+            else:
+                color = 'r'
+
+            # Get coords
+            coords = [entry.composition.get_atomic_fraction(el)
+                      for el in pd.elements][1:]
+            if pd.dim == 2:
+                coords = coords + [pd.get_form_energy_per_atom(entry)]
+            if pd.dim == 3:
+                coords = triangular_coord(coords)
+            elif pd.dim == 4:
+                coords = tet_coord(coords)
+            plot.plot(*coords, 'x', color=color, markersize=10)
+
+        if filename is not None:
+            plot.savefig(filename)
+        return plot
+
 
 class PhaseSpaceAL(PhaseSpace):
     """

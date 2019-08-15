@@ -287,12 +287,13 @@ def get_stoichiometric_formulas(n_components, grid=None):
     Returns:
         list: unique stoichiometric formula from an allowed grid of integers.
     """
-    grid = grid if grid else list(range(1,8))
+    grid = grid if grid else list(range(1, 8))
     args = [grid for _ in range(n_components)]
     stoics = np.array(list(itertools.product(*args)))
-    fracs = stoics.astype(float)/np.sum(stoics,axis=1)[:,None]
-    _, indices, counts = np.unique(fracs,axis=0, return_index=True, return_counts = True)
-    return stoics[ indices ]
+    fracs = stoics.astype(float)/np.sum(stoics, axis=1)[:, None]
+    _, indices, counts = np.unique(fracs, axis=0, return_index=True,
+                                   return_counts=True)
+    return stoics[indices]
 
 
 def create_formulas(bounds, charge_balanced=True, oxi_states_extend=None, oxi_states_override=None,
@@ -313,7 +314,7 @@ def create_formulas(bounds, charge_balanced=True, oxi_states_extend=None, oxi_st
 
     if charge_balanced:
 
-        charge_balanced_formulas=[]
+        charge_balanced_formulas = []
 
         if oxi_states_extend:
             oxi_states_override = oxi_states_override if oxi_states_override else {}
