@@ -252,6 +252,8 @@ class AnalyzeStability_mod(AnalyzerBase):
 
         # Create phase diagram based on everything prior to current run
         entries = list(_df.loc[ids_prior_to_run + ids_prior_to_camd]['entry'])
+        # Filter for nans by checking if it's a computed entry
+        entries = [entry for entry in entries if isinstance(entry, ComputedEntry)]
         pd = PhaseDiagram(entries)
         plotkwargs = {
             "markerfacecolor": "white",
@@ -260,10 +262,12 @@ class AnalyzeStability_mod(AnalyzerBase):
         }
         plotter = PDPlotter(pd, **plotkwargs)
         plot = plotter.get_plot()
-        for entry in _df.loc[new_result_ids]['entry']:
-            # Get energy above hull
+        # Get valid results
+        valid_results = [new_result_id for new_result_id in new_result_ids
+                         if new_result_id in _df.index]
+        for entry in _df['entry'][valid_results]:
             decomp, e_hull = pd.get_decomp_and_e_above_hull(
-                entry, allow_negative=True)
+                    entry, allow_negative=True)
             if e_hull < self.hull_distance:
                 color = 'g'
             else:

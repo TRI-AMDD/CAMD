@@ -121,7 +121,7 @@ class Loop(MSONable):
                                                                              self.consumed_candidates)
         self.analyzer.present(
             self.seed_data, self.submitted_experiment_requests, self.consumed_candidates,
-            filename="iteration_{}.png".format(self.iteration))
+            filename="hull_{}.png".format(self.iteration))
 
         self._discovered = np.array(self.submitted_experiment_requests)[self.results_new_uids].tolist()
         self.save('_discovered', custom_name='discovered_{}.json'.format(self.iteration))
