@@ -66,6 +66,7 @@ class Worker(object):
 
         # Get submissions
         submission_prefix = '/'.join([self.campaign, "submit"])
+        # TODO: fix 1000 return value limit - MAT-838
         submit_objects = s3_client.list_objects(
             Bucket=CAMD_S3_BUCKET, Prefix=submission_prefix)
         submission_times = {obj['Key'].split('/')[-2]: obj['LastModified']
@@ -73,18 +74,33 @@ class Worker(object):
                             if obj['Key'] != "{}/submit/".format(self.campaign)}
 
         # Get started jobs
-        start_prefix = '/'.join([self.campaign, "runs"])
-        all_objects = s3_client.list_objects_v2(
-            Bucket=CAMD_S3_BUCKET, Prefix=start_prefix).get("Contents", [])
-        keys = [obj.get('Key') for obj in all_objects]
-        pattern = re.compile("runs\/([A-Za-z\-]+)\/")
-        started = set(pattern.findall(''.join(keys)))
+        started = get_common_prefixes(CAMD_S3_BUCKET, "/".join([self.campaign, "runs"]))
 
         # Filter started jobs and then get latest unstarted
-        unstarted = list(set(submission_times.keys()) - started)
+        unstarted = list(set(submission_times.keys()) - set(started))
         latest_unstarted = sorted(unstarted, key=lambda x: submission_times[x])
 
         return latest_unstarted[-1] if latest_unstarted else None
+
+
+def get_common_prefixes(bucket, prefix):
+    """
+    Helper function to get common "subfolders" of folders
+    in S3
+
+    Args:
+        bucket:
+        prefix:
+
+    Returns:
+
+    """
+    if not prefix.endswith('/'):
+        prefix += "/"
+    client = boto3.client('s3')
+    paginator = client.get_paginator('list_objects')
+    result = paginator.paginate(Bucket=bucket, Delimiter='/', Prefix=prefix)
+    return [prefix['Prefix'].split('/')[-2] for prefix in result.search("CommonPrefixes")]
 
 
 if __name__ == "__main__":
