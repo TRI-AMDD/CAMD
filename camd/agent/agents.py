@@ -353,7 +353,6 @@ class SVGProcessStabilityAgent(HypothesisAgent):
 
         self.kernel = gpflow.kernels.RBF(273)*gpflow.kernels.Constant(273)
         self.mean_f = gpflow.mean_functions.Constant()
-        self.GP = GaussianProcessRegressor(kernel=C(1) * RBF(1), alpha=0.002)
 
         super(SVGProcessStabilityAgent, self).__init__()
 
