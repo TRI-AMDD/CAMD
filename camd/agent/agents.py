@@ -390,8 +390,6 @@ class SVGProcessStabilityAgent(HypothesisAgent):
 
         pred_y, pred_v = model.predict_y(scaler.transform(X_test))
         pred_y = pred_y * sig + mu
-        self.pred_y = pred_y
-        self.pred_std = pred_v**0.5
         self.cv_score = np.mean(np.abs(pred_y - y_test.to_numpy().reshape(-1, 1)))
 
         #overall model
@@ -409,8 +407,10 @@ class SVGProcessStabilityAgent(HypothesisAgent):
 
 
         # GP makes predictions for Hf and uncertainty*alpha on candidate data
-        pred_y, pred_y =  model.predict_y(scaler.transform( self.candidate_data.drop(columns_to_drop, axis=1)))
-        expected = pred_y - pred_y**0.5 * self.alpha
+        pred_y, pred_v =  model.predict_y(scaler.transform( self.candidate_data.drop(columns_to_drop, axis=1)))
+        expected = pred_y - pred_v**0.5 * self.alpha
+        self.pred_y = pred_y
+        self.pred_std = pred_v**0.5
 
         # This is just curbing outrageously negative predictions
         for i in range(len(expected)):
