@@ -1,6 +1,7 @@
 # Copyright Toyota Research Institute 2019
 
 import numpy as np
+import time
 from qmpy.analysis.thermodynamics.phase import Phase, PhaseData
 from copy import deepcopy
 from camd.analysis import PhaseSpaceAL, ELEMENTS
@@ -346,7 +347,7 @@ class SVGProcessStabilityAgent(HypothesisAgent):
         self.N_query = N_query if N_query else 1
         self.pd = pd
         self.alpha = alpha if alpha else 0.5
-        self.M = M if M else 700
+        self.M = M if M else 600
         self.multiprocessing = multiprocessing
         self.N_species = N_species
         self.cv_score = np.nan
@@ -384,13 +385,20 @@ class SVGProcessStabilityAgent(HypothesisAgent):
         _y = np.array(y_train.to_list())
         mu = np.mean(_y)
         sig = np.std(_y)
+        print(Z, _y.shape)
+        print(sig, mu)
         model = gpflow.models.SVGP(X_train_scaled, ((_y - mu)/sig).reshape(-1, 1), self.kernel,
                                 gpflow.likelihoods.Gaussian(), Z, mean_function=self.mean_f, minibatch_size=100)
+        print("training")
+        t0 = time.time()
         logger = self.run_adam(model, gpflow.test_util.notebook_niter(20000))
+        print("elapsed time: ", time.time()-t0)
 
         pred_y, pred_v = model.predict_y(scaler.transform(X_test))
         pred_y = pred_y * sig + mu
         self.cv_score = np.mean(np.abs(pred_y - y_test.to_numpy().reshape(-1, 1)))
+        print("cv score", self.cv_score)
+        self.model = model
 
         #overall model
         scaler = StandardScaler()
@@ -404,13 +412,17 @@ class SVGProcessStabilityAgent(HypothesisAgent):
         model = gpflow.models.SVGP(X_scaled, ((_y - mu)/sig).reshape(-1, 1), self.kernel,
                                 gpflow.likelihoods.Gaussian(), Z, mean_function=self.mean_f, minibatch_size=100)
         logger = self.run_adam(model, gpflow.test_util.notebook_niter(20000))
-
+        print(self.model)
+        self.model = model
 
         # GP makes predictions for Hf and uncertainty*alpha on candidate data
         pred_y, pred_v =  model.predict_y(scaler.transform( self.candidate_data.drop(columns_to_drop, axis=1)))
-        expected = pred_y - pred_v**0.5 * self.alpha
-        self.pred_y = pred_y
-        self.pred_std = pred_v**0.5
+        pred_y = pred_y * sig + mu
+        self.pred_y = pred_y.reshape(-1,)
+        self.pred_std = (pred_v**0.5).reshape(-1,)
+
+        expected = self.pred_y - self.pred_std * self.alpha
+        print("expected improv", expected)
 
         # This is just curbing outrageously negative predictions
         for i in range(len(expected)):
