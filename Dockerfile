@@ -25,6 +25,7 @@ RUN source /opt/conda/bin/activate camd && \
     python setup.py develop && \
     pip install nose && \
     pip install coverage && \
-    pip install pylint &&
+    pip install pylint && \
     chmod +x dockertest.sh
+
 CMD ["./dockertest.sh"]
