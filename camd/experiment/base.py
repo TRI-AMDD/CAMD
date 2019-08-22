@@ -49,11 +49,10 @@ class Experiment(abc.ABC, MSONable):
             parameter value
 
         """
-        return self._params.get(parameter_name)
+        return self._params[parameter_name]
 
-
-    def _update_results(self):
-        self.results = self.get_results()
+    def _update_results(self, indices):
+        self.results = self.get_results(indices)
 
     @abc.abstractmethod
     def monitor(self):
@@ -90,16 +89,15 @@ class ATFSampler(Experiment):
 
     def get_state(self):
         """This experiment should be complete on construction"""
-        return True
+        return "completed"
 
-    def get_results(self, index_labels):
+    def get_results(self, index_values):
         dataframe = self.get_parameter('dataframe')
-        return dataframe.loc[index_labels]
+        return dataframe.loc[index_values].dropna(axis=0, how='any')
 
-    def submit(self, unique_ids, *args):
-        self.unique_ids = unique_ids
-        return dict(zip(unique_ids, [{'status': 'SUCCEEDED'} for i in range(len(unique_ids))]))
+    def submit(self, index_values):
+        """This does nothing, since the "experiments" are already done"""
+        return {index_value: "completed" for index_value in index_values}
 
     def monitor(self):
-        unique_ids = self.unique_ids
-        return dict(zip(unique_ids, [{'status': 'SUCCEEDED'} for i in range(len(unique_ids))]))
+        return True

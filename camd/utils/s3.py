@@ -29,6 +29,9 @@ def s3_connection_broken(bucket, prefix):
         s3 = boto3.client('s3')
         s3.list_objects_v2(Bucket=bucket, Prefix=prefix)
         return False
+    # Could add client error here, but I'm reluctant to because
+    # it could lead to soft errors if we don't have permissions
+    # properly set up - jhmontoya
     except NoCredentialsError as e:
         return True
 
@@ -139,9 +142,41 @@ def iterate_bucket_items(bucket):
                 yield item
 
 
+def s3_sync(s3_bucket, s3_prefix, sync_path="."):
+    """
+    Syncs a given path to an s3 prefix
+
+    Args:
+        s3_bucket (str): bucket name
+        s3_prefix (str): s3 prefix to sync to
+        sync_path (str, Path): path to sync to bucket:prefix
+
+    Returns:
+        (None)
+
+    """
+    # Get bucket
+    s3_resource = boto3.resource("s3")
+    bucket = s3_resource.Bucket(s3_bucket)
+
+    # Walk paths and subdirectories, uploading files
+    for path, subdirs, files in os.walk(sync_path):
+        # Get relative path prefix
+        relpath = os.path.relpath(path, sync_path)
+        if not relpath.startswith('.'):
+            prefix = os.path.join(s3_prefix, relpath)
+        else:
+            prefix = s3_prefix
+
+        for file in files:
+            file_key = os.path.join(prefix, file)
+            bucket.upload_file(os.path.join(path, file), file_key)
+
+
 # List of objects to sync upon running of this script
 MATRIO_S3_OBJS = [
-    "camd/shared-data/oqmd_voro_March25_v2.csv",
+    "camd/shared-data/ooqmd_voro_v3.csv",
+    "camd/shared-data/oqmd1.2_icsd_featurized_clean_v2.pickle",
     "camd/shared-data/protosearch-data/materials-db/oqmd/oqmd_ver3.db"
 ]
 

@@ -1,6 +1,6 @@
 Iteration N_Discovery Total_Discovery N_candidates model-CV
-        0        2029            2116        82116 nan
-        1          96            2172        81916 nan
-        2         102            2235        81716 nan
-        3          99            2292        81516 nan
-        4          85            2342        81316 nan
+        0        1890            1890       116224 nan
+        1          90            1947       116024 nan
+        2          94            2004       115824 nan
+        3          99            2059       115624 nan
+        4          84            2098       115424 nan

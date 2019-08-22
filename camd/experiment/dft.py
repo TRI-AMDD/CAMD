@@ -12,6 +12,8 @@ from pymatgen.io.vasp.outputs import Vasprun
 import subprocess
 import traceback
 import warnings
+import pandas as pd
+import datetime
 
 
 from camd.experiment.base import Experiment
@@ -37,7 +39,7 @@ class OqmdDFTonMC1(Experiment):
         if self.get_state() and self.job_status:
             return "completed"
         elif sum([doc['status'] in ['SUCCEEDED', 'FAILED']
-                    for doc in self.job_status.values()]) > 0:
+                  for doc in self.job_status.values()]) > 0:
             return "active"
         else:
             return "unstarted"
@@ -51,7 +53,7 @@ class OqmdDFTonMC1(Experiment):
         return all([doc['status'] in ['SUCCEEDED', 'FAILED']
                     for doc in self.job_status.values()])
 
-    def get_results(self, indices):
+    def get_results(self, indices, populate_candidate_data=True):
         # This gets the formation energies.
         if not self.get_state():
             warnings.warn("Some calculations did not finish.")
@@ -63,7 +65,14 @@ class OqmdDFTonMC1(Experiment):
 
                 results_dict[structure_id] = delta_e
 
-        return results_dict
+        if populate_candidate_data:
+            candidate_data = self.get_parameter("candidate_data")
+            _df = candidate_data.loc[results_dict.keys()]
+            _df['delta_e'] = pd.Series(results_dict)
+            _df = _df.reindex(sorted(_df.columns), axis=1)
+            return _df
+        else:
+            return results_dict
 
     def submit(self, unique_ids=None):
         """
@@ -88,9 +97,13 @@ class OqmdDFTonMC1(Experiment):
             while not finished:
                 time.sleep(self.poll_time)
                 finished = self.get_state()
-                status_string = "\n".join(["{}: {}".format(key, value["status"])
+                for doc in self.job_status.values():
+                    doc["elapsed_time"] = time.time() - doc["start_time"]
+                status_string = "\n".join(["{}: {} {}".format(key, value["status"],
+                                                              datetime.timedelta(0,value["elapsed_time"]))
                                            for key, value in self.job_status.items()])
                 print("Calc status:\n{}".format(status_string))
+                print("Timeout is set as {}.".format(datetime.timedelta(0, self.timeout)))
 
                 for doc in self.job_status.values():
                     doc["elapsed_time"] = time.time() - doc["start_time"]
@@ -100,9 +113,10 @@ class OqmdDFTonMC1(Experiment):
                             doc.update({"status": "FAILED",
                                         "error": "timeout"})
                             # Kill AWS job
-                            kill_cmd = "aws batch terminate-job --job-id {} --reason camd_timeout".format(
+                            kill_cmd = "aws batch terminate-job --region=us-east-1 --job-id {} --reason camd_timeout".format(
                                 doc['jobId'])
                             kill_result = subprocess.check_output(shlex.split(kill_cmd))
+
         return self.job_status
 
     @classmethod
@@ -147,7 +161,11 @@ def submit_dft_calcs_to_mc1(structure_dict):
             # Submit to mc1
             # TODO: ensure this is checked for failure to submit
             print("Submitting job: {}".format(structure_id))
-            calc = subprocess.check_output(["trisub", "-q", "oqmd_test_queue", "-r", "2000", "-c", "8"])
+            try:
+                calc = subprocess.check_output(["trisub", "-q", "oqmd_test_queue", "-r", "16000", "-c", "16"])
+            except subprocess.CalledProcessError as e:
+                print(e.output)
+
             calc = calc.decode('utf-8')
             calc = re.findall("({.+})", calc, re.DOTALL)[0]
             calc = json.loads(calc)
@@ -174,7 +192,7 @@ def check_dft_calcs(calc_status):
             continue
         path = calc['path']
         print("Checking status of {}: {}".format(path, structure_id))
-        aws_cmd = "aws batch describe-jobs --jobs {}".format(calc['jobId'])
+        aws_cmd = "aws batch describe-jobs --jobs --region=us-east-1 {}".format(calc['jobId'])
         result = subprocess.check_output(shlex.split(aws_cmd))
         result = json.loads(result)
         aws_status = result["jobs"][0]["status"]

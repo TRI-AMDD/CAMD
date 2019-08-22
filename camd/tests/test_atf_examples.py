@@ -5,9 +5,10 @@ import shutil
 import pandas as pd
 
 from sklearn.neural_network import MLPRegressor
+from pymatgen import Composition
 from camd.agent.agents import QBCStabilityAgent
 from camd.agent.base import RandomAgent
-from camd.analysis import AnalyzeStability
+from camd.analysis import AnalyzeStability_mod as AnalyzeStability
 from camd.experiment import ATFSampler
 from camd.loop import Loop
 from camd.utils.s3 import cache_s3_objs
@@ -18,7 +19,6 @@ CAMD_LONG_TESTS = os.environ.get("CAMD_LONG_TESTS", False)
 SKIP_MSG = "Long tests disabled, set CAMD_LONG_TESTS to run long tests"
 
 
-# TODO: s3 sync doesn't currently work on jenkins
 @unittest.skipUnless(CAMD_LONG_TESTS, SKIP_MSG)
 class AftLoopTestLong(unittest.TestCase):
     def setUp(self):
@@ -50,7 +50,7 @@ class AftLoopTestLong(unittest.TestCase):
         candidate_data = df
         path = '.'
 
-        new_loop = Loop(path, candidate_data, agent, experiment, analyzer,
+        new_loop = Loop(candidate_data, agent, experiment, analyzer,
                         agent_params=agent_params, analyzer_params=analyzer_params, experiment_params=experiment_params,
                         create_seed=N_seed)
 
@@ -84,10 +84,9 @@ class AtfLoopTest(unittest.TestCase):
         analyzer = AnalyzeStability
         analyzer_params = {'hull_distance': 0.05}
         experiment = ATFSampler
-        experiment_params = {'params': {'dataframe': df}}
+        experiment_params = {'dataframe': df}
         candidate_data = df
-        path = '.'
-        new_loop = Loop(path, candidate_data, agent, experiment, analyzer,
+        new_loop = Loop(candidate_data, agent, experiment, analyzer,
                         agent_params=agent_params, analyzer_params=analyzer_params,
                         experiment_params=experiment_params,
                         create_seed=n_seed)
@@ -98,6 +97,19 @@ class AtfLoopTest(unittest.TestCase):
         for _ in range(6):
             new_loop.run()
             self.assertTrue(True)
+
+        # Testing the continuation
+        new_loop = Loop(candidate_data, agent, experiment, analyzer,
+                        agent_params=agent_params, analyzer_params=analyzer_params,
+                        experiment_params=experiment_params,
+                        create_seed=n_seed)
+        self.assertTrue(new_loop.initialized)
+        self.assertEqual(new_loop.iteration, 6)
+        self.assertEqual(new_loop.loop_state, None)
+
+        new_loop.run()
+        self.assertTrue(True)
+        self.assertEqual(new_loop.iteration, 7)
 
     def test_qbc_agent_loop(self):
         df = pd.read_csv(os.path.join(CAMD_TEST_FILES, 'test_df.csv'))
@@ -116,16 +128,66 @@ class AtfLoopTest(unittest.TestCase):
         analyzer = AnalyzeStability
         analyzer_params = {'hull_distance': 0.05}
         experiment = ATFSampler
-        experiment_params = {'params': {'dataframe': df_sub}}
+        experiment_params = {'dataframe': df_sub}
         candidate_data = df_sub
         path = '.'
 
-        new_loop = Loop(path, candidate_data, agent, experiment, analyzer,
+        new_loop = Loop(candidate_data, agent, experiment, analyzer,
                         agent_params=agent_params, analyzer_params=analyzer_params,
                         experiment_params=experiment_params,
                         create_seed=n_seed)
+        new_loop.initialize()
+        self.assertTrue(new_loop.initialized)
+
         new_loop.auto_loop(6)
         self.assertTrue(True)
+
+    def test_mp_loop(self):
+        df = pd.read_csv(os.path.join(CAMD_TEST_FILES, 'test_df_analysis.csv'),)
+                         # index_col="id")
+        df['id'] = [int(mp_id.replace("mp-", "").replace('mvc-', ''))
+                    for mp_id in df['id']]
+        df.set_index("id")
+        df['Composition'] = df['formula']
+
+        # Just use the Ti-O-N chemsys
+        seed_data = df.iloc[:38]
+        candidate_data = df.iloc[38:209]
+        n_query = 20  # This many new candidates are "calculated with DFT" (i.e. requested from Oracle -- DFT)
+        agent = RandomAgent
+        agent_params = {'hull_distance': 0.05, 'N_query': n_query}
+        analyzer = AnalyzeStability
+        analyzer_params = {'hull_distance': 0.05}
+        experiment = ATFSampler
+        experiment_params = {'dataframe': df}
+        # candidate_data = df
+        new_loop = Loop(candidate_data, agent, experiment, analyzer,
+                        agent_params=agent_params, analyzer_params=analyzer_params,
+                        experiment_params=experiment_params, seed_data=seed_data)
+
+        new_loop.initialize()
+        self.assertFalse(new_loop.create_seed)
+
+        for iteration in range(6):
+            new_loop.run()
+            self.assertTrue(
+                os.path.isfile("hull_{}.png".format(iteration)))
+            if iteration >= 1:
+                self.assertTrue(
+                    os.path.isfile("report.png"))
+
+        # Testing the continuation
+        new_loop = Loop(candidate_data, agent, experiment, analyzer,
+                        agent_params=agent_params, analyzer_params=analyzer_params,
+                        experiment_params=experiment_params)
+        self.assertTrue(new_loop.initialized)
+        self.assertEqual(new_loop.iteration, 6)
+        self.assertEqual(new_loop.loop_state, None)
+
+        new_loop.run()
+        self.assertTrue(True)
+        self.assertEqual(new_loop.iteration, 7)
+
 
 if __name__ == '__main__':
     unittest.main()
