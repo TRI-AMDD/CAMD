@@ -2,7 +2,7 @@ FROM continuumio/miniconda3
 
 # Activate shell
 SHELL ["/bin/bash", "-c"]
-ENV PATH="/opt/conda/envs/beep/bin:$PATH"
+ENV PATH="/opt/conda/bin/:$PATH"
 
 RUN mkdir -p /home/camd && \
     conda create -n camd python=3.6 && \
