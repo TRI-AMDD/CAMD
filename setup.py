@@ -36,7 +36,7 @@ setup(
                       "protosearch",
                       "autologging",
                       "awscli",
-                      "tensorflow",
+                      "tensorflow==1.14.0",
                       "gpflow"
                       ],
     # TODO: make this materials?
