@@ -16,20 +16,21 @@ cache_s3_objs(['camd/shared-data/oqmd_1.2_voronoi_magpie_fingerprints.pickle'])
 ##########################################################
 df = pd.read_pickle(os.path.join(S3_CACHE,
                               'camd/shared-data/oqmd_1.2_voronoi_magpie_fingerprints.pickle')).sample(frac=0.2)
-N_seed = 5000  # Starting sample size
+N_seed = 5000  # Starting sample size - a seed of this size will be randomly chosen.
 N_query = 200  # This many new candidates are "calculated with DFT" (i.e. requested from Oracle -- DFT)
 agent = AgentStabilityML5
 agent_params = {
     'ML_algorithm': MLPRegressor,
     'ML_algorithm_params': {'hidden_layer_sizes': (84, 50)},
-    'N_query': N_query, 'N_species': 2,
+    'N_query': N_query,
+    'N_species': 2,         # We'll restrict the search to binaries
     'hull_distance': 0.05,  # Distance to hull to consider a finding as discovery (eV/atom)
-    'frac': 0.5 # Fraction to exploit (rest will be explored -- randomly picked)
+    'frac': 0.5             # Fraction to exploit (rest will be explored -- randomly picked)
     }
 analyzer = AnalyzeStability_mod
 analyzer_params = {'hull_distance': 0.05}
 experiment = ATFSampler
-experiment_params = {'params': {'dataframe': df}}
+experiment_params = {'dataframe': df}
 candidate_data = df
 ##########################################################
 new_loop = Loop(candidate_data, agent, experiment, analyzer,
