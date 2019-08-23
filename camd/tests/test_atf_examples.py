@@ -252,7 +252,7 @@ class AtfSVGPLoopTest(unittest.TestCase):
         new_loop.initialize()
         self.assertTrue(new_loop.initialized)
 
-        new_loop.auto_loop(6)
+        new_loop.auto_loop(3)
         self.assertTrue(True)
 
 if __name__ == '__main__':
