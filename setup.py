@@ -36,6 +36,8 @@ setup(
                       "protosearch",
                       "autologging",
                       "awscli",
+                      "tensorflow",
+                      "gpflow"
                       ],
     # TODO: make this materials?
     dependency_links=[

@@ -2,6 +2,7 @@
 
 import numpy as np
 import time
+import gpflow
 from qmpy.analysis.thermodynamics.phase import Phase, PhaseData
 from copy import deepcopy
 from camd.analysis import PhaseSpaceAL, ELEMENTS
@@ -313,12 +314,6 @@ class GaussianProcessStabilityAgent(HypothesisAgent):
             phases.append(Phase(el, 0.0, per_atom=True))
         self.pd.add_phases(phases)
 
-
-try:
-    import gpflow
-    gpflow_loaded = True
-except ImportError:
-    gpflow_loaded = False
 
 class SVGProcessStabilityAgent(HypothesisAgent):
     """

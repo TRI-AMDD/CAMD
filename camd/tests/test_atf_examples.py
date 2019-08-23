@@ -17,12 +17,6 @@ from camd import S3_CACHE, CAMD_TEST_FILES
 CAMD_LONG_TESTS = os.environ.get("CAMD_LONG_TESTS", False)
 SKIP_MSG = "Long tests disabled, set CAMD_LONG_TESTS to run long tests"
 
-try:
-    import gpflow
-    import tensorflow
-    GPFLOW_TEST = True
-except ImportError:
-    GPFLOW_TEST = False
 
 @unittest.skipUnless(CAMD_LONG_TESTS, SKIP_MSG)
 class AftLoopTestLong(unittest.TestCase):
@@ -221,7 +215,7 @@ class AtfLoopTest(unittest.TestCase):
         self.assertTrue(True)
         self.assertEqual(new_loop.iteration, 7)
 
-@unittest.skipUnless(GPFLOW_TEST, "Tests that depend on gpflow/tensorflow are disabled.")
+@unittest.skipUnless(CAMD_LONG_TESTS, SKIP_MSG)
 class AtfSVGPLoopTest(unittest.TestCase):
     def setUp(self):
         self.pwd = os.getcwd()
