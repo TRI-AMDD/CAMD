@@ -4,7 +4,6 @@ Initial worker to run structure discovery.  WIP.
 """
 import time
 import boto3
-import re
 
 from monty.tempfile import ScratchDir
 from camd import CAMD_S3_BUCKET
@@ -99,7 +98,9 @@ def get_common_prefixes(bucket, prefix):
     client = boto3.client('s3')
     paginator = client.get_paginator('list_objects')
     result = paginator.paginate(Bucket=bucket, Delimiter='/', Prefix=prefix)
-    return [prefix['Prefix'].split('/')[-2] for prefix in result.search("CommonPrefixes")]
+    return [common_prefix['Prefix'].split('/')[-2]
+            for common_prefix in result.search("CommonPrefixes")
+            if common_prefix]
 
 
 if __name__ == "__main__":
