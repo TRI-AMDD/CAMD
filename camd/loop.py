@@ -6,13 +6,13 @@ import time
 import numpy as np
 import pandas as pd
 import shutil
-import boto3
 
 from monty.json import MSONable
 from camd.utils.s3 import cache_s3_objs, s3_sync
 from camd import S3_CACHE, CAMD_S3_BUCKET
 from camd.agent.base import RandomAgent
 from camd.log import camd_traced
+from matplotlib import pyplot as plt
 
 # TODO:
 #  - improve the stopping scheme
@@ -308,9 +308,12 @@ class Loop(MSONable):
         ax = data.plot(kind='bar', x='Iteration', y='Total_Discovery',
                        legend=False)
         ax.set_ylabel("Total materials discovered")
+        fig = ax.get_figure()
         if filename:
-            ax.get_figure().savefig(filename)
-        return ax
+            fig.savefig(filename)
+
+        # Close to avoid matplotlib memory warning
+        plt.close()
 
     def load(self, data_holder, method='json', no_exist_fail=True):
         if method == 'pickle':
