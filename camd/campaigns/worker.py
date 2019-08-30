@@ -62,16 +62,15 @@ class Worker(object):
             raise ValueError("Campaign {} is not valid".format(self.campaign))
 
     def get_latest_chemsys(self):
-        s3_client = boto3.client("s3")
+        bucket = boto3.resource("s3").Bucket(CAMD_S3_BUCKET)
 
         # Get submissions
         submission_prefix = '/'.join([self.campaign, "submit"])
         # TODO: fix 1000 return value limit - MAT-838
-        submit_objects = s3_client.list_objects(
-            Bucket=CAMD_S3_BUCKET, Prefix=submission_prefix)
-        submission_times = {obj['Key'].split('/')[-2]: obj['LastModified']
-                            for obj in submit_objects['Contents']
-                            if obj['Key'] != "{}/submit/".format(self.campaign)}
+        submit_objects = bucket.objects.filter(Prefix=submission_prefix)
+        submission_times = {obj.key.split('/')[-2]: obj.get()['LastModified']
+                            for obj in submit_objects
+                            if obj.key != "{}/submit/".format(self.campaign)}
 
         # Get started jobs
         started = get_common_prefixes(CAMD_S3_BUCKET, "/".join([self.campaign, "runs"]))
