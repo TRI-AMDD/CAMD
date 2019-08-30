@@ -25,14 +25,11 @@ class AnalysisTest(unittest.TestCase):
         # Test 3D
         analyzer.hull_distance = 0.05
 
-        plot = analyzer.present(
+        analyzer.present(
             df,
             all_result_ids=["mp-754790", "mvc-4715"],
             new_result_ids=["mp-776280", "mp-30998"]
         )
-        self.assertEqual(plot.gca().get_children()[30].get_markerfacecolor(), 'r')
-        self.assertEqual(plot.gca().get_children()[31].get_markerfacecolor(), 'g')
-
 
 
 if __name__ == '__main__':
