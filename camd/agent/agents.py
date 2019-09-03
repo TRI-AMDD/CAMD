@@ -502,6 +502,12 @@ class SVGProcessStabilityAgent(HypothesisAgent):
 class BaggedGaussianProcessStabilityAgent(HypothesisAgent):
     """
     An ensemble GP learner that can handle relatively large datasets by bagging. WIP.
+
+    Current strategy is that weak GP learners are trained on random subsets of data with max 500 points
+    (and no bootstrapping), to learn a stronger, ensemble learner that minimizes model varience.
+    Learned model is usually stronger, and on par with Random Forest ore NN. We assume the uncertainty
+    of the prediction to be the minimum std among all GP estimators trained, for a given point.
+
     """
     def __init__(self, candidate_data=None, seed_data=None, N_query=None,
                  pd=None, hull_distance=None, N_species=None, alpha=None, multiprocessing=True, n_estimators=None):
