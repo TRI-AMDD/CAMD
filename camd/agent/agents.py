@@ -515,7 +515,7 @@ class BaggedGaussianProcessStabilityAgent(HypothesisAgent):
         self.N_species = N_species
         self.cv_score = np.nan
         self.GP = GaussianProcessRegressor(kernel=C(1) * RBF(1), alpha=0.002)
-        self.n_estimators = n_estimators if n_estimators else 10
+        self.n_estimators = n_estimators if n_estimators else 8
 
         super(BaggedGaussianProcessStabilityAgent, self).__init__()
 
@@ -535,7 +535,7 @@ class BaggedGaussianProcessStabilityAgent(HypothesisAgent):
         steps = [('scaler', StandardScaler()), ('GP', self.GP)]
         pipeline = Pipeline(steps)
 
-        bag_reg = BaggingRegressor(base_estimator=pipeline, n_estimators=self.n_estimators, max_samples=6000, bootstrap=False,
+        bag_reg = BaggingRegressor(base_estimator=pipeline, n_estimators=self.n_estimators, max_samples=5000, bootstrap=False,
                                    verbose=True, n_jobs=-1)
         self.cv_score = np.mean(-1.0 * cross_val_score(pipeline, X, y,
                                                        cv=KFold(3, shuffle=True), scoring='neg_mean_absolute_error'))
