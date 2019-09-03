@@ -359,10 +359,8 @@ class SVGProcessStabilityAgent(HypothesisAgent):
         X = self.seed_data.drop(columns_to_drop, axis=1)
         y = self.seed_data['delta_e']
 
-        from sklearn.preprocessing import StandardScaler
         from sklearn.cluster import MiniBatchKMeans
         from sklearn.model_selection import train_test_split
-
 
         ## Let's test model performance first.
         # Note we avoid doing CV to reduce compute time. We simply do a 1-way split 80:20 (train:test)
