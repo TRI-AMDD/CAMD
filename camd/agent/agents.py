@@ -12,6 +12,7 @@ from camd.log import camd_traced
 from sklearn.gaussian_process.kernels import RBF, ConstantKernel as C
 from sklearn.gaussian_process import GaussianProcessRegressor
 from sklearn.model_selection import cross_val_score, KFold
+from sklearn.preprocessing import StandardScaler
 from sklearn.pipeline import Pipeline
 # TODO: Adaptive N_query and subsampling of candidate space
 
@@ -144,18 +145,15 @@ class AgentStabilityML5(HypothesisAgent):
         else:
             self.candidate_data = candidate_data
         self.seed_data = seed_data
-        overall_model = self.ML_algorithm(**self.ML_algorithm_params)
+
         X = self.seed_data.drop(['Composition', 'N_species', 'delta_e'], axis=1)
+        steps = [('scaler', StandardScaler()), ('ML', self.ML_algorithm(**self.ML_algorithm_params))]
+        pipeline = Pipeline(steps)
 
-        from sklearn.preprocessing import StandardScaler
-        overall_scaler = StandardScaler()
-        X = overall_scaler.fit_transform(X, self.seed_data['delta_e'])
-        overall_model.fit(X, self.seed_data['delta_e'])
-
-        from sklearn.model_selection import cross_val_score, KFold
-        cv_score = cross_val_score(overall_model, X, self.seed_data['delta_e'],
+        cv_score = cross_val_score(pipeline, X, self.seed_data['delta_e'],
                                    cv=KFold(5, shuffle=True), scoring='neg_mean_absolute_error')
         self.cv_score = np.mean(cv_score)*-1
+        pipeline.fit(X, self.seed_data['delta_e'])
 
         # Dropping columns not relevant for ML predictions, but also
         # 'delta_e' column, if exists. The latter is to ensure delta_e does not end up in features if using
@@ -164,8 +162,7 @@ class AgentStabilityML5(HypothesisAgent):
         if 'delta_e' in self.candidate_data:
             columns_to_drop.append('delta_e')
         cand_X = self.candidate_data.drop(columns_to_drop, axis=1)
-        cand_X = overall_scaler.transform(cand_X)
-        expected = overall_model.predict(cand_X)
+        expected = pipeline.predict(cand_X)
 
         # this is just curbing outrageously negative predictions
         for i in range(len(expected)):
@@ -252,7 +249,6 @@ class GaussianProcessStabilityAgent(HypothesisAgent):
         X = self.seed_data.drop(columns_to_drop, axis=1)
         y = self.seed_data['delta_e']
 
-        from sklearn.preprocessing import StandardScaler
 
         steps = [('scaler', StandardScaler()), ('GP', self.GP)]
         cv_pipeline = Pipeline(steps)
