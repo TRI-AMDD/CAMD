@@ -12,6 +12,7 @@ from camd.log import camd_traced
 from sklearn.gaussian_process.kernels import RBF, ConstantKernel as C
 from sklearn.gaussian_process import GaussianProcessRegressor
 from sklearn.model_selection import cross_val_score, KFold
+from sklearn.ensemble.bagging import BaggingRegressor
 from sklearn.pipeline import Pipeline
 # TODO: Adaptive N_query and subsampling of candidate space
 
@@ -496,3 +497,105 @@ class SVGProcessStabilityAgent(HypothesisAgent):
                 likelihood = - ctx.session.run(self.model.likelihood_tensor)
                 # Append likelihood value to list
                 self.logf.append(likelihood)
+
+
+class BaggedGaussianProcessStabilityAgent(HypothesisAgent):
+    """
+    An ensemble GP learner that can handle relatively large datasets by bagging. WIP.
+    """
+    def __init__(self, candidate_data=None, seed_data=None, N_query=None,
+                 pd=None, hull_distance=None, N_species=None, alpha=None, multiprocessing=True, n_estimators=None):
+        self.candidate_data = candidate_data
+        self.seed_data = seed_data
+        self.hull_distance = hull_distance if hull_distance else 0.0
+        self.N_query = N_query if N_query else 1
+        self.pd = pd
+        self.alpha = alpha if alpha else 0.5
+        self.multiprocessing = multiprocessing
+        self.N_species = N_species
+        self.cv_score = np.nan
+        self.GP = GaussianProcessRegressor(kernel=C(1) * RBF(1), alpha=0.002)
+        self.n_estimators = n_estimators if n_estimators else 10
+
+        super(BaggedGaussianProcessStabilityAgent, self).__init__()
+
+    def get_hypotheses(self, candidate_data, seed_data=None):
+        if self.N_species:
+            self.candidate_data = candidate_data[candidate_data['N_species'] == self.N_species]
+        else:
+            self.candidate_data = candidate_data
+        self.seed_data = seed_data
+
+        columns_to_drop = ['Composition', 'N_species', 'delta_e']
+        X = self.seed_data.drop(columns_to_drop, axis=1)
+        y = self.seed_data['delta_e']
+
+        from sklearn.preprocessing import StandardScaler
+
+        steps = [('scaler', StandardScaler()), ('GP', self.GP)]
+        pipeline = Pipeline(steps)
+
+        bag_reg = BaggingRegressor(base_estimator=pipeline, n_estimators=self.n_estimators, max_samples=6000, bootstrap=False,
+                                   verbose=True, n_jobs=-1)
+        self.cv_score = np.mean(-1.0 * cross_val_score(pipeline, X, y,
+                                                       cv=KFold(3, shuffle=True), scoring='neg_mean_absolute_error'))
+
+        bag_reg.fit(X,y)
+        def _get_unc(bag_reg, X_test):
+            stds = []
+            pres = []
+            for est in bag_reg.estimators_:
+                _p, _s = est.predict(X_test, **{'return_std': True})
+                stds.append(_s)
+                pres.append(_p)
+            return np.mean(np.array(pres), axis=0), np.min(np.array(stds), axis=0)
+
+        # GP makes predictions for Hf and uncertainty*alpha on candidate data
+        preds, stds = _get_unc(bag_reg, self.candidate_data.drop(columns_to_drop, axis=1))
+        expected = preds - stds * self.alpha
+
+        # This is just curbing outrageously negative predictions
+        for i in range(len(expected)):
+            if expected[i] < -6.0:
+                expected[i] = -6.0
+
+        # Get estimated stabilities from ML predictions
+        # For that, let's create Phases from candidates
+        candidate_phases = []
+        _c = 0
+        for data in self.candidate_data.iterrows():
+            candidate_phases.append(
+                Phase(data[1]['Composition'], energy=expected[_c], per_atom=True, description=data[0]))
+            _c += 1
+
+        # We take the existing phase data for seed phases, add candidate phases, and compute stabilities
+        self.get_pd()
+        pd_ml = deepcopy(self.pd)
+        pd_ml.add_phases(candidate_phases)
+        space_ml = PhaseSpaceAL(bounds=ELEMENTS, data=pd_ml)
+        if self.multiprocessing:
+            space_ml.compute_stabilities_multi(candidate_phases)
+        else:
+            space_ml.compute_stabilities_mod(candidate_phases)
+
+        ml_stabilities = []
+        for _p in candidate_phases:
+            ml_stabilities.append(_p.stability)
+
+        # Now let's find the most stable ones upto N_query within hull_distance
+        ml_stabilities = np.array(ml_stabilities, dtype=float)
+        ml_stable = np.array(candidate_phases)[ml_stabilities <= self.hull_distance]
+        to_compute = sorted(ml_stable, key=lambda x: x.stability)[:self.N_query]
+
+        self.indices_to_compute = [i.description for i in to_compute]
+
+        return self.indices_to_compute
+
+    def get_pd(self):
+        self.pd = PhaseData()
+        phases = []
+        for data in self.seed_data.iterrows():
+            phases.append(Phase(data[1]['Composition'], energy=data[1]['delta_e'], per_atom=True, description=data[0]))
+        for el in ELEMENTS:
+            phases.append(Phase(el, 0.0, per_atom=True))
+        self.pd.add_phases(phases)
