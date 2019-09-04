@@ -13,7 +13,9 @@ from sklearn.gaussian_process.kernels import RBF, ConstantKernel as C
 from sklearn.gaussian_process import GaussianProcessRegressor
 from sklearn.model_selection import cross_val_score, KFold
 from sklearn.ensemble.bagging import BaggingRegressor
+from sklearn.preprocessing import StandardScaler
 from sklearn.pipeline import Pipeline
+from sklearn.ensemble import AdaBoostRegressor
 # TODO: Adaptive N_query and subsampling of candidate space
 
 
@@ -145,18 +147,15 @@ class AgentStabilityML5(HypothesisAgent):
         else:
             self.candidate_data = candidate_data
         self.seed_data = seed_data
-        overall_model = self.ML_algorithm(**self.ML_algorithm_params)
+
         X = self.seed_data.drop(['Composition', 'N_species', 'delta_e'], axis=1)
+        steps = [('scaler', StandardScaler()), ('ML', self.ML_algorithm(**self.ML_algorithm_params))]
+        pipeline = Pipeline(steps)
 
-        from sklearn.preprocessing import StandardScaler
-        overall_scaler = StandardScaler()
-        X = overall_scaler.fit_transform(X, self.seed_data['delta_e'])
-        overall_model.fit(X, self.seed_data['delta_e'])
-
-        from sklearn.model_selection import cross_val_score, KFold
-        cv_score = cross_val_score(overall_model, X, self.seed_data['delta_e'],
+        cv_score = cross_val_score(pipeline, X, self.seed_data['delta_e'],
                                    cv=KFold(5, shuffle=True), scoring='neg_mean_absolute_error')
         self.cv_score = np.mean(cv_score)*-1
+        pipeline.fit(X, self.seed_data['delta_e'])
 
         # Dropping columns not relevant for ML predictions, but also
         # 'delta_e' column, if exists. The latter is to ensure delta_e does not end up in features if using
@@ -165,8 +164,7 @@ class AgentStabilityML5(HypothesisAgent):
         if 'delta_e' in self.candidate_data:
             columns_to_drop.append('delta_e')
         cand_X = self.candidate_data.drop(columns_to_drop, axis=1)
-        cand_X = overall_scaler.transform(cand_X)
-        expected = overall_model.predict(cand_X)
+        expected = pipeline.predict(cand_X)
 
         # this is just curbing outrageously negative predictions
         for i in range(len(expected)):
@@ -252,8 +250,6 @@ class GaussianProcessStabilityAgent(HypothesisAgent):
         columns_to_drop = ['Composition', 'N_species', 'delta_e']
         X = self.seed_data.drop(columns_to_drop, axis=1)
         y = self.seed_data['delta_e']
-
-        from sklearn.preprocessing import StandardScaler
 
         steps = [('scaler', StandardScaler()), ('GP', self.GP)]
         cv_pipeline = Pipeline(steps)
@@ -364,10 +360,8 @@ class SVGProcessStabilityAgent(HypothesisAgent):
         X = self.seed_data.drop(columns_to_drop, axis=1)
         y = self.seed_data['delta_e']
 
-        from sklearn.preprocessing import StandardScaler
         from sklearn.cluster import MiniBatchKMeans
         from sklearn.model_selection import train_test_split
-
 
         ## Let's test model performance first.
         # Note we avoid doing CV to reduce compute time. We simply do a 1-way split 80:20 (train:test)
@@ -608,3 +602,138 @@ class BaggedGaussianProcessStabilityAgent(HypothesisAgent):
         for el in ELEMENTS:
             phases.append(Phase(el, 0.0, per_atom=True))
         self.pd.add_phases(phases)
+
+
+@camd_traced
+class AgentStabilityAdaBoost(HypothesisAgent):
+    """
+    An agent that does a certain fraction of full exploration an exploitation in each iteration.
+    It will exploit a fraction of N_query options (frac), and explore the rest of its budget.
+    """
+    def __init__(self, candidate_data=None, seed_data=None, N_query=None,
+                 pd=None, hull_distance=None, N_species=None, ML_algorithm=None, ML_algorithm_params=None,
+                 frac=None, multiprocessing=True, uncertainty=True, alpha=None, n_estimators=None):
+
+        self.candidate_data = candidate_data
+        self.seed_data = seed_data
+        self.hull_distance = hull_distance if hull_distance else 0.0
+        self.N_query = N_query if N_query else 1
+        self.pd = pd
+        self.ML_algorithm = ML_algorithm
+        self.ML_algorithm_params = ML_algorithm_params
+        self.multiprocessing = multiprocessing
+        self.frac = frac if frac else 0.5
+        self.cv_score = np.nan
+        self.N_species = N_species
+        self.uncertainty = uncertainty
+        self.alpha = alpha if alpha else 0.5
+        self.n_estimators = n_estimators if n_estimators else 10
+
+        super(AgentStabilityAdaBoost, self).__init__()
+
+    def get_hypotheses(self, candidate_data, seed_data=None):
+        if self.N_species:
+            self.candidate_data = candidate_data[ candidate_data['N_species'] == self.N_species ]
+        else:
+            self.candidate_data = candidate_data
+        self.seed_data = seed_data
+
+        X = self.seed_data.drop(['Composition', 'N_species', 'delta_e'], axis=1)
+        steps = [('scaler', StandardScaler()), ('ML', self.ML_algorithm(**self.ML_algorithm_params))]
+        pipeline = Pipeline(steps)
+
+        adaboost = AdaBoostRegressor(base_estimator=pipeline, n_estimators=self.n_estimators)
+
+        cv_score = cross_val_score(adaboost, X, self.seed_data['delta_e'],
+                                   cv=KFold(3, shuffle=True), scoring='neg_mean_absolute_error')
+        self.cv_score = np.mean(cv_score)*-1
+
+        # We will take standard scaler out of the pipleine for prediction purposes (we want a single scaler)
+
+        scaler = StandardScaler()
+        X_scaled = scaler.fit_transform(X)
+        overall_adaboost = AdaBoostRegressor(base_estimator=self.ML_algorithm(**self.ML_algorithm_params),
+                                             n_estimators=self.n_estimators)
+        overall_adaboost.fit(X_scaled, self.seed_data['delta_e'])
+
+        # Dropping columns not relevant for ML predictions, but also
+        # 'delta_e' column, if exists. The latter is to ensure delta_e does not end up in features if using
+        # after the fact data.
+        columns_to_drop = ['Composition', 'N_species']
+        if 'delta_e' in self.candidate_data:
+            columns_to_drop.append('delta_e')
+        cand_X = self.candidate_data.drop(columns_to_drop, axis=1)
+
+        cand_X = scaler.transform(cand_X)
+        expected = overall_adaboost.predict(cand_X)
+
+        if self.uncertainty:
+            expected -= self.alpha * self._get_unc_ada(overall_adaboost, cand_X)
+
+        # this is just curbing outrageously negative predictions
+        for i in range(len(expected)):
+            if expected[i] < -6.0:
+                expected[i] = -6.0
+
+        # Get estimated stabilities from ML predictions
+        # For that, let's create Phases from candidates
+        candidate_phases = []
+        _c = 0
+        for data in self.candidate_data.iterrows():
+            candidate_phases.append(
+                Phase(data[1]['Composition'], energy=expected[_c], per_atom=True, description=data[0]))
+            _c += 1
+
+        # We take the existing phase data for seed phases, add candidate phases, and compute stabilities
+        self.get_pd()
+        pd_ml = deepcopy(self.pd)
+        pd_ml.add_phases(candidate_phases)
+        space_ml = PhaseSpaceAL(bounds=ELEMENTS, data=pd_ml)
+        if self.multiprocessing:
+            space_ml.compute_stabilities_multi(candidate_phases)
+        else:
+            space_ml.compute_stabilities_mod(candidate_phases)
+
+        ml_stabilities = []
+        for _p in candidate_phases:
+            ml_stabilities.append(_p.stability)
+
+        # Now let's find the most stable ones upto N_query within hull_distance
+        ml_stabilities = np.array(ml_stabilities, dtype=float)
+        ml_stable = np.array(candidate_phases)[ml_stabilities <= self.hull_distance]
+
+        sorted_stabilities = sorted(ml_stable, key=lambda x: x.stability)
+
+        # Exploitation part:
+        to_compute = sorted_stabilities[:int(self.N_query * self.frac)]
+        remaining = sorted_stabilities[int(self.N_query * self.frac):]
+
+        # Exploration part:
+        np.random.shuffle(remaining)
+        to_compute += remaining[:int(self.N_query * (1.0-self.frac))]
+
+        self.indices_to_compute = [i.description for i in to_compute]
+        return self.indices_to_compute
+
+    def get_pd(self):
+        self.pd = PhaseData()
+        phases = []
+        for data in self.seed_data.iterrows():
+            phases.append(Phase(data[1]['Composition'], energy=data[1]['delta_e'], per_atom=True, description=data[0]))
+        for el in ELEMENTS:
+            phases.append(Phase(el, 0.0, per_atom=True))
+        self.pd.add_phases(phases)
+
+    @staticmethod
+    def _get_unc_ada(ada, X):
+        preds = []
+        for i in ada.estimators_:
+            preds.append(i.predict(X))
+        preds = np.array(preds)
+        preds = preds.T
+        stds = []
+        for i in preds:
+            average = np.average(i, weights=ada.estimator_weights_)
+            _std = np.sqrt(np.average((i - average) ** 2, weights=ada.estimator_weights_))
+            stds.append(_std)
+        return np.array(stds)

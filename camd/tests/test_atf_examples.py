@@ -6,7 +6,7 @@ import pandas as pd
 
 from sklearn.neural_network import MLPRegressor
 from camd.agent.agents import QBCStabilityAgent, GaussianProcessStabilityAgent, SVGProcessStabilityAgent, \
-    BaggedGaussianProcessStabilityAgent
+    BaggedGaussianProcessStabilityAgent, AgentStabilityAdaBoost
 from camd.agent.base import RandomAgent
 from camd.analysis import AnalyzeStability_mod as AnalyzeStability
 from camd.experiment import ATFSampler
@@ -182,6 +182,38 @@ class AtfLoopTest(unittest.TestCase):
             'alpha': 0.5,  # Fraction of std to include in expected improvement
             'n_estimators': 2,
             'max_samples': 195
+        }
+        analyzer = AnalyzeStability
+        analyzer_params = {'hull_distance': 0.05}
+        experiment = ATFSampler
+        experiment_params = {'dataframe': df_sub}
+        candidate_data = df_sub
+        path = '.'
+
+        new_loop = Loop(candidate_data, agent, experiment, analyzer,
+                        agent_params=agent_params, analyzer_params=analyzer_params,
+                        experiment_params=experiment_params,
+                        create_seed=n_seed)
+        new_loop.initialize()
+        self.assertTrue(new_loop.initialized)
+
+        new_loop.auto_loop(6)
+        self.assertTrue(True)
+
+    def test_adaboost_loop(self):
+        df = pd.read_csv(os.path.join(CAMD_TEST_FILES, 'test_df.csv'))
+        df_sub = df[df['N_species'] <= 3]
+        n_seed = 200  # Starting sample size
+        n_query = 10  # This many new candidates are "calculated with DFT" (i.e. requested from Oracle -- DFT)
+        agent = AgentStabilityAdaBoost
+        agent_params = {
+            'ML_algorithm': MLPRegressor,
+            'ML_algorithm_params': {'hidden_layer_sizes': (84, 50)},
+            'N_query': n_query,
+            'hull_distance': 0.05,  # Distance to hull to consider a finding as discovery (eV/atom)
+            'frac': 1.0, # Fraction to exploit (rest will be explored -- randomly picked)
+            'alpha': 0.5,  # Fraction of std to include in expected improvement
+            'n_estimators': 10
         }
         analyzer = AnalyzeStability
         analyzer_params = {'hull_distance': 0.05}
