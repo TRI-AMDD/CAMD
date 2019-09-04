@@ -510,7 +510,8 @@ class BaggedGaussianProcessStabilityAgent(HypothesisAgent):
 
     """
     def __init__(self, candidate_data=None, seed_data=None, N_query=None,
-                 pd=None, hull_distance=None, N_species=None, alpha=None, multiprocessing=True, n_estimators=None):
+                 pd=None, hull_distance=None, N_species=None, alpha=None, multiprocessing=True, n_estimators=None,
+                 max_samples=None):
         self.candidate_data = candidate_data
         self.seed_data = seed_data
         self.hull_distance = hull_distance if hull_distance else 0.0
@@ -522,6 +523,7 @@ class BaggedGaussianProcessStabilityAgent(HypothesisAgent):
         self.cv_score = np.nan
         self.GP = GaussianProcessRegressor(kernel=C(1) * RBF(1), alpha=0.002)
         self.n_estimators = n_estimators if n_estimators else 8
+        self.max_samples = max_samples if max_samples else 5000
 
         super(BaggedGaussianProcessStabilityAgent, self).__init__()
 
@@ -541,7 +543,8 @@ class BaggedGaussianProcessStabilityAgent(HypothesisAgent):
         steps = [('scaler', StandardScaler()), ('GP', self.GP)]
         pipeline = Pipeline(steps)
 
-        bag_reg = BaggingRegressor(base_estimator=pipeline, n_estimators=self.n_estimators, max_samples=5000, bootstrap=False,
+        bag_reg = BaggingRegressor(base_estimator=pipeline, n_estimators=self.n_estimators,
+                                   max_samples=self.max_samples, bootstrap=False,
                                    verbose=True, n_jobs=-1)
         self.cv_score = np.mean(-1.0 * cross_val_score(pipeline, X, y,
                                                        cv=KFold(3, shuffle=True), scoring='neg_mean_absolute_error'))
