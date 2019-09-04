@@ -337,7 +337,8 @@ class AnalyzeStability_mod(AnalyzerBase):
 
         if filename is not None:
             plot.savefig(filename)
-        return plot
+
+        plot.close()
 
 
 class PhaseSpaceAL(PhaseSpace):
