@@ -2,7 +2,8 @@
 
 import abc
 import warnings
-
+import json
+import os
 import numpy as np
 from camd import tqdm
 from camd.log import camd_traced
@@ -13,6 +14,9 @@ from pymatgen import Composition
 from pymatgen.entries.computed_entries import ComputedEntry
 from pymatgen.analysis.phase_diagram import PhaseDiagram, PDPlotter, tet_coord,\
     triangular_coord
+from pymatgen.analysis.structure_matcher import StructureMatcher
+from camd.utils.s3 import cache_s3_objs
+from camd import S3_CACHE
 
 ELEMENTS = ['Ru', 'Re', 'Rb', 'Rh', 'Be', 'Ba', 'Bi', 'Br', 'H', 'P', 'Os', 'Ge', 'Gd', 'Ga', 'Pr', 'Pt', 'Pu', 'C',
             'Pb', 'Pa', 'Pd', 'Xe', 'Pm', 'Ho', 'Hf', 'Hg', 'He', 'Mg', 'K', 'Mn', 'O', 'S', 'W', 'Zn', 'Eu', 'Zr',
@@ -47,6 +51,53 @@ class AnalyzerBase(abc.ABC):
 
         """
 
+@camd_traced
+class AnalyzeStructures(AnalyzerBase):
+    """
+    This class tests whether a set of structures are unique when compared among themselves and against another set.
+    The typical use case here is comparing  a set of hypothetical structures (post-DFT relaxation) and those from ICSD.
+
+    """
+    def __init__(self, structures=None):
+        self.structures = structures if structures else []
+        self.unique_structures = None
+        self.groups = None
+        self.against_icsd = False
+        super(AnalyzeStructures, self).__init__()
+
+    def analyze(self, structures=None, against_icsd=False):
+        smatch = StructureMatcher()
+        self.groups = smatch.group_structures(structures)
+        self.unique_structures = [i[0] for i in self.groups]
+
+        if self.against_icsd:
+            cache_s3_objs(['camd/shared-data/oqmd_1.2_voronoi_magpie_fingerprints.pickle'])
+            with open(os.path.join(S3_CACHE,
+                                   'camd/shared-data/oqmd_1.2_voronoi_magpie_fingerprints.pickle'), 'r') as f:
+                icsd_structures = json.load(f)
+
+            chemsys = {}
+            for s in self.unique_structures:
+                chemsys = chemsys.union( set(s.composition.as_dict().keys()))
+            icsd_structs_inchemsys = []
+            from pymatgen import Structure
+            for j, r in icsd_structures.items():
+                try:
+                    s = Structure.from_dict(r)
+                    elems = set(s.composition.as_dict().keys())
+                    if elems == chemsys:
+                        icsd_structs_inchemsys.append(s)
+                except:
+                    warnings.warn("Unable to process structure {}".format(j))
+            groups_w_icsd = smatch.group_structures(self.unique_structures+icsd_structs_inchemsys)
+            self.unique_structures = [i[0] for i in groups_w_icsd]
+        return self.unique_structures
+
+    def analyze_vasp_campaign(self, path):
+        pass
+
+    def present(self):
+        pass
 
 @camd_traced
 class AnalyzeStability(AnalyzerBase):
