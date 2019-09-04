@@ -4,7 +4,6 @@ Initial worker to run structure discovery.  WIP.
 """
 import time
 import boto3
-import re
 
 from monty.tempfile import ScratchDir
 from camd import CAMD_S3_BUCKET
@@ -62,16 +61,15 @@ class Worker(object):
             raise ValueError("Campaign {} is not valid".format(self.campaign))
 
     def get_latest_chemsys(self):
-        s3_client = boto3.client("s3")
+        bucket = boto3.resource("s3").Bucket(CAMD_S3_BUCKET)
 
         # Get submissions
         submission_prefix = '/'.join([self.campaign, "submit"])
         # TODO: fix 1000 return value limit - MAT-838
-        submit_objects = s3_client.list_objects(
-            Bucket=CAMD_S3_BUCKET, Prefix=submission_prefix)
-        submission_times = {obj['Key'].split('/')[-2]: obj['LastModified']
-                            for obj in submit_objects['Contents']
-                            if obj['Key'] != "{}/submit/".format(self.campaign)}
+        submit_objects = bucket.objects.filter(Prefix=submission_prefix)
+        submission_times = {obj.key.split('/')[-2]: obj.get()['LastModified']
+                            for obj in submit_objects
+                            if obj.key != "{}/submit/".format(self.campaign)}
 
         # Get started jobs
         started = get_common_prefixes(CAMD_S3_BUCKET, "/".join([self.campaign, "runs"]))
@@ -100,7 +98,9 @@ def get_common_prefixes(bucket, prefix):
     client = boto3.client('s3')
     paginator = client.get_paginator('list_objects')
     result = paginator.paginate(Bucket=bucket, Delimiter='/', Prefix=prefix)
-    return [prefix['Prefix'].split('/')[-2] for prefix in result.search("CommonPrefixes")]
+    return [common_prefix['Prefix'].split('/')[-2]
+            for common_prefix in result.search("CommonPrefixes")
+            if common_prefix]
 
 
 if __name__ == "__main__":
