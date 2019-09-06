@@ -5,6 +5,7 @@ import warnings
 import json
 import os
 import numpy as np
+import itertools
 from camd import tqdm
 from camd.log import camd_traced
 from qmpy.analysis.thermodynamics.phase import Phase, PhaseData
@@ -15,6 +16,7 @@ from pymatgen.entries.computed_entries import ComputedEntry
 from pymatgen.analysis.phase_diagram import PhaseDiagram, PDPlotter, tet_coord,\
     triangular_coord
 from pymatgen.analysis.structure_matcher import StructureMatcher
+from pymatgen import Structure
 from camd.utils.s3 import cache_s3_objs
 from camd import S3_CACHE
 
@@ -66,11 +68,33 @@ class AnalyzeStructures(AnalyzerBase):
         super(AnalyzeStructures, self).__init__()
 
     def analyze(self, structures=None, against_icsd=False):
+        """
+        Goal is to return a list of booleans, corresponding to the given list of structures,
+        Dictating whether they are unique or not. One encounter of a given structure will be labeled as True,
+        and remaining matching structures of it will be labeled as False.
+
+        Args:
+            structures:
+            against_icsd:
+
+        Returns:
+
+        """
+
         smatch = StructureMatcher()
         self.groups = smatch.group_structures(structures)
-        self.unique_structures = [i[0] for i in self.groups]
-        self.against_icsd = against_icsd
+        self.structures = structures
+        self.structure_is_unique = []
 
+        # take one structure from each group, and form a list of camd found structures.
+        self._unique_structures = [i[0] for i in self.groups]
+        for s in structures:
+            if s in self._unique_structures:
+                self.structure_is_unique.append(True)
+            else:
+                self.structure_is_unique.append(False)
+
+        self.against_icsd = against_icsd
         if self.against_icsd:
             cache_s3_objs(['camd/shared-data/oqmd1.2_structs_icsd.json'])
             with open(os.path.join(S3_CACHE,
@@ -78,11 +102,10 @@ class AnalyzeStructures(AnalyzerBase):
                 icsd_structures = json.load(f)
 
             chemsys = set()
-            for s in self.unique_structures:
+            for s in self._unique_structures:
                 chemsys = chemsys.union( set(s.composition.as_dict().keys()))
-            print(chemsys)
+
             self.icsd_structs_inchemsys = []
-            from pymatgen import Structure
             for j, r in icsd_structures.items():
                 try:
                     s = Structure.from_dict(r)
@@ -91,12 +114,58 @@ class AnalyzeStructures(AnalyzerBase):
                         self.icsd_structs_inchemsys.append(s)
                 except:
                     warnings.warn("Unable to process structure {}".format(j))
-            groups_w_icsd = smatch.group_structures(self.unique_structures+self.icsd_structs_inchemsys)
-            self.groups_w_icsd = groups_w_icsd
-            self.unique_structures = [i[0] for i in groups_w_icsd]
-        return self.unique_structures
 
-    def analyze_vasp_campaign_from_path(self, path):
+            self.matching_icsd_strs = []
+            for i in range(len(structures)):
+                if self.structure_is_unique[i]:
+                    s1 = self.structures[i]
+                    match = None
+                    for s2 in self.icsd_structs_inchemsys:
+                        if smatch.fit(s1, s2):
+                            match = s2
+                            break
+                    self.matching_icsd_strs.append(match) # note we store the matching ICSD structures, in case access needed.
+                else:
+                    self.matching_icsd_strs.append(None)
+
+            # Flip the matching bools, and create a filter to apply to unique camd structures found
+            self._icsd_filter = [not i for i in self.matching_icsd_strs]
+            self.structure_is_unique = (np.array(self.structure_is_unique) * np.array(self._icsd_filter)).tolist()
+
+            self.unique_structures = list(itertools.compress(self.structures, self.structure_is_unique))
+        else:
+            self.unique_structures = self._unique_structures
+
+        # We store the final list of unique structures as unique_structures.
+        # We return a corresponding list of bool to the initial structure list provided.
+        return self.structure_is_unique
+
+    def analyze_vaspqmpy_jobs(self, jobs, against_icsd=False):
+        """
+        Useful for analysis integrated as part of a campaign itself
+        Args:
+            jobs:
+            against_icsd:
+
+        Returns:
+
+        """
+        structures = {}
+        for j, r in jobs.items():
+            if r['status'] == 'SUCCEEDED':
+                structures[j] = Structure.from_dict(r['result']['output']['crystal'])
+        return self.analyze(list(structures.values()), against_icsd)
+
+    def analyze_vaspqmpy_campaign_from_path(self, path, store_structures=False):
+        """
+        Useful for post-processing a campaign to find unique discoveries in each iteration.
+        Args:
+            path:
+
+        Returns:
+
+        """
+
         pass
 
     def present(self):
