@@ -69,31 +69,34 @@ class AnalyzeStructures(AnalyzerBase):
         smatch = StructureMatcher()
         self.groups = smatch.group_structures(structures)
         self.unique_structures = [i[0] for i in self.groups]
+        self.against_icsd = against_icsd
 
         if self.against_icsd:
-            cache_s3_objs(['camd/shared-data/oqmd_1.2_voronoi_magpie_fingerprints.pickle'])
+            cache_s3_objs(['camd/shared-data/oqmd1.2_structs_icsd.json'])
             with open(os.path.join(S3_CACHE,
-                                   'camd/shared-data/oqmd_1.2_voronoi_magpie_fingerprints.pickle'), 'r') as f:
+                                   'camd/shared-data/oqmd1.2_structs_icsd.json'), 'r') as f:
                 icsd_structures = json.load(f)
 
-            chemsys = {}
+            chemsys = set()
             for s in self.unique_structures:
                 chemsys = chemsys.union( set(s.composition.as_dict().keys()))
-            icsd_structs_inchemsys = []
+            print(chemsys)
+            self.icsd_structs_inchemsys = []
             from pymatgen import Structure
             for j, r in icsd_structures.items():
                 try:
                     s = Structure.from_dict(r)
                     elems = set(s.composition.as_dict().keys())
                     if elems == chemsys:
-                        icsd_structs_inchemsys.append(s)
+                        self.icsd_structs_inchemsys.append(s)
                 except:
                     warnings.warn("Unable to process structure {}".format(j))
-            groups_w_icsd = smatch.group_structures(self.unique_structures+icsd_structs_inchemsys)
+            groups_w_icsd = smatch.group_structures(self.unique_structures+self.icsd_structs_inchemsys)
+            self.groups_w_icsd = groups_w_icsd
             self.unique_structures = [i[0] for i in groups_w_icsd]
         return self.unique_structures
 
-    def analyze_vasp_campaign(self, path):
+    def analyze_vasp_campaign_from_path(self, path):
         pass
 
     def present(self):
