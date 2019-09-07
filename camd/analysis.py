@@ -56,8 +56,8 @@ class AnalyzerBase(abc.ABC):
 @camd_traced
 class AnalyzeStructures(AnalyzerBase):
     """
-    This class tests whether a set of structures are unique when compared among themselves and against another set.
-    The typical use case here is comparing  a set of hypothetical structures (post-DFT relaxation) and those from ICSD.
+    This class tests if a list of structures are unique. The typical use case here is comparing
+    hypothetical structures (post-DFT relaxation) and those from ICSD.
 
     """
     def __init__(self, structures=None):
@@ -65,28 +65,25 @@ class AnalyzeStructures(AnalyzerBase):
         self.unique_structures = None
         self.groups = None
         self.against_icsd = False
+        self.structure_is_unique = None
         super(AnalyzeStructures, self).__init__()
 
     def analyze(self, structures=None, against_icsd=False):
         """
-        Goal is to return a list of booleans, corresponding to the given list of structures,
-        Dictating whether they are unique or not. One encounter of a given structure will be labeled as True,
-        and remaining matching structures of it will be labeled as False.
-
+        One encounter of a given structure will be labeled as True, its remaining matching structures as False.
         Args:
-            structures:
-            against_icsd:
-
+            structures (list):
+            against_icsd (bool:
         Returns:
-
+            a list of booleans, corresponding to the given list of structures
         """
+        self.structures = structures
+        self.against_icsd = against_icsd
 
         smatch = StructureMatcher()
         self.groups = smatch.group_structures(structures)
-        self.structures = structures
         self.structure_is_unique = []
 
-        # take one structure from each group, and form a list of camd found structures.
         self._unique_structures = [i[0] for i in self.groups]
         for s in structures:
             if s in self._unique_structures:
@@ -94,44 +91,39 @@ class AnalyzeStructures(AnalyzerBase):
             else:
                 self.structure_is_unique.append(False)
 
-        self.against_icsd = against_icsd
         if self.against_icsd:
             cache_s3_objs(['camd/shared-data/oqmd1.2_structs_icsd.json'])
             with open(os.path.join(S3_CACHE,
                                    'camd/shared-data/oqmd1.2_structs_icsd.json'), 'r') as f:
                 icsd_structures = json.load(f)
-
             chemsys = set()
             for s in self._unique_structures:
                 chemsys = chemsys.union( set(s.composition.as_dict().keys()))
 
             self.icsd_structs_inchemsys = []
-            for j, r in icsd_structures.items():
+            for k, v in icsd_structures.items():
                 try:
-                    s = Structure.from_dict(r)
+                    s = Structure.from_dict(v)
                     elems = set(s.composition.as_dict().keys())
                     if elems == chemsys:
                         self.icsd_structs_inchemsys.append(s)
                 except:
-                    warnings.warn("Unable to process structure {}".format(j))
+                    warnings.warn("Unable to process structure {}".format(k))
 
             self.matching_icsd_strs = []
             for i in range(len(structures)):
                 if self.structure_is_unique[i]:
-                    s1 = self.structures[i]
                     match = None
                     for s2 in self.icsd_structs_inchemsys:
-                        if smatch.fit(s1, s2):
+                        if smatch.fit(self.structures[i], s2):
                             match = s2
                             break
-                    self.matching_icsd_strs.append(match) # note we store the matching ICSD structures, in case access needed.
+                    self.matching_icsd_strs.append(match) # store the matching ICSD structures.
                 else:
                     self.matching_icsd_strs.append(None)
-
-            # Flip the matching bools, and create a filter to apply to unique camd structures found
+            # Flip matching bools, and create a filter
             self._icsd_filter = [not i for i in self.matching_icsd_strs]
             self.structure_is_unique = (np.array(self.structure_is_unique) * np.array(self._icsd_filter)).tolist()
-
             self.unique_structures = list(itertools.compress(self.structures, self.structure_is_unique))
         else:
             self.unique_structures = self._unique_structures
@@ -148,7 +140,6 @@ class AnalyzeStructures(AnalyzerBase):
             against_icsd:
 
         Returns:
-
         """
         structures = {}
         for j, r in jobs.items():
