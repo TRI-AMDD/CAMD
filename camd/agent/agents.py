@@ -3,6 +3,7 @@
 import numpy as np
 import time
 import gpflow
+import multiprocessing as mp
 from qmpy.analysis.thermodynamics.phase import Phase, PhaseData
 from copy import deepcopy
 from camd.analysis import PhaseSpaceAL, ELEMENTS
@@ -505,7 +506,7 @@ class BaggedGaussianProcessStabilityAgent(HypothesisAgent):
     """
     def __init__(self, candidate_data=None, seed_data=None, N_query=None,
                  pd=None, hull_distance=None, N_species=None, alpha=None, multiprocessing=True, n_estimators=None,
-                 max_samples=None):
+                 max_samples=None, bootstrap=None):
         self.candidate_data = candidate_data
         self.seed_data = seed_data
         self.hull_distance = hull_distance if hull_distance else 0.0
@@ -518,7 +519,18 @@ class BaggedGaussianProcessStabilityAgent(HypothesisAgent):
         self.GP = GaussianProcessRegressor(kernel=C(1) * RBF(1), alpha=0.002)
         self.n_estimators = n_estimators if n_estimators else 8
         self.max_samples = max_samples if max_samples else 5000
+        self.bootstrap = bootstrap if bootstrap else False
 
+        if isinstance(self.multiprocessing, bool):
+            if self.multiprocessing:
+                self.n_jobs = mp.cpu_count()
+            else:
+                self.n_jobs = 1
+        elif isinstance(self.multiprocessing, int) and self.multiprocessing > 0:
+            self.n_jobs = self.multiprocessing
+        else:
+            self.n_jobs = 1
+        print(self.n_jobs)
         super(BaggedGaussianProcessStabilityAgent, self).__init__()
 
     def get_hypotheses(self, candidate_data, seed_data=None):
@@ -538,8 +550,8 @@ class BaggedGaussianProcessStabilityAgent(HypothesisAgent):
         pipeline = Pipeline(steps)
 
         bag_reg = BaggingRegressor(base_estimator=pipeline, n_estimators=self.n_estimators,
-                                   max_samples=self.max_samples, bootstrap=False,
-                                   verbose=True, n_jobs=-1)
+                                   max_samples=self.max_samples, bootstrap=self.bootstrap ,
+                                   verbose=True, n_jobs=self.n_jobs)
         self.cv_score = np.mean(-1.0 * cross_val_score(pipeline, X, y,
                                                        cv=KFold(3, shuffle=True), scoring='neg_mean_absolute_error'))
 
@@ -577,7 +589,7 @@ class BaggedGaussianProcessStabilityAgent(HypothesisAgent):
         pd_ml.add_phases(candidate_phases)
         space_ml = PhaseSpaceAL(bounds=ELEMENTS, data=pd_ml)
         if self.multiprocessing:
-            space_ml.compute_stabilities_multi(candidate_phases)
+            space_ml.compute_stabilities_multi(candidate_phases, self.n_jobs)
         else:
             space_ml.compute_stabilities_mod(candidate_phases)
 
