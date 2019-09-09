@@ -147,16 +147,11 @@ class AnalyzeStructures(AnalyzerBase):
                 structures[j] = Structure.from_dict(r['result']['output']['crystal'])
         return self.analyze(list(structures.values()), against_icsd)
 
-    def analyze_vaspqmpy_campaign_from_path(self, path, store_structures=False):
+    def finalize(self):
         """
-        Useful for post-processing a campaign to find unique discoveries in each iteration.
-        Args:
-            path:
-
+        Uses analyze_vaspqmpy_jobs and other class info to run a post-processing for structure analysis of discoveries
         Returns:
-
         """
-
         pass
 
     def present(self):

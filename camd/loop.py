@@ -21,7 +21,7 @@ from matplotlib import pyplot as plt
 @camd_traced
 class Loop(MSONable):
     def __init__(self, candidate_data, agent, experiment, analyzer,
-                 agent_params=None, experiment_params=None, analyzer_params=None,
+                 agent_params=None, experiment_params=None, analyzer_params=None, finalizer=None, finalizer_params=None,
                  path=None, seed_data=None, create_seed=False, s3_prefix=None,
                  s3_bucket=CAMD_S3_BUCKET):
         """
@@ -56,6 +56,9 @@ class Loop(MSONable):
 
         self.analyzer = analyzer(**analyzer_params)
         self.analyzer_params = analyzer_params
+
+        self.finalizer = finalizer(**finalizer_params) if finalizer else None
+        self.finalizer_params = finalizer_params if finalizer_params else None
 
         self.seed_data = seed_data if seed_data is not None else pd.DataFrame()
         self.create_seed = create_seed
@@ -132,6 +135,7 @@ class Loop(MSONable):
 
         # Stop-gap loop stopper.
         if len(suggested_experiments) == 0:
+            self.finalize()
             raise ValueError("No space left to explore. Stopping the loop.")
 
         # Experiments submitted
@@ -176,6 +180,7 @@ class Loop(MSONable):
             if monitor:
                 self.experiment.monitor()
             time.sleep(timeout)
+        self.finalize()
 
     def auto_loop_in_directories(self, n_iterations=10, timeout=10, monitor=False, initialize=False, with_icsd=False):
         """
@@ -237,6 +242,7 @@ class Loop(MSONable):
             loop_backup(self.path, str(self.iteration - 1))
             self.loop_state = 'EXPERIMENTS COMPLETED'
             self.save("loop_state")
+        self.finalize()
 
 
     def initialize(self, random_state=42):
@@ -288,6 +294,12 @@ class Loop(MSONable):
             f.write(report_string)
 
         self.generate_report_plot()
+
+    def finalize(self):
+        print("Finalizing campaign.")
+        os.chdir(self.path)
+        if self.finalizer:
+            self.finalizer.finalize(self.path, )
 
     @staticmethod
     def generate_report_plot(filename="report.png",
