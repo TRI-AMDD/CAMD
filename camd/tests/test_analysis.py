@@ -3,9 +3,10 @@
 import unittest
 import os
 import pandas as pd
+import json
 from pymatgen import Composition
 from camd import CAMD_TEST_FILES
-from camd.analysis import AnalyzeStability_mod
+from camd.analysis import AnalyzeStability_mod, AnalyzeStructures
 
 
 class AnalysisTest(unittest.TestCase):
@@ -29,6 +30,12 @@ class AnalysisTest(unittest.TestCase):
             new_result_ids=["mp-776280", "mp-30998"]
         )
 
+    def test_structure_analyzer(self):
+        with open(os.path.join(CAMD_TEST_FILES, "raw_results.json"), "r") as f:
+            jobs = json.load(f)
+        analyzer = AnalyzeStructures()
+        self.assertEqual(analyzer.analyze_vaspqmpy_jobs(jobs, against_icsd=True),
+                         [True, True, True, False, True, False, True, True, True])
 
 if __name__ == '__main__':
     unittest.main()
