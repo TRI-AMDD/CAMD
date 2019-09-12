@@ -70,8 +70,9 @@ def run_proto_dft_campaign(chemsys):
         analyzer = AnalyzeStability_mod
         analyzer_params = {'hull_distance': 0.2}  # analysis criterion (need not be exactly same as agent's goal)
         experiment = OqmdDFTonMC1
-        experiment_params = {'structure_dict': structure_dict, 'candidate_data': candidate_data, 'timeout': 20000}
+        experiment_params = {'structure_dict': structure_dict, 'candidate_data': candidate_data, 'timeout': 30000}
         experiment_params.update({'timeout': 30000})
+        n_max_iter = n_max_iter_heuristics(len(candidate_data), 10)
 
         # Construct and start loop
         new_loop = Loop(
@@ -79,7 +80,7 @@ def run_proto_dft_campaign(chemsys):
             analyzer_params=analyzer_params, experiment_params=experiment_params,
             s3_prefix="proto-dft/runs/{}".format(chemsys))
         new_loop.auto_loop_in_directories(
-            n_iterations=5, timeout=10, monitor=True,
+            n_iterations=n_max_iter, timeout=10, monitor=True,
             initialize=True, with_icsd=True)
     except Exception as e:
         error_msg = {"error": "{}".format(e),
@@ -121,3 +122,25 @@ def run_atf_campaign(chemsys):
         new_loop.run()
 
     return True
+
+
+def n_max_iter_heuristics(n_data, n_query):
+    """
+    Helper method to define maximum number of iterations for a given campaign.
+    This is based on the empirical evidence in various systems >90% of stable
+        materials are identified when 25% of candidates are tested. We also enforce
+        upper and lower bounds of 20 and 5 to avoid edge cases with too many or too few
+        calculations to run.
+    Args:
+        n_data (int): number of data points in candidate space
+        n_query (int): number of queries allowed in each iteration
+    Returns:
+        maximum number of iterations as integer
+    """
+    _target = round(n_data*0.25/n_query)
+    if _target<5:
+        return 5
+    else:
+        return min(_target, 20)
+
+print(n_max_iter_heuristics(500,10))
