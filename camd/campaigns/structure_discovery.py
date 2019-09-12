@@ -142,5 +142,3 @@ def n_max_iter_heuristics(n_data, n_query):
         return 5
     else:
         return min(_target, 20)
-
-print(n_max_iter_heuristics(500,10))
