@@ -21,7 +21,7 @@ from sklearn.neural_network import MLPRegressor
 import pickle
 
 
-__version__ = "2019.08.07"
+__version__ = "2019.09.12"
 
 
 # TODO: abstract campaign?
