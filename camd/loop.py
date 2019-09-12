@@ -305,6 +305,7 @@ class Loop(MSONable):
         os.chdir(self.path)
         if self.finalizer:
             self.finalizer.finalize(self.path)
+        self.s3_sync()
 
     @staticmethod
     def generate_report_plot(filename="report.png",
