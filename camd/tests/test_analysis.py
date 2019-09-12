@@ -5,6 +5,7 @@ import os
 import pandas as pd
 import json
 from pymatgen import Composition
+from monty.serialization import loadfn
 from camd import CAMD_TEST_FILES
 from camd.analysis import AnalyzeStability_mod, AnalyzeStructures
 
@@ -31,11 +32,11 @@ class AnalysisTest(unittest.TestCase):
         )
 
     def test_structure_analyzer(self):
-        with open(os.path.join(CAMD_TEST_FILES, "raw_results.json"), "r") as f:
-            jobs = json.load(f)
+        jobs = loadfn(os.path.join(CAMD_TEST_FILES, "raw_results.json"))
         analyzer = AnalyzeStructures()
         self.assertEqual(analyzer.analyze_vaspqmpy_jobs(jobs, against_icsd=True),
                          [True, True, True, False, True, False, True, True, True])
+
 
 if __name__ == '__main__':
     unittest.main()
