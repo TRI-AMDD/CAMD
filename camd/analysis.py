@@ -285,7 +285,7 @@ class AnalyzeStability_mod(AnalyzerBase):
             plot.plot(*coords, 'x', color=color, markersize=10)
 
         if filename is not None:
-            plot.savefig(filename)
+            plot.savefig(filename, dpi=70)
 
         plot.close()
 

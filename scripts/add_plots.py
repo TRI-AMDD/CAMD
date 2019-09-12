@@ -38,12 +38,16 @@ def update_run(folder):
         List of modified chemsys
 
     """
+    required_files = ["seed_data.pickle", "report.log"]
     with cd(folder):
-        analyzer = AnalyzeStability_mod(hull_distance=0.2)
         if os.path.isfile("error.json"):
             error = loadfn("error.json")
             print("{} ERROR: {}".format(folder, error))
-        if not os.path.isdir("0"):
+
+        if not all([os.path.isfile(fn) for fn in required_files]):
+            print("{} ERROR: no seed data, no analysis to be done")
+        else:
+            analyzer = AnalyzeStability_mod(hull_distance=0.2)
             with open("seed_data.pickle", "rb") as f:
                 result_df = pickle.load(f)
 
