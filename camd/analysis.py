@@ -162,14 +162,14 @@ class AnalyzeStructures(AnalyzerBase):
 
 
 class FinalizeQqmdCampaign:
-    def __init__(self, path=None, hull_distance=None):
-        self.path = path if path else '.'
+    def __init__(self, hull_distance=None):
         self.hull_distance = hull_distance if hull_distance else 0.2
 
-    def finalize(self):
+    def finalize(self, path=None):
         """
         post-processing for dft-campaigns
         """
+        self.path = path if path else '.'
         update_run_w_structure(self.path, hull_distance=self.hull_distance)
 
 @camd_traced
@@ -539,8 +539,6 @@ def parmap(f, X, nprocs=multiprocessing.cpu_count()):
 def update_run_w_structure(folder, hull_distance=0.2):
     """
     Updates a campaign grouped in directories with structure analysis
-
-    Returns:
 
     """
     with cd(folder):
