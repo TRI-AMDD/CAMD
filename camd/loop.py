@@ -57,8 +57,8 @@ class Loop(MSONable):
         self.analyzer = analyzer(**analyzer_params)
         self.analyzer_params = analyzer_params
 
-        self.finalizer = finalizer(**finalizer_params) if finalizer else None
-        self.finalizer_params = finalizer_params if finalizer_params else None
+        self.finalizer_params = finalizer_params if finalizer_params else {}
+        self.finalizer = finalizer(**self.finalizer_params) if finalizer else None
 
         self.seed_data = seed_data if seed_data is not None else pd.DataFrame()
         self.create_seed = create_seed
@@ -87,7 +87,7 @@ class Loop(MSONable):
             self.initialized = False
             self.loop_state = "UNSTARTED"
 
-    def run(self):
+    def run(self, finalize=False):
         """
         This method applies a single iteration of the active-learning loop, and keeps record of everything in place.
 
@@ -129,6 +129,11 @@ class Loop(MSONable):
         self._discovered = np.array(self.submitted_experiment_requests)[self.results_new_uids].tolist()
         self.save('_discovered', custom_name='discovered_{}.json'.format(self.iteration))
 
+        self.report()
+
+        if finalize:
+            return None
+
         # Agent suggests new experiments
         print("Loop {} state: Agent {} hypothesizing".format(self.iteration, self.agent.__class__.__name__))
         suggested_experiments = self.agent.get_hypotheses(self.candidate_data, self.seed_data)
@@ -149,7 +154,6 @@ class Loop(MSONable):
         self.consumed_candidates += suggested_experiments
         self.save('consumed_candidates')
 
-        self.report()
         self.iteration += 1
         self.save("iteration")
 
@@ -180,6 +184,7 @@ class Loop(MSONable):
             if monitor:
                 self.experiment.monitor()
             time.sleep(timeout)
+        self.run(finalize=True)
         self.finalize()
 
     def auto_loop_in_directories(self, n_iterations=10, timeout=10, monitor=False, initialize=False, with_icsd=False):
@@ -242,8 +247,8 @@ class Loop(MSONable):
             loop_backup(self.path, str(self.iteration - 1))
             self.loop_state = 'EXPERIMENTS COMPLETED'
             self.save("loop_state")
+        self.run(finalize=True)
         self.finalize()
-
 
     def initialize(self, random_state=42):
         if self.initialized:
@@ -299,7 +304,7 @@ class Loop(MSONable):
         print("Finalizing campaign.")
         os.chdir(self.path)
         if self.finalizer:
-            self.finalizer.finalize(self.path, )
+            self.finalizer.finalize(self.path)
 
     @staticmethod
     def generate_report_plot(filename="report.png",
