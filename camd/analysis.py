@@ -70,7 +70,7 @@ class AnalyzeStructures(AnalyzerBase):
         self.groups = None
         self.against_icsd = False
         self.structure_is_unique = None
-        self.hull_distance = 0.2
+        self.hull_distance = hull_distance
         super(AnalyzeStructures, self).__init__()
 
     def analyze(self, structures=None, structure_ids=None, against_icsd=False):
