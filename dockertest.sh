@@ -6,7 +6,7 @@
 set -e
 
 # Set TQDM to be off in tests
-export TQDM_OFF=0
+# export TQDM_OFF=1
 
 # TODO: set up postgresql testing
 # Start postgres in the background
