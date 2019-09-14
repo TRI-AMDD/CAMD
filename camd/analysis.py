@@ -2,8 +2,11 @@
 
 import abc
 import warnings
-
+import json
+import pickle
+import os
 import numpy as np
+import itertools
 from camd import tqdm
 from camd.log import camd_traced
 from qmpy.analysis.thermodynamics.phase import Phase, PhaseData
@@ -13,6 +16,12 @@ from pymatgen import Composition
 from pymatgen.entries.computed_entries import ComputedEntry
 from pymatgen.analysis.phase_diagram import PhaseDiagram, PDPlotter, tet_coord,\
     triangular_coord
+from pymatgen.analysis.structure_matcher import StructureMatcher
+from pymatgen import Structure
+from camd.utils.s3 import cache_s3_objs
+from camd import S3_CACHE
+from monty.os import cd
+from monty.serialization import loadfn
 
 ELEMENTS = ['Ru', 'Re', 'Rb', 'Rh', 'Be', 'Ba', 'Bi', 'Br', 'H', 'P', 'Os', 'Ge', 'Gd', 'Ga', 'Pr', 'Pt', 'Pu', 'C',
             'Pb', 'Pa', 'Pd', 'Xe', 'Pm', 'Ho', 'Hf', 'Hg', 'He', 'Mg', 'K', 'Mn', 'O', 'S', 'W', 'Zn', 'Eu', 'Zr',
@@ -47,6 +56,121 @@ class AnalyzerBase(abc.ABC):
 
         """
 
+
+@camd_traced
+class AnalyzeStructures(AnalyzerBase):
+    """
+    This class tests if a list of structures are unique. The typical use case here is comparing
+    hypothetical structures (post-DFT relaxation) and those from ICSD.
+
+    """
+    def __init__(self, structures=None, hull_distance = None):
+        self.structures = structures if structures else []
+        self.unique_structures = None
+        self.groups = None
+        self.against_icsd = False
+        self.structure_is_unique = None
+        self.hull_distance = hull_distance
+        super(AnalyzeStructures, self).__init__()
+
+    def analyze(self, structures=None, structure_ids=None, against_icsd=False):
+        """
+        One encounter of a given structure will be labeled as True, its remaining matching structures as False.
+        Args:
+            structures (list):
+            labels (list): uids of strucures, optional.
+            against_icsd (bool:
+        Returns:
+            a list of booleans, corresponding to the given list of structures
+        """
+        self.structures = structures
+        self.structure_ids = structure_ids
+        self.against_icsd = against_icsd
+
+        smatch = StructureMatcher()
+        self.groups = smatch.group_structures(structures)
+        self.structure_is_unique = []
+
+        self._unique_structures = [i[0] for i in self.groups]
+        for s in structures:
+            if s in self._unique_structures:
+                self.structure_is_unique.append(True)
+            else:
+                self.structure_is_unique.append(False)
+        self._not_duplicate = self.structure_is_unique
+
+        if self.against_icsd:
+            cache_s3_objs(['camd/shared-data/oqmd1.2_structs_icsd.json'])
+            with open(os.path.join(S3_CACHE,
+                                   'camd/shared-data/oqmd1.2_structs_icsd.json'), 'r') as f:
+                icsd_structures = json.load(f)
+            chemsys = set()
+            for s in self._unique_structures:
+                chemsys = chemsys.union( set(s.composition.as_dict().keys()))
+
+            self.icsd_structs_inchemsys = []
+            for k, v in icsd_structures.items():
+                try:
+                    s = Structure.from_dict(v)
+                    elems = set(s.composition.as_dict().keys())
+                    if elems == chemsys:
+                        self.icsd_structs_inchemsys.append(s)
+                except:
+                    warnings.warn("Unable to process structure {}".format(k))
+
+            self.matching_icsd_strs = []
+            for i in range(len(structures)):
+                if self.structure_is_unique[i]:
+                    match = None
+                    for s2 in self.icsd_structs_inchemsys:
+                        if smatch.fit(self.structures[i], s2):
+                            match = s2
+                            break
+                    self.matching_icsd_strs.append(match) # store the matching ICSD structures.
+                else:
+                    self.matching_icsd_strs.append(None)
+            # Flip matching bools, and create a filter
+            self._icsd_filter = [not i for i in self.matching_icsd_strs]
+            self.structure_is_unique = (np.array(self.structure_is_unique) * np.array(self._icsd_filter)).tolist()
+            self.unique_structures = list(itertools.compress(self.structures, self.structure_is_unique))
+        else:
+            self.unique_structures = self._unique_structures
+
+        # We store the final list of unique structures as unique_structures.
+        # We return a corresponding list of bool to the initial structure list provided.
+        return self.structure_is_unique
+
+    def analyze_vaspqmpy_jobs(self, jobs, against_icsd=False):
+        """
+        Useful for analysis integrated as part of a campaign itself
+        Args:
+            jobs:
+            against_icsd:
+
+        Returns:
+        """
+        self.structure_ids = []
+        self.structures = []
+        for j, r in jobs.items():
+            if r['status'] == 'SUCCEEDED':
+                self.structures.append( r['result']['output']['crystal'] )
+                self.structure_ids.append(j)
+        return self.analyze(self.structures, self.structure_ids, against_icsd)
+
+    def present(self):
+        pass
+
+
+class FinalizeQqmdCampaign:
+    def __init__(self, hull_distance=None):
+        self.hull_distance = hull_distance if hull_distance else 0.2
+
+    def finalize(self, path=None):
+        """
+        post-processing for dft-campaigns
+        """
+        self.path = path if path else '.'
+        update_run_w_structure(self.path, hull_distance=self.hull_distance)
 
 @camd_traced
 class AnalyzeStability(AnalyzerBase):
@@ -410,3 +534,50 @@ def parmap(f, X, nprocs=multiprocessing.cpu_count()):
     [p.join() for p in proc]
 
     return [x for i, x in sorted(res)]
+
+
+def update_run_w_structure(folder, hull_distance=0.2):
+    """
+    Updates a campaign grouped in directories with structure analysis
+
+    """
+    with cd(folder):
+
+        if os.path.isfile("error.json"):
+            error = loadfn("error.json")
+            print("{} ERROR: {}".format(folder, error))
+
+        iteration = -1
+        jobs = {}
+        while True:
+            if os.path.isdir(str(iteration)):
+                jobs.update(loadfn(os.path.join(str(iteration), '_exp_raw_results.json')))
+                iteration += 1
+            else:
+                break
+        with open("seed_data.pickle", "rb") as f:
+            df = pickle.load(f)
+
+        all_ids = loadfn("consumed_candidates.json")
+        st_a = AnalyzeStability_mod(df=df, hull_distance=hull_distance)
+        _, stablities_of_discovered = st_a.analyze(df, all_ids, all_ids)
+
+        stable_discovered = list(itertools.compress(all_ids, stablities_of_discovered))
+        s_a = AnalyzeStructures()
+        s_a.analyze_vaspqmpy_jobs(jobs, against_icsd=True)
+        unique_s_dict = {}
+        for i in range(len(s_a.structures)):
+            if s_a.structure_is_unique[i] and \
+                    (s_a.structure_ids[i] in stable_discovered):
+                unique_s_dict[s_a.structure_ids[i]] = s_a.structures[i]
+
+        with open("discovered_unique_structures.pickle", "wb") as f:
+            pickle.dump(unique_s_dict, f)
+
+        with open('structure_report.log', "w") as f:
+            f.write("consumed discovery unique_discovery duplicate in_icsd \n")
+            f.write(str(len(all_ids)) + ' ' +
+                    str(len(stable_discovered)) + ' ' +
+                    str(len(unique_s_dict)) + ' '
+                    + str(len(s_a.structures) - sum(s_a._not_duplicate)) + ' '
+                    + str(sum([not i for i in s_a._icsd_filter])))
