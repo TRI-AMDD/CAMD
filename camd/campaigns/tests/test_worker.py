@@ -4,8 +4,10 @@ import unittest
 import boto3
 import json
 import time
+import asyncio
 from camd import CAMD_S3_BUCKET
 from camd.campaigns.worker import Worker
+
 
 def teardown_s3():
     """Tear down test files in s3"""
@@ -67,6 +69,29 @@ class WorkerTest(unittest.TestCase):
         worker.start(num_loops=1)
         latest_chemsys = worker.get_latest_chemsys()
         self.assertIsNone(latest_chemsys)
+
+    def test_stop(self):
+        # Stopping a-priori
+        worker = Worker()
+        worker.write_stop_file()
+        executed = worker.start()
+        self.assertEqual(executed, 0)
+
+        # Ensure restarts after stop removal
+        self.submit_chemsyses(["O-Ti", "Fe-O"])
+        worker = Worker("oqmd-atf")
+        worker.remove_stop_file()
+        executed = worker.start()
+        self.assertEqual(executed, 2)
+
+        # Ensure restarts after stop removal
+        self.submit_chemsyses(["O-Ti", "Fe-O"])
+        worker = Worker("oqmd-atf")
+        task1 = asyncio.create_task(worker.start(num_loops=2))
+        asyncio.sleep(1)
+        worker.write_stop_file()
+        executed = task1.result()
+        self.assertEqual(executed, 1)
 
 
 if __name__ == '__main__':
