@@ -106,6 +106,7 @@ class Loop(MSONable):
         print("Loop {} state: Getting new results".format(self.iteration))
         self.load('submitted_experiment_requests')
         new_experimental_results = self.experiment.get_results(self.submitted_experiment_requests)
+        os.chdir(self.path)
 
         # Load, expand, save seed_data
         self.load('seed_data', method='pickle')
