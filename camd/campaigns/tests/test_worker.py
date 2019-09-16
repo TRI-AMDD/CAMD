@@ -19,6 +19,7 @@ def teardown_s3():
 class WorkerTest(unittest.TestCase):
     def tearDown(self):
         teardown_s3()
+        Worker("oqmd-atf").remove_stop_file()
 
     def submit_chemsyses(self, chemsyses):
         # Upload three things to s3
