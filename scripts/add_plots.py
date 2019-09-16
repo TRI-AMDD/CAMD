@@ -81,6 +81,7 @@ def main():
     all_s3_prefixes = get_all_s3_folders()
     makedirs_p("cache")
     os.chdir("cache")
+    import nose; nose.tools.set_trace()
     for run in all_s3_prefixes:
         local_folder = run.split('/')[-2]
         sync_s3_folder(run, local_folder=local_folder)
