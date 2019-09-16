@@ -3,9 +3,11 @@
 import unittest
 import os
 import pandas as pd
+import json
 from pymatgen import Composition
+from monty.serialization import loadfn
 from camd import CAMD_TEST_FILES
-from camd.analysis import AnalyzeStability_mod
+from camd.analysis import AnalyzeStability_mod, AnalyzeStructures
 
 
 class AnalysisTest(unittest.TestCase):
@@ -28,6 +30,12 @@ class AnalysisTest(unittest.TestCase):
             all_result_ids=["mp-754790", "mvc-4715"],
             new_result_ids=["mp-776280", "mp-30998"]
         )
+
+    def test_structure_analyzer(self):
+        jobs = loadfn(os.path.join(CAMD_TEST_FILES, "raw_results.json"))
+        analyzer = AnalyzeStructures()
+        self.assertEqual(analyzer.analyze_vaspqmpy_jobs(jobs, against_icsd=True),
+                         [True, True, True, False, True, False, True, True, True])
 
 
 if __name__ == '__main__':

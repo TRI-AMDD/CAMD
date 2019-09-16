@@ -2,8 +2,7 @@
 from camd.loop import Loop
 import pandas as pd
 
-from sklearn.neural_network import MLPRegressor
-from camd.agent.agents import QBCStabilityAgent
+from camd.agent.agents import SVGProcessStabilityAgent
 from camd.analysis import AnalyzeStability_mod
 from camd.experiment.base import ATFSampler
 from camd.utils.s3 import cache_s3_objs
@@ -16,17 +15,13 @@ cache_s3_objs(['camd/shared-data/oqmd_1.2_voronoi_magpie_fingerprints.pickle'])
 ##########################################################
 df = pd.read_pickle(os.path.join(S3_CACHE,
                               'camd/shared-data/oqmd_1.2_voronoi_magpie_fingerprints.pickle')).sample(frac=0.2)
-N_seed = 5000  # Starting sample size - a seed of this size will be randomly chosen.
+N_seed = 5000  # Starting sample size
 N_query = 200  # This many new candidates are "calculated with DFT" (i.e. requested from Oracle -- DFT)
-agent = QBCStabilityAgent
+agent = SVGProcessStabilityAgent
 agent_params = {
-    'ML_algorithm': MLPRegressor,
-    'ML_algorithm_params': {'hidden_layer_sizes': (84, 50)},
-    'N_query': N_query,
-    'N_species': 2,         # We'll restrict the search to binaries
-    'N_members': 10,        # Committee size in QBC
+    'N_query': N_query, 'N_species': 2,
     'hull_distance': 0.05,  # Distance to hull to consider a finding as discovery (eV/atom)
-    'frac': 0.5             # Fraction of data to choose to form a committee member
+    'alpha': 0.5
     }
 analyzer = AnalyzeStability_mod
 analyzer_params = {'hull_distance': 0.05}
