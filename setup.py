@@ -36,7 +36,7 @@ setup(
                       "protosearch",
                       "autologging",
                       "awscli",
-                      "docopt"
+                      "docopt",
                       "tensorflow==1.14.0",
                       "gpflow"
                       ],
