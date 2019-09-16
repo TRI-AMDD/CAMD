@@ -70,25 +70,25 @@ class WorkerTest(unittest.TestCase):
         latest_chemsys = worker.get_latest_chemsys()
         self.assertIsNone(latest_chemsys)
 
+    # TODO: This test is super slow, could make a
+    #  new dummy campaign that executes with smaller overhead
     def test_stop(self):
-        # # Stopping a-priori
-        # worker = Worker("oqmd-atf")
-        # worker.write_stop_file()
-        # executed = worker.start()
-        # self.assertEqual(executed, 0)
+        # Stopping a-priori
+        worker = Worker("oqmd-atf")
+        worker.write_stop_file()
+        executed = worker.start()
+        self.assertEqual(executed, 0)
 
         # # Ensure restarts after stop removal
-        # self.submit_chemsyses(["O-Ti", "Fe-O"])
+        self.submit_chemsyses(["O-Ti", "Fe-O"])
         worker = Worker("oqmd-atf")
         worker.remove_stop_file()
-        # executed = worker.start(num_loops=2)
-        # self.assertEqual(executed, 2)
+        executed = worker.start(num_loops=2)
+        self.assertEqual(executed, 2)
 
         # Ensure restarts after stop removal
         worker = Worker("oqmd-atf")
         worker.remove_stop_file()
-        self.submit_chemsyses(["O-Ti", "Fe-O"])
-        import nose; nose.tools.set_trace()
 
         # TODO: this is a pretty hackish way of executing
         #  these in parallel and isn't guaranteed to work,
@@ -96,7 +96,7 @@ class WorkerTest(unittest.TestCase):
 
         with Pool(2) as p:
             result = p.map(worker_process, [0, 1])
-        self.assertEquals(result, 1)
+        self.assertEquals(result[0], 1)
 
 
 def worker_process(index):
@@ -104,7 +104,7 @@ def worker_process(index):
         print("index 0")
         worker = Worker("oqmd-atf")
         latest = worker.get_latest_chemsys()
-        result = worker.start()
+        result = worker.start(sleep_time=5)
         print("returning {} {}".format(result, latest))
         return result
     else:

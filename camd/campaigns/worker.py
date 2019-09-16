@@ -31,7 +31,7 @@ class Worker(object):
     def __init__(self, campaign="proto-dft"):
         self.campaign = campaign
 
-    def start(self, num_loops=np.inf):
+    def start(self, num_loops=np.inf, sleep_time=60):
         """
         Starts the worker, which monitors s3 for new submissions
         and starts runs accordingly.
@@ -39,8 +39,12 @@ class Worker(object):
         Args:
             num_loops (int): number of campaigns to run before
                 stopping
+            sleep_time (float): time to sleep between iterations
+                in which active campaigns are found
 
         Returns:
+            (int) number of loops executed, including "sleep" loops,
+                where no campaign was executed
 
         """
         for loop_num in itertools.count(1):
@@ -53,7 +57,7 @@ class Worker(object):
                     self.run_campaign(latest_chemsys)
             else:
                 print("No new campaigns submitted, sleeping for 60 seconds")
-                time.sleep(60)
+                time.sleep(sleep_time)
 
     def run_campaign(self, chemsys):
         """
@@ -128,7 +132,6 @@ class Worker(object):
 
         """
         return os.path.isfile(CAMD_STOP_FILE)
-
 
 
 # TODO: move this to TRI-utils

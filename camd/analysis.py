@@ -332,7 +332,8 @@ class PhaseSpaceAL(PhaseSpace):
                         print(p)
                         p.stability = np.nan
 
-    def compute_stabilities_multi(self, phases_to_evaluate=None, ncpus=multiprocessing.cpu_count()):
+    def compute_stabilities_multi(self, phases_to_evaluate=None,
+                                  ncpus=multiprocessing.cpu_count()):
         """
         Calculate the stability for every Phase.
         Keyword Arguments:
