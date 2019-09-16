@@ -1,15 +1,31 @@
 #  Copyright (c) 2019 Toyota Research Institute.  All rights reserved.
 """
-Initial worker to run structure discovery.  WIP.
+Module and script for running the CAMD campaign worker
+
+Usage:
+    camd_worker COMMAND --campaign CAMPAIGN
+
+Options:
+    --campaign       campaign name [default: proto-dft]
+    -h --help        Show this screen
+    --version        Show version
+
+COMMAND may be one of:
+    start - starts worker
+    stop - writes stopfile such that CAMD stops
 """
 import time
 import boto3
+import itertools
+import os
+import numpy as np
 
+from pathlib import Path
+from docopt import docopt
 from monty.tempfile import ScratchDir
-from camd import CAMD_S3_BUCKET
+from camd import CAMD_S3_BUCKET, CAMD_STOP_FILE
 from camd.log import camd_traced
 from camd.campaigns.structure_discovery import run_proto_dft_campaign, run_atf_campaign
-import itertools
 
 
 # TODO: set up test bucket, instead of using complicated pathing
@@ -18,7 +34,7 @@ class Worker(object):
     def __init__(self, campaign="proto-dft"):
         self.campaign = campaign
 
-    def start(self, num_loops=None):
+    def start(self, num_loops=np.inf, sleep_time=60):
         """
         Starts the worker, which monitors s3 for new submissions
         and starts runs accordingly.
@@ -26,21 +42,26 @@ class Worker(object):
         Args:
             num_loops (int): number of campaigns to run before
                 stopping
+            sleep_time (float): time to sleep between iterations
+                in which active campaigns are found
 
         Returns:
+            (int) number of loops executed, including "sleep" loops,
+                where no campaign was executed
 
         """
-        for campaign_num in itertools.count():
+        for loop_num in itertools.count(1):
+            if loop_num > num_loops or self.check_stop_file():
+                return loop_num - 1
             latest_chemsys = self.get_latest_chemsys()
             if latest_chemsys:
                 with ScratchDir('.') as sd:
                     print("Running {} in {}".format(latest_chemsys, sd))
                     self.run_campaign(latest_chemsys)
             else:
-                print("No new campaigns submitted, sleeping for 60 seconds")
-                time.sleep(60)
-            if num_loops and campaign_num >= num_loops - 1:
-                break
+                print("No new campaigns submitted, sleeping for {} seconds".format(
+                    sleep_time))
+                time.sleep(sleep_time)
 
     def run_campaign(self, chemsys):
         """
@@ -80,15 +101,52 @@ class Worker(object):
 
         return latest_unstarted[-1] if latest_unstarted else None
 
+    @staticmethod
+    def write_stop_file():
+        """
+        Touches stop file to signal drawdown to shared workers
 
+        Returns:
+            (None)
+
+        """
+        Path(CAMD_STOP_FILE).touch()
+
+    @staticmethod
+    def remove_stop_file():
+        """
+        Removes the stop file from its specified location
+        via CAMD_STOP_FILE env variable
+
+        Returns:
+            (None)
+
+        """
+        if os.path.isfile(CAMD_STOP_FILE):
+            os.remove(CAMD_STOP_FILE)
+
+    @staticmethod
+    def check_stop_file():
+        """
+        Returns bool corresponding to whether the CAMD stop
+        file exists
+
+        Returns:
+            (bool) whether CAMD stop file exists
+
+        """
+        return os.path.isfile(CAMD_STOP_FILE)
+
+
+# TODO: move this to TRI-utils
 def get_common_prefixes(bucket, prefix):
     """
     Helper function to get common "subfolders" of folders
     in S3
 
     Args:
-        bucket:
-        prefix:
+        bucket (str): bucket name
+        prefix (str): prefix for which to list common prefixes
 
     Returns:
 
@@ -103,6 +161,17 @@ def get_common_prefixes(bucket, prefix):
             if common_prefix]
 
 
+def main():
+    args = docopt(__doc__)
+    worker = Worker(args["--campaign"])
+    if args['COMMAND'] == "start":
+        worker.remove_stop_file()
+        worker.start()
+    elif args['COMMAND'] == "stop":
+        worker.write_stopfile()
+    else:
+        raise ValueError("Invalid command {}.  Worker command must be 'start' or 'stop'")
+
+
 if __name__ == "__main__":
-    worker = Worker("proto-dft")
-    worker.start()
+    main()
