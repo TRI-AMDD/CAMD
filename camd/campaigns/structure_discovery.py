@@ -106,7 +106,7 @@ def run_atf_campaign(chemsys):
     n_query = 10  # This many new candidates are "calculated with DFT" (i.e. requested from Oracle -- DFT)
     agent = RandomAgent
     agent_params = {'hull_distance': 0.05, 'N_query': n_query}
-    analyzer = AnalyzeStability
+    analyzer = AnalyzeStability_mod
     analyzer_params = {'hull_distance': 0.05}
     experiment = ATFSampler
     experiment_params = {'dataframe': df}

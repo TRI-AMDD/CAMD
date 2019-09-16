@@ -4,7 +4,7 @@ import unittest
 import boto3
 import json
 import time
-import asyncio
+from multiprocessing import Pool
 from camd import CAMD_S3_BUCKET
 from camd.campaigns.worker import Worker
 
@@ -27,7 +27,7 @@ class WorkerTest(unittest.TestCase):
             key = "oqmd-atf/submit/{}/status.json".format(chemsys)
             obj = s3_resource.Object(CAMD_S3_BUCKET, key)
             obj.put(Body=json.dumps({"last_submitted": 10}))
-            time.sleep(1)
+            time.sleep(2)
 
     def put_runs(self, chemsyses):
         # Upload three things to s3
@@ -71,27 +71,39 @@ class WorkerTest(unittest.TestCase):
         self.assertIsNone(latest_chemsys)
 
     def test_stop(self):
-        # Stopping a-priori
-        worker = Worker()
-        worker.write_stop_file()
-        executed = worker.start()
-        self.assertEqual(executed, 0)
+        # # Stopping a-priori
+        # worker = Worker("oqmd-atf")
+        # worker.write_stop_file()
+        # executed = worker.start()
+        # self.assertEqual(executed, 0)
+
+        # # Ensure restarts after stop removal
+        # self.submit_chemsyses(["O-Ti", "Fe-O"])
+        # worker = Worker("oqmd-atf")
+        # worker.remove_stop_file()
+        # executed = worker.start(num_loops=2)
+        # self.assertEqual(executed, 2)
 
         # Ensure restarts after stop removal
         self.submit_chemsyses(["O-Ti", "Fe-O"])
-        worker = Worker("oqmd-atf")
-        worker.remove_stop_file()
-        executed = worker.start()
-        self.assertEqual(executed, 2)
 
-        # Ensure restarts after stop removal
-        self.submit_chemsyses(["O-Ti", "Fe-O"])
-        worker = Worker("oqmd-atf")
-        task1 = asyncio.create_task(worker.start(num_loops=2))
-        asyncio.sleep(1)
-        worker.write_stop_file()
-        executed = task1.result()
-        self.assertEqual(executed, 1)
+        # TODO: this is a pretty hackish way of executing
+        #  these in parallel and isn't guaranteed to work,
+        #  but works for now
+
+        def worker_process(index):
+            if index == 0:
+                worker = Worker("oqmd-atf")
+                result = worker.start()
+                return result
+            else:
+                time.sleep(5)
+                worker = Worker("oqmd-atf")
+                worker.write_stop_file()
+                return None
+        with Pool(2) as p:
+            result = p.map(worker_process, [0, 1])
+        self.assertEquals(result, 1)
 
 
 if __name__ == '__main__':

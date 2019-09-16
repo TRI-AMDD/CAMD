@@ -43,9 +43,10 @@ class Worker(object):
         Returns:
 
         """
-        for loop_num in itertools.count():
-            if loop_num >= num_loops or self.check_stop_file():
-                break
+        for loop_num in itertools.count(1):
+            import nose; nose.tools.set_trace()
+            if loop_num > num_loops or self.check_stop_file():
+                return loop_num - 1
             latest_chemsys = self.get_latest_chemsys()
             if latest_chemsys:
                 with ScratchDir('.') as sd:
@@ -54,8 +55,6 @@ class Worker(object):
             else:
                 print("No new campaigns submitted, sleeping for 60 seconds")
                 time.sleep(60)
-
-        return loop_num
 
     def run_campaign(self, chemsys):
         """
