@@ -79,31 +79,40 @@ class WorkerTest(unittest.TestCase):
 
         # # Ensure restarts after stop removal
         # self.submit_chemsyses(["O-Ti", "Fe-O"])
-        # worker = Worker("oqmd-atf")
-        # worker.remove_stop_file()
+        worker = Worker("oqmd-atf")
+        worker.remove_stop_file()
         # executed = worker.start(num_loops=2)
         # self.assertEqual(executed, 2)
 
         # Ensure restarts after stop removal
+        worker = Worker("oqmd-atf")
+        worker.remove_stop_file()
         self.submit_chemsyses(["O-Ti", "Fe-O"])
+        import nose; nose.tools.set_trace()
 
         # TODO: this is a pretty hackish way of executing
         #  these in parallel and isn't guaranteed to work,
         #  but works for now
 
-        def worker_process(index):
-            if index == 0:
-                worker = Worker("oqmd-atf")
-                result = worker.start()
-                return result
-            else:
-                time.sleep(5)
-                worker = Worker("oqmd-atf")
-                worker.write_stop_file()
-                return None
         with Pool(2) as p:
             result = p.map(worker_process, [0, 1])
         self.assertEquals(result, 1)
+
+
+def worker_process(index):
+    if index == 0:
+        print("index 0")
+        worker = Worker("oqmd-atf")
+        latest = worker.get_latest_chemsys()
+        result = worker.start()
+        print("returning {} {}".format(result, latest))
+        return result
+    else:
+        time.sleep(10)
+        worker = Worker("oqmd-atf")
+        print("writing stop file")
+        worker.write_stop_file()
+        return None
 
 
 if __name__ == '__main__':

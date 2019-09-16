@@ -44,7 +44,6 @@ class Worker(object):
 
         """
         for loop_num in itertools.count(1):
-            import nose; nose.tools.set_trace()
             if loop_num > num_loops or self.check_stop_file():
                 return loop_num - 1
             latest_chemsys = self.get_latest_chemsys()
@@ -115,7 +114,8 @@ class Worker(object):
             (None)
 
         """
-        os.remove(CAMD_STOP_FILE)
+        if os.path.isfile(CAMD_STOP_FILE):
+            os.remove(CAMD_STOP_FILE)
 
     @staticmethod
     def check_stop_file():
