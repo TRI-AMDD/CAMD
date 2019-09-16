@@ -56,7 +56,8 @@ class Worker(object):
                     print("Running {} in {}".format(latest_chemsys, sd))
                     self.run_campaign(latest_chemsys)
             else:
-                print("No new campaigns submitted, sleeping for 60 seconds")
+                print("No new campaigns submitted, sleeping for {} seconds".format(
+                    sleep_time))
                 time.sleep(sleep_time)
 
     def run_campaign(self, chemsys):

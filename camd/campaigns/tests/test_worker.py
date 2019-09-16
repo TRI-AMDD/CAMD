@@ -104,11 +104,11 @@ def worker_process(index):
         print("index 0")
         worker = Worker("oqmd-atf")
         latest = worker.get_latest_chemsys()
-        result = worker.start(sleep_time=5)
+        result = worker.start(sleep_time=7)
         print("returning {} {}".format(result, latest))
         return result
     else:
-        time.sleep(10)
+        time.sleep(3)
         worker = Worker("oqmd-atf")
         print("writing stop file")
         worker.write_stop_file()
