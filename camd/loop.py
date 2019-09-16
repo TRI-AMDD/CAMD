@@ -12,7 +12,7 @@ from camd.utils.s3 import cache_s3_objs, s3_sync
 from camd import S3_CACHE, CAMD_S3_BUCKET
 from camd.agent.base import RandomAgent
 from camd.log import camd_traced
-from matplotlib import pyplot as plt
+from pymatgen.util.plotting import pretty_plot
 
 # TODO:
 #  - improve the stopping scheme
@@ -325,12 +325,14 @@ class Loop(MSONable):
         """
         # Generate plot
         data = pd.read_csv(report_filename, delim_whitespace=True)
+        plt = pretty_plot(6, 4.5)
+        ax = plt.gca()
         ax = data.plot(kind='bar', x='Iteration', y='Total_Discovery',
-                       legend=False)
+                       legend=False, ax=ax)
         ax.set_ylabel("Total materials discovered")
         fig = ax.get_figure()
         if filename:
-            fig.savefig(filename)
+            fig.savefig(filename, dpi=70)
 
         # Close to avoid matplotlib memory warning
         plt.close()

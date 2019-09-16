@@ -48,7 +48,8 @@ def run_proto_dft_campaign(chemsys):
         element_list = chemsys.split('-')
         g_max, charge_balanced = heuristic_setup(element_list)
         domain = StructureDomain.from_bounds(
-            element_list, charge_balanced=charge_balanced, n_max_atoms=20, **{'grid': range(1, g_max)})
+            element_list, charge_balanced=charge_balanced,
+            n_max_atoms=20, **{'grid': range(1, g_max)})
         candidate_data = domain.candidates()
         structure_dict = domain.hypo_structures_dict
 
@@ -106,7 +107,7 @@ def run_atf_campaign(chemsys):
     n_query = 10  # This many new candidates are "calculated with DFT" (i.e. requested from Oracle -- DFT)
     agent = RandomAgent
     agent_params = {'hull_distance': 0.05, 'N_query': n_query}
-    analyzer = AnalyzeStability
+    analyzer = AnalyzeStability_mod
     analyzer_params = {'hull_distance': 0.05}
     experiment = ATFSampler
     experiment_params = {'dataframe': df}

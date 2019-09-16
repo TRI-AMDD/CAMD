@@ -38,12 +38,16 @@ def update_run(folder):
         List of modified chemsys
 
     """
+    required_files = ["seed_data.pickle", "report.log"]
     with cd(folder):
-        analyzer = AnalyzeStability_mod(hull_distance=0.2)
         if os.path.isfile("error.json"):
             error = loadfn("error.json")
             print("{} ERROR: {}".format(folder, error))
-        if not os.path.isdir("0"):
+
+        if not all([os.path.isfile(fn) for fn in required_files]):
+            print("{} ERROR: no seed data, no analysis to be done")
+        else:
+            analyzer = AnalyzeStability_mod(hull_distance=0.2)
             with open("seed_data.pickle", "rb") as f:
                 result_df = pickle.load(f)
 
@@ -77,6 +81,7 @@ def main():
     all_s3_prefixes = get_all_s3_folders()
     makedirs_p("cache")
     os.chdir("cache")
+    import nose; nose.tools.set_trace()
     for run in all_s3_prefixes:
         local_folder = run.split('/')[-2]
         sync_s3_folder(run, local_folder=local_folder)

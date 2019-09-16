@@ -30,8 +30,7 @@ ELEMENTS = ['Ru', 'Re', 'Rb', 'Rh', 'Be', 'Ba', 'Bi', 'Br', 'H', 'P', 'Os', 'Ge'
             'Tb', 'Tc', 'Ta', 'Yb', 'Dy', 'I', 'U', 'Y', 'Ac', 'Ag', 'Ir', 'Al', 'As', 'Ar', 'Au', 'In', 'Mo']
 
 
-#TODO: Eval Performance = start / stop?
-
+# TODO: Eval Performance = start / stop?
 class AnalyzerBase(abc.ABC):
     @abc.abstractmethod
     def analyze(self):
@@ -77,11 +76,13 @@ class AnalyzeStructures(AnalyzerBase):
         """
         One encounter of a given structure will be labeled as True, its remaining matching structures as False.
         Args:
-            structures (list):
-            labels (list): uids of strucures, optional.
-            against_icsd (bool:
+            structures (list): list of structures
+            structure_ids (list): list of structure ids
+            against_icsd (bool): whether to verify vs. structure ids
+
         Returns:
-            a list of booleans, corresponding to the given list of structures
+            ([bool]) list of bools corresponding to the given list of
+                structures corresponding to uniqueness
         """
         self.structures = structures
         self.structure_ids = structure_ids
@@ -409,7 +410,7 @@ class AnalyzeStability_mod(AnalyzerBase):
             plot.plot(*coords, 'x', color=color, markersize=10)
 
         if filename is not None:
-            plot.savefig(filename)
+            plot.savefig(filename, dpi=70)
 
         plot.close()
 
@@ -456,7 +457,8 @@ class PhaseSpaceAL(PhaseSpace):
                         print(p)
                         p.stability = np.nan
 
-    def compute_stabilities_multi(self, phases_to_evaluate=None, ncpus=multiprocessing.cpu_count()):
+    def compute_stabilities_multi(self, phases_to_evaluate=None,
+                                  ncpus=multiprocessing.cpu_count()):
         """
         Calculate the stability for every Phase.
         Keyword Arguments:

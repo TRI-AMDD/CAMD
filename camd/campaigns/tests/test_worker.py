@@ -4,8 +4,10 @@ import unittest
 import boto3
 import json
 import time
+from multiprocessing import Pool
 from camd import CAMD_S3_BUCKET
 from camd.campaigns.worker import Worker
+
 
 def teardown_s3():
     """Tear down test files in s3"""
@@ -17,6 +19,7 @@ def teardown_s3():
 class WorkerTest(unittest.TestCase):
     def tearDown(self):
         teardown_s3()
+        Worker("oqmd-atf").remove_stop_file()
 
     def submit_chemsyses(self, chemsyses):
         # Upload three things to s3
@@ -25,7 +28,7 @@ class WorkerTest(unittest.TestCase):
             key = "oqmd-atf/submit/{}/status.json".format(chemsys)
             obj = s3_resource.Object(CAMD_S3_BUCKET, key)
             obj.put(Body=json.dumps({"last_submitted": 10}))
-            time.sleep(1)
+            time.sleep(2)
 
     def put_runs(self, chemsyses):
         # Upload three things to s3
@@ -67,6 +70,50 @@ class WorkerTest(unittest.TestCase):
         worker.start(num_loops=1)
         latest_chemsys = worker.get_latest_chemsys()
         self.assertIsNone(latest_chemsys)
+
+    # TODO: This test is super slow, could make a
+    #  new dummy campaign that executes with smaller overhead
+    def test_stop(self):
+        # Stopping a-priori
+        worker = Worker("oqmd-atf")
+        worker.write_stop_file()
+        executed = worker.start()
+        self.assertEqual(executed, 0)
+
+        # # Ensure restarts after stop removal
+        self.submit_chemsyses(["O-Ti", "Fe-O"])
+        worker = Worker("oqmd-atf")
+        worker.remove_stop_file()
+        executed = worker.start(num_loops=2)
+        self.assertEqual(executed, 2)
+
+        # Ensure restarts after stop removal
+        worker = Worker("oqmd-atf")
+        worker.remove_stop_file()
+
+        # TODO: this is a pretty hackish way of executing
+        #  these in parallel and isn't guaranteed to work,
+        #  but works for now
+
+        with Pool(2) as p:
+            result = p.map(worker_process, [0, 1])
+        self.assertEquals(result[0], 1)
+
+
+def worker_process(index):
+    if index == 0:
+        print("index 0")
+        worker = Worker("oqmd-atf")
+        latest = worker.get_latest_chemsys()
+        result = worker.start(sleep_time=7)
+        print("returning {} {}".format(result, latest))
+        return result
+    else:
+        time.sleep(3)
+        worker = Worker("oqmd-atf")
+        print("writing stop file")
+        worker.write_stop_file()
+        return None
 
 
 if __name__ == '__main__':
