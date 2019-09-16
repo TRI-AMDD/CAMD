@@ -10,6 +10,9 @@ Options:
     -h --help        Show this screen
     --version        Show version
 
+COMMAND may be one of:
+    start - starts worker
+    stop - writes stopfile such that CAMD stops
 """
 import time
 import boto3
