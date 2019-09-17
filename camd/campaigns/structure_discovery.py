@@ -7,21 +7,20 @@ import os
 from datetime import datetime
 from monty.serialization import dumpfn
 from camd.domain import StructureDomain, heuristic_setup
-from camd.agent.agents import AgentStabilityML5
+from camd.agent.agents import AgentStabilityAdaBoost
 from camd.agent.base import RandomAgent
-from camd.analysis import AnalyzeStability
 from camd.experiment import ATFSampler
 from camd.loop import Loop
 from camd import CAMD_TEST_FILES, CAMD_S3_BUCKET
 from camd.utils.s3 import s3_sync
 
-from camd.analysis import AnalyzeStability_mod
+from camd.analysis import AnalyzeStability_mod, FinalizeQqmdCampaign
 from camd.experiment.dft import OqmdDFTonMC1
 from sklearn.neural_network import MLPRegressor
 import pickle
 
 
-__version__ = "2019.08.07"
+__version__ = "2019.09.16"
 
 
 # TODO: abstract campaign?
@@ -60,27 +59,34 @@ def run_proto_dft_campaign(chemsys):
             pickle.dump(structure_dict, f)
 
         # Set up agents and loop parameters
-        agent = AgentStabilityML5  # Query-by-committee agent that operates with maximum expected gain
+        agent = AgentStabilityAdaBoost
         agent_params = {
-            'ML_algorithm': MLPRegressor,  # We'll use a simple NN regressor
+            'ML_algorithm': MLPRegressor,
             'ML_algorithm_params': {'hidden_layer_sizes': (84, 50)},
-            'N_query': 10,  # Number of experiments the agent can request in each round.
-            'hull_distance': 0.25,  # Distance to hull to consider a finding as discovery (eV/atom)
-            'frac': 0.7  # Fraction to exploit
+            'N_query': 10,
+            'hull_distance': 0.2,  # Distance to hull to consider a finding as discovery (eV/atom)
+            'frac': 1.0,  # Fraction to exploit (rest will be explored -- randomly picked)
+            'uncertainty': True,
+            'alpha': 0.5,
+            'n_estimators': 20
         }
         analyzer = AnalyzeStability_mod
         analyzer_params = {'hull_distance': 0.2}  # analysis criterion (need not be exactly same as agent's goal)
         experiment = OqmdDFTonMC1
-        experiment_params = {'structure_dict': structure_dict, 'candidate_data': candidate_data, 'timeout': 20000}
+        experiment_params = {'structure_dict': structure_dict, 'candidate_data': candidate_data, 'timeout': 30000}
         experiment_params.update({'timeout': 30000})
+        finalizer = FinalizeQqmdCampaign
+        finalizer_params = {'hull_distance': 0.2}
+        n_max_iter = n_max_iter_heuristics(len(candidate_data), 10)
 
         # Construct and start loop
         new_loop = Loop(
             candidate_data, agent, experiment, analyzer, agent_params=agent_params,
             analyzer_params=analyzer_params, experiment_params=experiment_params,
+            finalizer=finalizer, finalizer_params=finalizer_params,
             s3_prefix="proto-dft/runs/{}".format(chemsys))
         new_loop.auto_loop_in_directories(
-            n_iterations=5, timeout=10, monitor=True,
+            n_iterations=n_max_iter, timeout=10, monitor=True,
             initialize=True, with_icsd=True)
     except Exception as e:
         error_msg = {"error": "{}".format(e),
@@ -122,3 +128,25 @@ def run_atf_campaign(chemsys):
         new_loop.run()
 
     return True
+
+
+def n_max_iter_heuristics(n_data, n_query, low_bound=5, up_bound=20):
+    """
+    Helper method to define maximum number of iterations for a given campaign.
+    This is based on the empirical evidence in various systems >90% of stable
+        materials are identified when 25% of candidates are tested. We also enforce
+        upper and lower bounds of 20 and 5 to avoid edge cases with too many or too few
+        calculations to run.
+    Args:
+        n_data (int): number of data points in candidate space
+        n_query (int): number of queries allowed in each iteration
+        low_bound (int): lower bound allowed for n_max_iter
+        up_bound (int): upper bound allowed for n_max_ite
+    Returns:
+        maximum number of iterations as integer
+    """
+    _target = round(n_data*0.25/n_query)
+    if _target<low_bound:
+        return low_bound
+    else:
+        return min(_target, up_bound)
