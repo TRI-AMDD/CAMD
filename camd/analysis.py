@@ -578,6 +578,9 @@ def update_run_w_structure(folder, hull_distance=0.2):
         st_a = AnalyzeStability_mod(df=df, hull_distance=hull_distance)
         _, stablities_of_discovered = st_a.analyze(df, all_ids, all_ids)
 
+        # Having calculated stabilities again, we plot the overall hull.
+        st_a.present(df, all_ids, all_ids, filename="hull_finalized.png")
+
         stable_discovered = list(itertools.compress(all_ids, stablities_of_discovered))
         s_a = AnalyzeStructures()
         s_a.analyze_vaspqmpy_jobs(jobs, against_icsd=True, use_energies=True)
