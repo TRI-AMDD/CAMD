@@ -34,8 +34,11 @@ class AnalysisTest(unittest.TestCase):
     def test_structure_analyzer(self):
         jobs = loadfn(os.path.join(CAMD_TEST_FILES, "raw_results.json"))
         analyzer = AnalyzeStructures()
-        self.assertEqual(analyzer.analyze_vaspqmpy_jobs(jobs, against_icsd=True),
+        self.assertEqual(analyzer.analyze_vaspqmpy_jobs(jobs, against_icsd=True, use_energies=False),
                          [True, True, True, False, True, False, True, True, True])
+
+        self.assertEqual(analyzer.analyze_vaspqmpy_jobs(jobs, against_icsd=True, use_energies=True),
+                         [True, True, False, True, True, False, True, True, True])
 
 
 if __name__ == '__main__':
