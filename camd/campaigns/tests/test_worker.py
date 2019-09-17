@@ -1,10 +1,11 @@
 #  Copyright (c) 2019 Toyota Research Institute.  All rights reserved.
 
 import unittest
-import os
+import subprocess
 import boto3
 import json
 import time
+import shlex
 from multiprocessing import Pool
 from camd import CAMD_S3_BUCKET
 from camd.campaigns.worker import Worker
@@ -102,7 +103,11 @@ class WorkerTest(unittest.TestCase):
 
     def test_cli(self):
         self.submit_chemsyses(["O-Ti"])
-        os.system("camd_worker start --campaign oqmd-atf")
+        output = subprocess.check_output(
+            "camd_worker start --campaign oqmd-atf --loops 1",
+            shell=True
+        )
+        self.assertIn("Running experiments", output.decode('utf-8'))
 
 
 def worker_process(index):
