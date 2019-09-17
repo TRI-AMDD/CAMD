@@ -72,14 +72,17 @@ class AnalyzeStructures(AnalyzerBase):
         self.hull_distance = hull_distance
         super(AnalyzeStructures, self).__init__()
 
-    def analyze(self, structures=None, structure_ids=None, against_icsd=False):
+    def analyze(self, structures=None, structure_ids=None, against_icsd=False,
+                        energies=None):
         """
         One encounter of a given structure will be labeled as True, its remaining matching structures as False.
         Args:
-            structures (list): list of structures
-            structure_ids (list): list of structure ids
-            against_icsd (bool): whether to verify vs. structure ids
-
+            structures (list): a list of structures to be compared.
+            labels (list): uids of strucures, optional.
+            against_icsd (bool): whether a comparison to icsd is also made.
+            energies (list): list of energies (per atom) corresponding to structures. If given,
+                the lowest energy instance of a given structure will be return as the unique one. Otherwise,
+                there is no such guarantee. (optional)
         Returns:
             ([bool]) list of bools corresponding to the given list of
                 structures corresponding to uniqueness
@@ -87,10 +90,16 @@ class AnalyzeStructures(AnalyzerBase):
         self.structures = structures
         self.structure_ids = structure_ids
         self.against_icsd = against_icsd
+        self.energies = energies
 
         smatch = StructureMatcher()
         self.groups = smatch.group_structures(structures)
         self.structure_is_unique = []
+
+        if self.energies:
+            for i in range(len(self.groups)):
+                self.groups[i] = [ x for _,x in sorted( zip([ self.energies[self.structures.index(s)]
+                                                              for s in self.groups[i] ], self.groups[i] ) )]
 
         self._unique_structures = [i[0] for i in self.groups]
         for s in structures:
@@ -141,7 +150,7 @@ class AnalyzeStructures(AnalyzerBase):
         # We return a corresponding list of bool to the initial structure list provided.
         return self.structure_is_unique
 
-    def analyze_vaspqmpy_jobs(self, jobs, against_icsd=False):
+    def analyze_vaspqmpy_jobs(self, jobs, against_icsd=False, use_energies=False):
         """
         Useful for analysis integrated as part of a campaign itself
         Args:
@@ -152,11 +161,16 @@ class AnalyzeStructures(AnalyzerBase):
         """
         self.structure_ids = []
         self.structures = []
+        self.energies = []
         for j, r in jobs.items():
             if r['status'] == 'SUCCEEDED':
                 self.structures.append( r['result']['output']['crystal'] )
                 self.structure_ids.append(j)
-        return self.analyze(self.structures, self.structure_ids, against_icsd)
+                self.energies.append( r['result']['output']['final_energy_per_atom'] )
+        if use_energies:
+            return self.analyze(self.structures, self.structure_ids, against_icsd, self.energies)
+        else:
+            return self.analyze(self.structures, self.structure_ids, against_icsd)
 
     def present(self):
         pass
@@ -566,7 +580,7 @@ def update_run_w_structure(folder, hull_distance=0.2):
 
         stable_discovered = list(itertools.compress(all_ids, stablities_of_discovered))
         s_a = AnalyzeStructures()
-        s_a.analyze_vaspqmpy_jobs(jobs, against_icsd=True)
+        s_a.analyze_vaspqmpy_jobs(jobs, against_icsd=True, use_energies=True)
         unique_s_dict = {}
         for i in range(len(s_a.structures)):
             if s_a.structure_is_unique[i] and \
