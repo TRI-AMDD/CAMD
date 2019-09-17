@@ -1,6 +1,7 @@
 #  Copyright (c) 2019 Toyota Research Institute.  All rights reserved.
 
 import unittest
+import os
 import boto3
 import json
 import time
@@ -98,6 +99,10 @@ class WorkerTest(unittest.TestCase):
         with Pool(2) as p:
             result = p.map(worker_process, [0, 1])
         self.assertEquals(result[0], 1)
+
+    def test_cli(self):
+        self.submit_chemsyses(["O-Ti"])
+        os.system("camd_worker start --campaign oqmd-atf")
 
 
 def worker_process(index):
