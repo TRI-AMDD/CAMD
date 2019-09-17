@@ -98,8 +98,8 @@ class AnalyzeStructures(AnalyzerBase):
 
         if self.energies:
             for i in range(len(self.groups)):
-                self.groups[i] = [ x for _,x in sorted( zip([ self.energies[ self.structures.index(i)]
-                                                              for i in self.groups[i] ], self.groups[i] ) )]
+                self.groups[i] = [ x for _,x in sorted( zip([ self.energies[ self.structures.index(s)]
+                                                              for s in self.groups[i] ], self.groups[i] ) )]
 
         self._unique_structures = [i[0] for i in self.groups]
         for s in structures:
