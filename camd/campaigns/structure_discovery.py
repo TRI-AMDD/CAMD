@@ -21,7 +21,7 @@ from sklearn.neural_network import MLPRegressor
 import pickle
 
 
-__version__ = "2019.08.07"
+__version__ = "2019.09.12"
 
 
 # TODO: abstract campaign?
@@ -48,7 +48,8 @@ def run_proto_dft_campaign(chemsys):
         element_list = chemsys.split('-')
         g_max, charge_balanced = heuristic_setup(element_list)
         domain = StructureDomain.from_bounds(
-            element_list, charge_balanced=charge_balanced, n_max_atoms=20, **{'grid': range(1, g_max)})
+            element_list, charge_balanced=charge_balanced,
+            n_max_atoms=20, **{'grid': range(1, g_max)})
         candidate_data = domain.candidates()
         structure_dict = domain.hypo_structures_dict
 
@@ -70,8 +71,9 @@ def run_proto_dft_campaign(chemsys):
         analyzer = AnalyzeStability_mod
         analyzer_params = {'hull_distance': 0.2}  # analysis criterion (need not be exactly same as agent's goal)
         experiment = OqmdDFTonMC1
-        experiment_params = {'structure_dict': structure_dict, 'candidate_data': candidate_data, 'timeout': 20000}
+        experiment_params = {'structure_dict': structure_dict, 'candidate_data': candidate_data, 'timeout': 30000}
         experiment_params.update({'timeout': 30000})
+        n_max_iter = n_max_iter_heuristics(len(candidate_data), 10)
 
         # Construct and start loop
         new_loop = Loop(
@@ -79,7 +81,7 @@ def run_proto_dft_campaign(chemsys):
             analyzer_params=analyzer_params, experiment_params=experiment_params,
             s3_prefix="proto-dft/runs/{}".format(chemsys))
         new_loop.auto_loop_in_directories(
-            n_iterations=5, timeout=10, monitor=True,
+            n_iterations=n_max_iter, timeout=10, monitor=True,
             initialize=True, with_icsd=True)
     except Exception as e:
         error_msg = {"error": "{}".format(e),
@@ -105,7 +107,7 @@ def run_atf_campaign(chemsys):
     n_query = 10  # This many new candidates are "calculated with DFT" (i.e. requested from Oracle -- DFT)
     agent = RandomAgent
     agent_params = {'hull_distance': 0.05, 'N_query': n_query}
-    analyzer = AnalyzeStability
+    analyzer = AnalyzeStability_mod
     analyzer_params = {'hull_distance': 0.05}
     experiment = ATFSampler
     experiment_params = {'dataframe': df}
@@ -121,3 +123,25 @@ def run_atf_campaign(chemsys):
         new_loop.run()
 
     return True
+
+
+def n_max_iter_heuristics(n_data, n_query, low_bound=5, up_bound=20):
+    """
+    Helper method to define maximum number of iterations for a given campaign.
+    This is based on the empirical evidence in various systems >90% of stable
+        materials are identified when 25% of candidates are tested. We also enforce
+        upper and lower bounds of 20 and 5 to avoid edge cases with too many or too few
+        calculations to run.
+    Args:
+        n_data (int): number of data points in candidate space
+        n_query (int): number of queries allowed in each iteration
+        low_bound (int): lower bound allowed for n_max_iter
+        up_bound (int): upper bound allowed for n_max_ite
+    Returns:
+        maximum number of iterations as integer
+    """
+    _target = round(n_data*0.25/n_query)
+    if _target<low_bound:
+        return low_bound
+    else:
+        return min(_target, up_bound)
