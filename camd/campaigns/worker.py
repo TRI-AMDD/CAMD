@@ -3,12 +3,13 @@
 Module and script for running the CAMD campaign worker
 
 Usage:
-    camd_worker COMMAND --campaign CAMPAIGN
+    camd_worker COMMAND [options]
 
 Options:
-    --campaign       campaign name [default: proto-dft]
-    -h --help        Show this screen
-    --version        Show version
+    --campaign CAMPAIGN  campaign name  [default: proto-dft]
+    --loops NUM_LOOPS    number of loops to run
+    -h --help            Show this screen
+    --version            Show version
 
 COMMAND may be one of:
     start - starts worker
@@ -163,10 +164,18 @@ def get_common_prefixes(bucket, prefix):
 
 def main():
     args = docopt(__doc__)
-    worker = Worker(args["--campaign"])
+    campaign = args['--campaign']
+    worker = Worker(campaign)
+    num_loops = args['--loops']
+    if num_loops is not None:
+        num_loops = int(num_loops)
+    else:
+        num_loops = np.inf
     if args['COMMAND'] == "start":
+        print("Starting {} worker with {} loops".format(
+            campaign, num_loops))
         worker.remove_stop_file()
-        worker.start()
+        worker.start(num_loops=num_loops)
     elif args['COMMAND'] == "stop":
         worker.write_stopfile()
     else:
