@@ -395,7 +395,7 @@ class AnalyzeStability_mod(AnalyzerBase):
         entries = [entry for entry in entries if isinstance(entry, ComputedEntry)]
         pd = PhaseDiagram(entries)
         plotkwargs = {
-            "markerfacecolor": "white",
+            "markerfacecolor": "None",
             "markersize": 7,
             "linewidth": 2
         }
@@ -409,8 +409,10 @@ class AnalyzeStability_mod(AnalyzerBase):
                     entry, allow_negative=True)
             if e_hull < self.hull_distance:
                 color = 'g'
+                marker = 'o'
             else:
                 color = 'r'
+                marker = 'x'
 
             # Get coords
             coords = [entry.composition.get_atomic_fraction(el)
@@ -421,7 +423,7 @@ class AnalyzeStability_mod(AnalyzerBase):
                 coords = triangular_coord(coords)
             elif pd.dim == 4:
                 coords = tet_coord(coords)
-            plot.plot(*coords, 'x', color=color, markersize=10)
+            plot.plot(*coords, marker=marker, markeredgecolor=color, markerfacecolor="None", markersize=10)
 
         if filename is not None:
             plot.savefig(filename, dpi=70)
