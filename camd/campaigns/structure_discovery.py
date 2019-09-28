@@ -83,7 +83,7 @@ def run_proto_dft_campaign(chemsys):
         new_loop = Loop(
             candidate_data, agent, experiment, analyzer, agent_params=agent_params,
             analyzer_params=analyzer_params, experiment_params=experiment_params,
-            finalizer=finalizer, finalizer_params=finalizer_params,
+            finalizer=finalizer, finalizer_params=finalizer_params, heuristic_stopper=5,
             s3_prefix="proto-dft/runs/{}".format(chemsys))
         new_loop.auto_loop_in_directories(
             n_iterations=n_max_iter, timeout=10, monitor=True,
