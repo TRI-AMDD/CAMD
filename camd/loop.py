@@ -22,17 +22,30 @@ from pymatgen.util.plotting import pretty_plot
 class Loop(MSONable):
     def __init__(self, candidate_data, agent, experiment, analyzer,
                  agent_params=None, experiment_params=None, analyzer_params=None, finalizer=None, finalizer_params=None,
-                 path=None, seed_data=None, create_seed=False, s3_prefix=None,
+                 path=None, seed_data=None, create_seed=False, heuristic_stopper=False, s3_prefix=None,
                  s3_bucket=CAMD_S3_BUCKET):
         """
+        Loop provides a sequential, workflow-like capability where an Agent iterates over a candidate
+        space to choose and execute new Experiments, given a certain objective. The abstraction
+        follows closely the "scientific method". Agent is the entity that suggests new Experiments.
+        Supporting entities are Analyzers and Finalizers. Framework is flexible enough to implement
+        many sequential learning or optimization tasks, including active-learning, bayesian optimization
+        or black-box optimization with local or global optima search.
 
         Args:
             candidate_data (pd.DataFrame): List of uids for candidate search space for active learning
             agent (HypothesisAgent): a subclass of HypothesisAgent
             experiment (Experiment): a subclass of Experiment
             analyzer (Analyzer): a subclass of Analyzer
-            path (str): path in which to execute the loop
+            agent_params (dict): parameters of the agent
+            experiment_params (dict): parameters of the experiment
+            analyzer_params (dict): parameters of the analyzer
+            finalizer (obj): needs to have a finalize method.
+            finalizer_params (dict): parameters of finalizer
+            path (str): path in which to execute the loop. Defaults to full path of current folder if not given.
             seed_data (pandas.DataFrame): Seed Data for active learning, index is to be the assumed uid
+            heuristic_stopper (int or False): If int, the heuristic stopper will kick in to check if loop should be
+                terminated after this many iterations, if no discoveries in past #n loops.
             s3_prefix (str): prefix which to prepend all s3 synced files with,
                 if None is specified, s3 syncing will not occur
             s3_bucket (str): bucket name for s3 sync.  If not specified,
@@ -63,6 +76,8 @@ class Loop(MSONable):
         self.seed_data = seed_data if seed_data is not None else pd.DataFrame()
         self.create_seed = create_seed
 
+        self.heuristic_stopper = heuristic_stopper
+
         # Check if there exists earlier iterations
         if os.path.exists(os.path.join(self.path, 'iteration.json')):
             self.load('iteration')
@@ -89,7 +104,7 @@ class Loop(MSONable):
 
     def run(self, finalize=False):
         """
-        This method applies a single iteration of the active-learning loop, and keeps record of everything in place.
+        This method applies a single iteration of the loop, and keeps record of everything in place.
 
         Each iteration consists of:
             1. Get results of requested experiments
@@ -132,6 +147,13 @@ class Loop(MSONable):
 
         self.report()
 
+        # Loop stopper if no discoveries in last few cycles.
+        if self.heuristic_stopper and self.iteration>self.heuristic_stopper and \
+                np.sum(pd.read_csv(os.path.join(self.path,'report.log'), delimiter='\s+')['N_Discovery'][-3:].values)==0:
+            self.finalize()
+            raise ValueError("Not enough new discoveries. Stopping the loop.")
+
+        # Loop stopper if finalization is desired but will be done outside of run (e.g. auto_loop)
         if finalize:
             return None
 
@@ -139,7 +161,7 @@ class Loop(MSONable):
         print("Loop {} state: Agent {} hypothesizing".format(self.iteration, self.agent.__class__.__name__))
         suggested_experiments = self.agent.get_hypotheses(self.candidate_data, self.seed_data)
 
-        # Stop-gap loop stopper.
+        # Loop stopper if agent doesn't have anything to suggest.
         if len(suggested_experiments) == 0:
             self.finalize()
             raise ValueError("No space left to explore. Stopping the loop.")
