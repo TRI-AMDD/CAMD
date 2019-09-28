@@ -14,9 +14,6 @@ from camd.agent.base import RandomAgent
 from camd.log import camd_traced
 from pymatgen.util.plotting import pretty_plot
 
-# TODO:
-#  - improve the stopping scheme
-
 
 @camd_traced
 class Loop(MSONable):
