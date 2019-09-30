@@ -339,7 +339,7 @@ class AnalyzeStability_mod(AnalyzerBase):
         return stabilities_of_new_uids, stabilities_of_space_uids
 
     def present(self, df=None, new_result_ids=None, all_result_ids=None,
-                filename=None):
+                filename=None, save_hull_distance=False, finalize=False):
         """
         Generate plots of convex hulls for each of the runs
 
@@ -397,10 +397,15 @@ class AnalyzeStability_mod(AnalyzerBase):
         plotkwargs = {
             "markerfacecolor": "None",
             "markersize": 7,
-            "linewidth": 2
+            "linewidth": 2,
         }
+        if finalize:
+            plotkwargs.update({'linestyle': '--'})
         plotter = PDPlotter(pd, **plotkwargs)
-        plot = plotter.get_plot()
+
+        getplotkwargs = {"label_stable": False} if finalize else {}
+        print(getplotkwargs)
+        plot = plotter.get_plot(**getplotkwargs)
         # Get valid results
         valid_results = [new_result_id for new_result_id in new_result_ids
                          if new_result_id in _df.index]
@@ -425,10 +430,17 @@ class AnalyzeStability_mod(AnalyzerBase):
                 coords = tet_coord(coords)
             plot.plot(*coords, marker=marker, markeredgecolor=color, markerfacecolor="None", markersize=10)
 
+        if finalize:
+            pd2 = PhaseDiagram(_df['entry'].values)
+            plotter = PDPlotter(pd2, **{"markersize": 0, "linestyle": "-", "linewidth": 2})
+            plot = plotter.get_plot(plt=plot)
+
         if filename is not None:
             plot.savefig(filename, dpi=70)
 
         plot.close()
+        # if filename is not None and save_hull_distance:
+        #     filename.split(".")[0]+'.json'
 
 
 class PhaseSpaceAL(PhaseSpace):
@@ -560,45 +572,52 @@ def update_run_w_structure(folder, hull_distance=0.2):
 
     """
     with cd(folder):
-
+        required_files = ["seed_data.pickle"]
         if os.path.isfile("error.json"):
             error = loadfn("error.json")
             print("{} ERROR: {}".format(folder, error))
 
-        iteration = -1
-        jobs = {}
-        while True:
-            if os.path.isdir(str(iteration)):
-                jobs.update(loadfn(os.path.join(str(iteration), '_exp_raw_results.json')))
-                iteration += 1
-            else:
-                break
-        with open("seed_data.pickle", "rb") as f:
-            df = pickle.load(f)
+        if not all([os.path.isfile(fn) for fn in required_files]):
+            print("{} ERROR: no seed data, no analysis to be done")
+        else:
+            iteration = -1
+            jobs = {}
+            while True:
+                if os.path.isdir(str(iteration)):
+                    jobs.update(loadfn(os.path.join(str(iteration), '_exp_raw_results.json')))
+                    iteration += 1
+                else:
+                    break
+            with open("seed_data.pickle", "rb") as f:
+                df = pickle.load(f)
 
-        all_ids = loadfn("consumed_candidates.json")
-        st_a = AnalyzeStability_mod(df=df, hull_distance=hull_distance)
-        _, stablities_of_discovered = st_a.analyze(df, all_ids, all_ids)
+            all_ids = loadfn("consumed_candidates.json")
+            st_a = AnalyzeStability_mod(df=df, hull_distance=hull_distance)
+            _, stablities_of_discovered = st_a.analyze(df, all_ids, all_ids)
 
-        # Having calculated stabilities again, we plot the overall hull.
-        st_a.present(df, all_ids, all_ids, filename="hull_finalized.png")
+            # Having calculated stabilities again, we plot the overall hull.
+            st_a.present(df, all_ids, all_ids, filename="hull_finalized.png", finalize=True)
 
-        stable_discovered = list(itertools.compress(all_ids, stablities_of_discovered))
-        s_a = AnalyzeStructures()
-        s_a.analyze_vaspqmpy_jobs(jobs, against_icsd=True, use_energies=True)
-        unique_s_dict = {}
-        for i in range(len(s_a.structures)):
-            if s_a.structure_is_unique[i] and \
-                    (s_a.structure_ids[i] in stable_discovered):
-                unique_s_dict[s_a.structure_ids[i]] = s_a.structures[i]
+            stable_discovered = list(itertools.compress(all_ids, stablities_of_discovered))
+            s_a = AnalyzeStructures()
+            s_a.analyze_vaspqmpy_jobs(jobs, against_icsd=True, use_energies=True)
+            unique_s_dict = {}
+            for i in range(len(s_a.structures)):
+                if s_a.structure_is_unique[i] and \
+                        (s_a.structure_ids[i] in stable_discovered):
+                    unique_s_dict[s_a.structure_ids[i]] = s_a.structures[i]
 
-        with open("discovered_unique_structures.pickle", "wb") as f:
-            pickle.dump(unique_s_dict, f)
+            with open("discovered_unique_structures.pickle", "wb") as f:
+                pickle.dump(unique_s_dict, f)
 
-        with open('structure_report.log', "w") as f:
-            f.write("consumed discovery unique_discovery duplicate in_icsd \n")
-            f.write(str(len(all_ids)) + ' ' +
-                    str(len(stable_discovered)) + ' ' +
-                    str(len(unique_s_dict)) + ' '
-                    + str(len(s_a.structures) - sum(s_a._not_duplicate)) + ' '
-                    + str(sum([not i for i in s_a._icsd_filter])))
+            with open('structure_report.log', "w") as f:
+                f.write("consumed discovery unique_discovery duplicate in_icsd \n")
+                f.write(str(len(all_ids)) + ' ' +
+                        str(len(stable_discovered)) + ' ' +
+                        str(len(unique_s_dict)) + ' '
+                        + str(len(s_a.structures) - sum(s_a._not_duplicate)) + ' '
+                        + str(sum([not i for i in s_a._icsd_filter])))
+
+
+if __name__ == "__main__":
+    update_run_w_structure('/Users/muratahan.aykol/local_dev/CAMD/scripts/cache/Mn-S/', hull_distance=0.2)
