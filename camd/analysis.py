@@ -404,7 +404,6 @@ class AnalyzeStability_mod(AnalyzerBase):
         plotter = PDPlotter(pd, **plotkwargs)
 
         getplotkwargs = {"label_stable": False} if finalize else {}
-        print(getplotkwargs)
         plot = plotter.get_plot(**getplotkwargs)
         # Get valid results
         valid_results = [new_result_id for new_result_id in new_result_ids
@@ -617,7 +616,3 @@ def update_run_w_structure(folder, hull_distance=0.2):
                         str(len(unique_s_dict)) + ' '
                         + str(len(s_a.structures) - sum(s_a._not_duplicate)) + ' '
                         + str(sum([not i for i in s_a._icsd_filter])))
-
-
-if __name__ == "__main__":
-    update_run_w_structure('/Users/muratahan.aykol/local_dev/CAMD/scripts/cache/Mn-S/', hull_distance=0.2)
