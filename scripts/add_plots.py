@@ -48,23 +48,24 @@ def update_run(folder):
             print("{} ERROR: no seed data, no analysis to be done")
         else:
             analyzer = AnalyzeStability_mod(hull_distance=0.2)
-            with open("seed_data.pickle", "rb") as f:
-                result_df = pickle.load(f)
 
             # Generate report plots
-            for iteration in range(0, 6):
+            for iteration in range(0, 25):
                 print("{}: {}".format(folder, iteration))
-                if not os.path.isdir(str(iteration)):
+                if not os.path.isdir(str(iteration)) or not os.path.isdir(str(iteration-1)):
                     continue
+                with open(os.path.join(str(iteration),"seed_data.pickle"), "rb") as f:
+                    result_df = pickle.load(f)
                 all_result_ids = loadfn(
-                    os.path.join(str(iteration), "consumed_candidates.json"))
+                    os.path.join(str(iteration-1), "consumed_candidates.json"))
                 new_result_ids = loadfn(
-                    os.path.join(str(iteration), "submitted_experiment_requests.json"))
+                    os.path.join(str(iteration-1), "submitted_experiment_requests.json"))
                 analyzer.present(
                     df=result_df,
                     new_result_ids=new_result_ids,
                     all_result_ids=all_result_ids,
-                    filename="hull_{}.png".format(iteration)
+                    filename="hull_{}.png".format(iteration),
+                    finalize=False
                 )
 
             Loop.generate_report_plot()

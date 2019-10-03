@@ -199,6 +199,7 @@ class AnalyzeStability(AnalyzerBase):
         self.hull_distance = hull_distance if hull_distance else 0.05
         self.multiprocessing = multiprocessing
         self.space = None
+        self.stabilities_of_all = None
         super(AnalyzeStability, self).__init__()
 
     def analyze(self, df=None, new_result_ids=None, all_result_ids=None):
@@ -395,12 +396,14 @@ class AnalyzeStability_mod(AnalyzerBase):
         entries = [entry for entry in entries if isinstance(entry, ComputedEntry)]
         pd = PhaseDiagram(entries)
         plotkwargs = {
-            "markerfacecolor": "None",
+            "markerfacecolor": "white",
             "markersize": 7,
             "linewidth": 2,
         }
         if finalize:
             plotkwargs.update({'linestyle': '--'})
+        else:
+            plotkwargs.update({'linestyle': '-'})
         plotter = PDPlotter(pd, **plotkwargs)
 
         getplotkwargs = {"label_stable": False} if finalize else {}
@@ -408,15 +411,25 @@ class AnalyzeStability_mod(AnalyzerBase):
         # Get valid results
         valid_results = [new_result_id for new_result_id in new_result_ids
                          if new_result_id in _df.index]
+
+        if finalize:
+            # If finalize, we'll reset pd to all entries at this point to measure stabilities wrt.
+            # the ultimate hull.
+            pd = PhaseDiagram(_df['entry'].values)
+            plotter = PDPlotter(pd, **{"markersize": 0, "linestyle": "-", "linewidth": 2})
+            plot = plotter.get_plot(plt=plot)
+
         for entry in _df['entry'][valid_results]:
             decomp, e_hull = pd.get_decomp_and_e_above_hull(
                     entry, allow_negative=True)
             if e_hull < self.hull_distance:
                 color = 'g'
                 marker = 'o'
+                markeredgewidth = 1
             else:
                 color = 'r'
                 marker = 'x'
+                markeredgewidth = 1
 
             # Get coords
             coords = [entry.composition.get_atomic_fraction(el)
@@ -427,19 +440,19 @@ class AnalyzeStability_mod(AnalyzerBase):
                 coords = triangular_coord(coords)
             elif pd.dim == 4:
                 coords = tet_coord(coords)
-            plot.plot(*coords, marker=marker, markeredgecolor=color, markerfacecolor="None", markersize=10)
-
-        if finalize:
-            pd2 = PhaseDiagram(_df['entry'].values)
-            plotter = PDPlotter(pd2, **{"markersize": 0, "linestyle": "-", "linewidth": 2})
-            plot = plotter.get_plot(plt=plot)
+            plot.plot(*coords, marker=marker, markeredgecolor=color, markerfacecolor="None", markersize=11,
+                      markeredgewidth=markeredgewidth)
 
         if filename is not None:
             plot.savefig(filename, dpi=70)
-
         plot.close()
-        # if filename is not None and save_hull_distance:
-        #     filename.split(".")[0]+'.json'
+
+        if filename is not None and save_hull_distance:
+            if self.stabilities_of_all is None:
+                print("ERROR: No stability information in analyzer.")
+                return None
+            with open(filename.split(".")[0]+'.json', 'w') as f:
+                json.dump(self.stabilities_of_all, f)
 
 
 class PhaseSpaceAL(PhaseSpace):
@@ -595,7 +608,7 @@ def update_run_w_structure(folder, hull_distance=0.2):
             _, stablities_of_discovered = st_a.analyze(df, all_ids, all_ids)
 
             # Having calculated stabilities again, we plot the overall hull.
-            st_a.present(df, all_ids, all_ids, filename="hull_finalized.png", finalize=True)
+            st_a.present(df, all_ids, all_ids, filename="hull_finalized.png", finalize=True, save_hull_distance=True)
 
             stable_discovered = list(itertools.compress(all_ids, stablities_of_discovered))
             s_a = AnalyzeStructures()
