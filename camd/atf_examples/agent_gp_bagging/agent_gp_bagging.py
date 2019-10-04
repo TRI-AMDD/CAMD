@@ -2,7 +2,7 @@
 from camd.loop import Loop
 import pandas as pd
 
-from camd.agent.agents import BaggedGaussianProcessStabilityAgent
+from camd.agent.stability import BaggedGaussianProcessStabilityAgent
 from camd.analysis import AnalyzeStability_mod
 from camd.experiment.base import ATFSampler
 from camd.utils.s3 import cache_s3_objs

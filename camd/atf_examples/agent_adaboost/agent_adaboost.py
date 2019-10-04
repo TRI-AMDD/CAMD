@@ -3,7 +3,7 @@ from camd.loop import Loop
 import pandas as pd
 
 from sklearn.neural_network import MLPRegressor
-from camd.agent.agents import AgentStabilityAdaBoost
+from camd.agent.stability import AgentStabilityAdaBoost
 from camd.analysis import AnalyzeStability_mod
 from camd.experiment.base import ATFSampler
 from camd.utils.s3 import cache_s3_objs

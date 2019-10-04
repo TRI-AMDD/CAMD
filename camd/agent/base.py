@@ -23,17 +23,6 @@ class HypothesisAgent(metaclass=abc.ABCMeta):
 
         """
 
-    # @abc.abstractmethod
-    # def update_candidate_data(self, new_results):
-    #     """
-    #
-    #     Args:
-    #         new_results:
-    #
-    #     Returns:
-    #
-    #     """
-
 
 class QBC:
     """
@@ -81,7 +70,8 @@ class QBC:
             model = self.ML_algorithm(**self.ML_algorithm_params)
             model.fit(X, y)
             self.committee_models.append([scaler, model])  # Note we're saving the scaler to use in predictions
-        self.trained=True
+
+        self.trained = True
 
         if self.test_full_model:
             # Get a CV score for an overall model with present dataset
@@ -115,27 +105,26 @@ class RandomAgent(HypothesisAgent):
     """
     Baseline agent: Randomly picks next experiments
     """
-    def __init__(self, candidate_data=None, seed_data=None, N_query=None,
-                 pd=None, hull_distance=None, N_species=None):
+    def __init__(self, candidate_data=None, seed_data=None, n_query=1,
+                 pd=None, hull_distance=0.0):
 
         self.candidate_data = candidate_data
         self.seed_data = seed_data
-        self.hull_distance = hull_distance if hull_distance else 0.0
-        self.N_query = N_query if N_query else 1
+        self.hull_distance = hull_distance
+        self.n_query = n_query
         self.pd = pd
-        self.N_species = N_species
         self.cv_score = np.nan
         super(RandomAgent, self).__init__()
 
     def get_hypotheses(self, candidate_data, seed_data=None):
-        if self.N_species:
-            self.candidate_data = candidate_data[ candidate_data['N_species'] == self.N_species ]
-        else:
-            self.candidate_data = candidate_data
-        indices_to_compute = []
-        for data in self.candidate_data.iterrows():
-            indices_to_compute.append(data[0])
-        a = np.array(indices_to_compute)
-        np.random.shuffle(a)
-        indices_to_compute = a[:self.N_query].tolist()
-        return indices_to_compute
+        """
+
+        Args:
+            candidate_data (DataFrame): candidate data
+            seed_data (DataFrame): seed data
+
+        Returns:
+            (List) of indices
+
+        """
+        return self.candidate_data.sample(self.n_query).index

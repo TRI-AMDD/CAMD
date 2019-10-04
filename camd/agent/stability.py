@@ -1,11 +1,13 @@
 # Copyright Toyota Research Institute 2019
 
-import numpy as np
 import time
-import gpflow
-import multiprocessing as mp
-from qmpy.analysis.thermodynamics.phase import Phase, PhaseData
+import abc
 from copy import deepcopy
+from multiprocessing import cpu_count
+
+import gpflow
+import numpy as np
+from qmpy.analysis.thermodynamics.phase import Phase, PhaseData
 from camd.analysis import PhaseSpaceAL, ELEMENTS
 from camd.agent.base import HypothesisAgent, QBC
 from camd.log import camd_traced
@@ -20,133 +22,204 @@ from sklearn.ensemble import AdaBoostRegressor
 # TODO: Adaptive N_query and subsampling of candidate space
 
 
-@camd_traced
-class QBCStabilityAgent(HypothesisAgent):
-
-    def __init__(self, candidate_data=None, seed_data=None, N_query=None,
-                 pd=None, hull_distance=None, N_species=None, ML_algorithm=None, ML_algorithm_params=None,
-                 N_members=None, frac=None, alpha=None, multiprocessing=True):
-
+class StabilityAgent(HypothesisAgent, metaclass=abc.ABCMeta):
+    """
+    The StabilityAgent is a mixin abstract class which contains
+    initialization parameters and methods common to every agent
+    which is responsible for making decisions about stability.
+    """
+    def __init__(self, candidate_data=None, seed_data=None, n_query=1,
+                 hull_distance=0.0, pd=None, multiprocessing=True):
+        """
+        Args:
+            candidate_data (DataFrame): data about the candidates
+            seed_data (DataFrame): data which to fit the Agent to
+            n_query (int): number of
+            hull_distance (float): hull distance as a criteria for
+                which to deem a given material as "stable"
+            # TODO: is pd necessary as a constructor argument?
+            pd (PhaseDiagram): phase diagram to initialize the agent with
+            multiprocessing (bool): whether to use multiprocessing
+                for phase stability analysis
+        """
+        super().__init__()
         self.candidate_data = candidate_data
         self.seed_data = seed_data
-        self.hull_distance = hull_distance if hull_distance else 0.0
-        self.N_query = N_query if N_query else 1
+        self.n_query = n_query
+        self.hull_distance = hull_distance
         self.pd = pd
-        self.ML_algorithm = ML_algorithm
-        self.ML_algorithm_params = ML_algorithm_params
-        self.N_members = N_members if N_members else 10
-        self.frac = frac if frac else 0.5
-        self.alpha = alpha if alpha else 0.5
         self.multiprocessing = multiprocessing
-        self.N_species = N_species
+
+        # These might be able to go into the base class
         self.cv_score = np.nan
+        self.indices_to_compute = None
 
-        self.qbc = QBC(N_members=self.N_members, frac=self.frac,
-                       ML_algorithm=self.ML_algorithm, ML_algorithm_params=self.ML_algorithm_params)
+    def get_pd(self):
+        """
+        Refresh the phase diagram associated with the seed_data
 
-        super(QBCStabilityAgent, self).__init__()
+        Returns:
+            None
+        """
+        self.pd = PhaseData()
+        phases = [Phase(row['Composition'], energy=row['delta_e'],
+                        per_atom=True, description=row_index)
+                  for row_index, row in self.seed_data.iterrows()]
+        phases.extend([Phase(el, 0.0, per_atom=True) for el in ELEMENTS])
+        self.pd.add_phases(phases)
+        return self.pd
 
-    def get_hypotheses(self, candidate_data, seed_data=None, retrain_committee=True):
-        if self.N_species:
-            self.candidate_data = candidate_data[ candidate_data['N_species'] == self.N_species ]
-        else:
-            self.candidate_data = candidate_data
-        self.seed_data = seed_data
-        if retrain_committee:
-            self.qbc.trained = False
+    def update_candidate_stabilities(self, formation_energies,
+                                     sort=True, floor=-6.0):
+        """
 
-        if not self.qbc.trained:
-            self.qbc.fit(self.seed_data, self.seed_data['delta_e'], ignore_columns=['Composition',
-                                                                                    'N_species', 'delta_e'])
-        self.cv_score = self.qbc.cv_score
+        Args:
+            formation_energies ([float]): list of predictions for formation
+                energies corresponding to candidate_data ordering
+            sort (bool): whether or not to sort final list
+            floor (float): a float intended to add a floor to the predicted
+                formation energies
 
-        # Dropping columns not relevant for ML predictions, but also
-        # 'delta_e' column, if exists. The latter is to ensure delta_e does not end up in features if using
-        # after the fact data.
-        columns_to_drop = ['Composition', 'N_species']
-        if 'delta_e' in self.candidate_data:
-            columns_to_drop.append('delta_e')
+        Returns:
+            (DataFrame): dataframe corresponding to self.candidate_data
+        """
+        # Preprocess formation energies with floor
+        if floor is not None:
+            formation_energies = np.array(formation_energies)
+            formation_energies[formation_energies < floor] = floor
 
-        # QBC makes predictions for Hf and uncertainty on candidate data
-        preds, stds = self.qbc.predict(self.candidate_data, ignore_columns=columns_to_drop)
-        expected = preds - stds*self.alpha
+        # Update formation energy predictions
+        self.candidate_data['pred_delta_e'] = formation_energies
 
-        # This is just curbing outrageously negative predictions
-        for i in range(len(expected)):
-            if expected[i] < -6.0:
-                expected[i] = -6.0
+        # Construct candidate phases
+        candidate_phases = [
+            Phase(data['Composition'], energy=data['pred_delta_e'],
+                  per_atom=True, description=m_id)
+            for m_id, data in self.candidate_data.iterrows()
+        ]
 
-        # Get estimated stabilities from ML predictions
-        # For that, let's create Phases from candidates
-        candidate_phases = []
-        _c = 0
-        for data in self.candidate_data.iterrows():
-            candidate_phases.append(
-                Phase(data[1]['Composition'], energy=expected[_c], per_atom=True, description=data[0]))
-            _c += 1
-
-        # We take the existing phase data for seed phases, add candidate phases, and compute stabilities
-        self.get_pd()
-        pd_ml = deepcopy(self.pd)
+        # Refresh and copy seed PD
+        pd_ml = deepcopy(self.get_pd())
         pd_ml.add_phases(candidate_phases)
         space_ml = PhaseSpaceAL(bounds=ELEMENTS, data=pd_ml)
+
+        # Compute and return stabilities
         if self.multiprocessing:
             space_ml.compute_stabilities_multi(candidate_phases)
         else:
             space_ml.compute_stabilities_mod(candidate_phases)
 
-        ml_stabilities = []
-        for _p in candidate_phases:
-            ml_stabilities.append(_p.stability)
+        self.candidate_data['pred_stability'] = \
+            [phase.stability for phase in candidate_phases]
 
-        # Now let's find the most stable ones upto N_query within hull_distance
-        ml_stabilities = np.array(ml_stabilities, dtype=float)
-        ml_stable = np.array(candidate_phases)[ml_stabilities <= self.hull_distance]
-        to_compute = sorted(ml_stable, key=lambda x: x.stability)[:self.N_query]
+        if sort:
+            self.candidate_data = self.candidate_data.sort_values('pred_stability')
 
-        self.indices_to_compute = [i.description for i in to_compute]
-
-        return self.indices_to_compute
-
-    def get_pd(self):
-        self.pd = PhaseData()
-        phases = []
-        for data in self.seed_data.iterrows():
-            phases.append(Phase(data[1]['Composition'], energy=data[1]['delta_e'], per_atom=True, description=data[0]))
-        for el in ELEMENTS:
-            phases.append(Phase(el, 0.0, per_atom=True))
-        self.pd.add_phases(phases)
+        return self.candidate_data
 
 
 @camd_traced
-class AgentStabilityML5(HypothesisAgent):
-    """
-    An agent that does a certain fraction of full exploration an exploitation in each iteration.
-    It will exploit a fraction of N_query options (frac), and explore the rest of its budget.
-    """
-    def __init__(self, candidate_data=None, seed_data=None, N_query=None,
-                 pd=None, hull_distance=None, N_species=None, ML_algorithm=None, ML_algorithm_params=None,
-                 frac=None, multiprocessing=True):
+class QBCStabilityAgent(StabilityAgent):
+    def __init__(self, candidate_data=None, seed_data=None, n_query=1,
+                 hull_distance=0.0, alpha=0.5, pd=None, multiprocessing=True,
+                 ml_algorithm=None, ml_algorithm_params=None, n_members=10):
+        """
+        Args:
+            candidate_data (DataFrame): data about the candidates
+            seed_data (DataFrame): data which to fit the Agent to
+            n_query (int): number of
+            hull_distance (float): hull distance as a criteria for
+                which to deem a given material as "stable"
+            # TODO: is pd necessary as a constructor argument?
+            pd (PhaseDiagram): phase diagram to initialize the agent with
+            multiprocessing (bool): whether to use multiprocessing
+                for phase stability analysis
+            ml_algorithm (sklearn-style regressor): Regression method
+            ml_algorithm_params (dict): parameters to pass to the regression
+                method
+            alpha (float): weighting factor for the stdev in making
+                best-case predictions of the stability
+            n_members (int): number of committee members for the qbc
+        """
 
-        self.candidate_data = candidate_data
+        super(QBCStabilityAgent, self).__init__(
+            candidate_data=candidate_data, seed_data=seed_data,
+            n_query=n_query, hull_distance=hull_distance,
+            pd=pd, multiprocessing=multiprocessing
+        )
+
+        self.ml_algorithm = ml_algorithm
+        self.ml_algorithm_params = ml_algorithm_params
+        self.n_members = n_members
+        self.qbc = QBC(
+            N_members=self.n_members, frac=self.frac,
+            ML_algorithm=self.ml_algorithm,
+            ML_algorithm_params=self.ml_algorithm_params)
+
+    def get_hypotheses(self, candidate_data, seed_data=None,
+                       retrain_committee=True):
         self.seed_data = seed_data
-        self.hull_distance = hull_distance if hull_distance else 0.0
-        self.N_query = N_query if N_query else 1
-        self.pd = pd
-        self.ML_algorithm = ML_algorithm
-        self.ML_algorithm_params = ML_algorithm_params
-        self.multiprocessing = multiprocessing
-        self.frac = frac if frac else 0.5
-        self.cv_score = np.nan
-        self.N_species = N_species
 
-        super(AgentStabilityML5, self).__init__()
+        # Retrain committee if untrained or if specified
+        if not self.qbc.trained or retrain_committee:
+            self.qbc.fit(self.seed_data, self.seed_data['delta_e'],
+                         ignore_columns=['Composition', 'N_species', 'delta_e'])
+        self.cv_score = self.qbc.cv_score
+
+        # QBC makes predictions for Hf and uncertainty on candidate data
+        preds, stds = self.qbc.predict(
+            self.candidate_data, ignore_columns=['Composition', 'N_species', 'delta_e'])
+
+        expected = preds - stds * self.alpha
+
+        # Update candidate data dataframe with predictions
+        self.update_candidate_stabilities(
+            expected, sort=True, floor=-6.0)
+
+        # Now let's find the most stable ones upto N_query within hull_distance
+        stability_filter = self.candidate_data['pred_stability'] < self.hull_distance
+        within_hull = self.candidate_data[stability_filter]
+
+        self.indices_to_compute = within_hull.head(self.n_query).index
+        return self.indices_to_compute
+
+
+@camd_traced
+class AgentStabilityML5(StabilityAgent):
+    """
+    An agent that does a certain fraction of full exploration and
+    exploitation in each iteration.  It will exploit a fraction of
+    N_query options (frac), and explore the rest of its budget.
+    """
+    def __init__(self, candidate_data=None, seed_data=None, n_query=1,
+                 pd=None, hull_distance=None, ml_algorithm=None,
+                 ml_algorithm_params=None, frac=0.5, multiprocessing=True):
+        """
+        Args:
+            candidate_data (DataFrame): data about the candidates
+            seed_data (DataFrame): data which to fit the Agent to
+            n_query (int): number of
+            hull_distance (float): hull distance as a criteria for
+                which to deem a given material as "stable"
+            # TODO: is pd necessary as a constructor argument?
+            pd (PhaseDiagram): phase diagram to initialize the agent with
+            multiprocessing (bool): whether to use multiprocessing
+                for phase stability analysis
+            ml_algorithm (sklearn-style regressor): Regression method
+            ml_algorithm_params (dict): parameters to pass to the regression
+                method
+        """
+        super(AgentStabilityML5, self).__init__(
+            candidate_data=candidate_data, seed_data=seed_data,
+            n_query=n_query, pd=pd, hull_distance=hull_distance,
+            multiprocessing=multiprocessing
+            )
+
+        self.ML_algorithm = ml_algorithm
+        self.ML_algorithm_params = ml_algorithm_params
+        self.frac = frac
 
     def get_hypotheses(self, candidate_data, seed_data=None):
-        if self.N_species:
-            self.candidate_data = candidate_data[ candidate_data['N_species'] == self.N_species ]
-        else:
-            self.candidate_data = candidate_data
         self.seed_data = seed_data
 
         X = self.seed_data.drop(['Composition', 'N_species', 'delta_e'], axis=1)
@@ -158,68 +231,33 @@ class AgentStabilityML5(HypothesisAgent):
         self.cv_score = np.mean(cv_score)*-1
         pipeline.fit(X, self.seed_data['delta_e'])
 
+        # TODO: more general data filtering
         # Dropping columns not relevant for ML predictions, but also
-        # 'delta_e' column, if exists. The latter is to ensure delta_e does not end up in features if using
-        # after the fact data.
-        columns_to_drop = ['Composition', 'N_species']
-        if 'delta_e' in self.candidate_data:
-            columns_to_drop.append('delta_e')
+        # 'delta_e' column, if exists. The latter is to ensure delta_e
+        # does not end up in features if using after the fact data.
+        columns_to_drop = ['Composition', 'N_species', 'delta_e']
         cand_X = self.candidate_data.drop(columns_to_drop, axis=1)
         expected = pipeline.predict(cand_X)
 
-        # this is just curbing outrageously negative predictions
-        for i in range(len(expected)):
-            if expected[i] < -6.0:
-                expected[i] = -6.0
+        # Update candidate data dataframe with predictions
+        self.update_candidate_stabilities(
+            expected, sort=True, floor=-6.0)
 
-        # Get estimated stabilities from ML predictions
-        # For that, let's create Phases from candidates
-        candidate_phases = []
-        _c = 0
-        for data in self.candidate_data.iterrows():
-            candidate_phases.append(
-                Phase(data[1]['Composition'], energy=expected[_c], per_atom=True, description=data[0]))
-            _c += 1
-
-        # We take the existing phase data for seed phases, add candidate phases, and compute stabilities
-        self.get_pd()
-        pd_ml = deepcopy(self.pd)
-        pd_ml.add_phases(candidate_phases)
-        space_ml = PhaseSpaceAL(bounds=ELEMENTS, data=pd_ml)
-        if self.multiprocessing:
-            space_ml.compute_stabilities_multi(candidate_phases)
-        else:
-            space_ml.compute_stabilities_mod(candidate_phases)
-
-        ml_stabilities = []
-        for _p in candidate_phases:
-            ml_stabilities.append(_p.stability)
-
-        # Now let's find the most stable ones upto N_query within hull_distance
-        ml_stabilities = np.array(ml_stabilities, dtype=float)
-        ml_stable = np.array(candidate_phases)[ml_stabilities <= self.hull_distance]
-
-        sorted_stabilities = sorted(ml_stable, key=lambda x: x.stability)
+        # Filter by stability according to hull distance
+        stability_filter = self.candidate_data['pred_stability'] < self.hull_distance
+        within_hull = self.candidate_data[stability_filter]
 
         # Exploitation part:
-        to_compute = sorted_stabilities[:int(self.N_query * self.frac)]
-        remaining = sorted_stabilities[int(self.N_query * self.frac):]
+        n_exploitation = int(self.n_query * self.frac)
+        to_compute = list(within_hull.head(n_exploitation).index)
+        remaining = within_hull.tail(len(within_hull) - n_exploitation)
 
-        # Exploration part:
-        np.random.shuffle(remaining)
-        to_compute += remaining[:int(self.N_query * (1.0-self.frac))]
+        # Exploration part (pick randomly from remainder):
+        n_exploration = self.n_query - n_exploitation
+        to_compute.extend(remaining.sample(n_exploration).index)
 
-        self.indices_to_compute = [i.description for i in to_compute]
+        self.indices_to_compute = to_compute
         return self.indices_to_compute
-
-    def get_pd(self):
-        self.pd = PhaseData()
-        phases = []
-        for data in self.seed_data.iterrows():
-            phases.append(Phase(data[1]['Composition'], energy=data[1]['delta_e'], per_atom=True, description=data[0]))
-        for el in ELEMENTS:
-            phases.append(Phase(el, 0.0, per_atom=True))
-        self.pd.add_phases(phases)
 
 
 class GaussianProcessStabilityAgent(HypothesisAgent):
@@ -227,7 +265,8 @@ class GaussianProcessStabilityAgent(HypothesisAgent):
     Simple Gaussian Process Regressor based Stability Agent
     """
     def __init__(self, candidate_data=None, seed_data=None, N_query=None,
-                 pd=None, hull_distance=None, N_species=None, alpha=None, multiprocessing=True):
+                 pd=None, hull_distance=None, N_species=None, alpha=None,
+                 multiprocessing=True):
         self.candidate_data = candidate_data
         self.seed_data = seed_data
         self.hull_distance = hull_distance if hull_distance else 0.0
@@ -254,8 +293,9 @@ class GaussianProcessStabilityAgent(HypothesisAgent):
 
         steps = [('scaler', StandardScaler()), ('GP', self.GP)]
         cv_pipeline = Pipeline(steps)
-        self.cv_score = np.mean(-1.0 * cross_val_score(cv_pipeline, X, y,
-                                                       cv=KFold(3, shuffle=True), scoring='neg_mean_absolute_error'))
+        self.cv_score = np.mean(
+            -1.0 * cross_val_score(cv_pipeline, X, y, cv=KFold(3, shuffle=True),
+                                   scoring='neg_mean_absolute_error'))
 
         steps = [('scaler', StandardScaler()), ('GP', self.GP)]
         overall_pipeline = Pipeline(steps)
@@ -333,7 +373,8 @@ class SVGProcessStabilityAgent(HypothesisAgent):
 
     """
     def __init__(self, candidate_data=None, seed_data=None, N_query=None,
-                 pd=None, hull_distance=None, N_species=None, alpha=None, M=None, multiprocessing=True):
+                 pd=None, hull_distance=None, N_species=None, alpha=None,
+                 M=None, multiprocessing=True):
         self.candidate_data = candidate_data
         self.seed_data = seed_data
         self.hull_distance = hull_distance if hull_distance else 0.0
@@ -456,7 +497,8 @@ class SVGProcessStabilityAgent(HypothesisAgent):
         self.pd = PhaseData()
         phases = []
         for data in self.seed_data.iterrows():
-            phases.append(Phase(data[1]['Composition'], energy=data[1]['delta_e'], per_atom=True, description=data[0]))
+            phases.append(Phase(data[1]['Composition'], energy=data[1]['delta_e'],
+                                per_atom=True, description=data[0]))
         for el in ELEMENTS:
             phases.append(Phase(el, 0.0, per_atom=True))
         self.pd.add_phases(phases)
@@ -523,7 +565,7 @@ class BaggedGaussianProcessStabilityAgent(HypothesisAgent):
 
         if isinstance(self.multiprocessing, bool):
             if self.multiprocessing:
-                self.n_jobs = mp.cpu_count()
+                self.n_jobs = cpu_count()
             else:
                 self.n_jobs = 1
         elif isinstance(self.multiprocessing, int) and self.multiprocessing > 0:
@@ -619,12 +661,14 @@ class BaggedGaussianProcessStabilityAgent(HypothesisAgent):
 @camd_traced
 class AgentStabilityAdaBoost(HypothesisAgent):
     """
-    An agent that does a certain fraction of full exploration an exploitation in each iteration.
-    It will exploit a fraction of N_query options (frac), and explore the rest of its budget.
+    An agent that does a certain fraction of full exploration and
+    exploitation in each iteration.  It will exploit a fraction
+    of N_query options (frac), and explore the rest of its budget.
     """
     def __init__(self, candidate_data=None, seed_data=None, N_query=None,
-                 pd=None, hull_distance=None, N_species=None, ML_algorithm=None, ML_algorithm_params=None,
-                 frac=None, multiprocessing=True, uncertainty=True, alpha=None, n_estimators=None):
+                 pd=None, hull_distance=None, N_species=None, ML_algorithm=None,
+                 ML_algorithm_params=None, frac=None, multiprocessing=True,
+                 uncertainty=True, alpha=None, n_estimators=None):
 
         self.candidate_data = candidate_data
         self.seed_data = seed_data
@@ -645,7 +689,7 @@ class AgentStabilityAdaBoost(HypothesisAgent):
 
     def get_hypotheses(self, candidate_data, seed_data=None):
         if self.N_species:
-            self.candidate_data = candidate_data[ candidate_data['N_species'] == self.N_species ]
+            self.candidate_data = candidate_data[candidate_data['N_species'] == self.N_species]
         else:
             self.candidate_data = candidate_data
         self.seed_data = seed_data
