@@ -619,8 +619,8 @@ def update_run_w_structure(folder, hull_distance=0.2):
                         (s_a.structure_ids[i] in stable_discovered):
                     unique_s_dict[s_a.structure_ids[i]] = s_a.structures[i]
 
-            with open("discovered_unique_structures.pickle", "wb") as f:
-                pickle.dump(unique_s_dict, f)
+            with open("discovered_unique_structures.json", "w") as f:
+                json.dump(dict([(k,s.as_dict()) for k,s in unique_s_dict.items()]), f)
 
             with open('structure_report.log', "w") as f:
                 f.write("consumed discovery unique_discovery duplicate in_icsd \n")
@@ -629,3 +629,5 @@ def update_run_w_structure(folder, hull_distance=0.2):
                         str(len(unique_s_dict)) + ' '
                         + str(len(s_a.structures) - sum(s_a._not_duplicate)) + ' '
                         + str(sum([not i for i in s_a._icsd_filter])))
+if __name__ == '__main__':
+    update_run_w_structure('/Users/muratahan.aykol/local_dev/CAMD/scripts/cache/Mn-P-S')
