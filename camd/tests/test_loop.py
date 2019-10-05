@@ -9,7 +9,7 @@ import json
 from monty.tempfile import ScratchDir
 from camd import CAMD_TEST_FILES, CAMD_S3_BUCKET
 from camd.loop import Loop
-from camd.agent.stability import AgentStabilityML5
+from camd.agent.agents import AgentStabilityML5
 from camd.analysis import AnalyzeStability_mod
 from camd.experiment.base import ATFSampler
 
