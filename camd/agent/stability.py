@@ -33,7 +33,7 @@ class StabilityAgent(HypothesisAgent, metaclass=abc.ABCMeta):
     which is responsible for making decisions about stability.
     """
     def __init__(self, candidate_data=None, seed_data=None, n_query=1,
-                 hull_distance=0.0, pd=None, multiprocessing=True):
+                 hull_distance=0.0, multiprocessing=True):
         """
         Args:
             candidate_data (DataFrame): data about the candidates
@@ -41,8 +41,6 @@ class StabilityAgent(HypothesisAgent, metaclass=abc.ABCMeta):
             n_query (int): number of
             hull_distance (float): hull distance as a criteria for
                 which to deem a given material as "stable"
-            # TODO: is pd necessary as a constructor argument?
-            pd (PhaseDiagram): phase diagram to initialize the agent with
             multiprocessing (bool, int): whether to use multiprocessing
                 for phase stability analysis, if an int, sets the n_jobs
                 parameter as well.  If a bool, sets n_jobs to cpu_count()
@@ -53,7 +51,7 @@ class StabilityAgent(HypothesisAgent, metaclass=abc.ABCMeta):
         self.seed_data = seed_data
         self.n_query = n_query
         self.hull_distance = hull_distance
-        self.pd = pd
+        self.pd = None
 
         # TODO: Probably should just use a single parameter here
         self.multiprocessing = multiprocessing
@@ -138,7 +136,7 @@ class StabilityAgent(HypothesisAgent, metaclass=abc.ABCMeta):
 @camd_traced
 class QBCStabilityAgent(StabilityAgent):
     def __init__(self, candidate_data=None, seed_data=None, n_query=1,
-                 hull_distance=0.0, alpha=0.5, pd=None, multiprocessing=True,
+                 hull_distance=0.0, multiprocessing=True, alpha=0.5,
                  ml_algorithm=None, ml_algorithm_params=None, n_members=10):
         """
         Args:
@@ -147,22 +145,20 @@ class QBCStabilityAgent(StabilityAgent):
             n_query (int): number of
             hull_distance (float): hull distance as a criteria for
                 which to deem a given material as "stable"
-            # TODO: is pd necessary as a constructor argument?
-            pd (PhaseDiagram): phase diagram to initialize the agent with
             multiprocessing (bool): whether to use multiprocessing
                 for phase stability analysis
+            alpha (float): weighting factor for the stdev in making
+                best-case predictions of the stability
             ml_algorithm (sklearn-style regressor): Regression method
             ml_algorithm_params (dict): parameters to pass to the regression
                 method
-            alpha (float): weighting factor for the stdev in making
-                best-case predictions of the stability
             n_members (int): number of committee members for the qbc
         """
 
         super(QBCStabilityAgent, self).__init__(
             candidate_data=candidate_data, seed_data=seed_data,
             n_query=n_query, hull_distance=hull_distance,
-            pd=pd, multiprocessing=multiprocessing
+            multiprocessing=multiprocessing
         )
 
         self.ml_algorithm = ml_algorithm
@@ -210,7 +206,7 @@ class AgentStabilityML5(StabilityAgent):
     N_query options (frac), and explore the rest of its budget.
     """
     def __init__(self, candidate_data=None, seed_data=None, n_query=1,
-                 hull_distance=0.0, pd=None, multiprocessing=True,
+                 hull_distance=0.0, multiprocessing=True,
                  ml_algorithm=None, ml_algorithm_params=None,
                  exploit_fraction=0.5):
         """
@@ -220,8 +216,6 @@ class AgentStabilityML5(StabilityAgent):
             n_query (int): number of
             hull_distance (float): hull distance as a criteria for
                 which to deem a given material as "stable"
-            # TODO: is pd necessary as a constructor argument?
-            pd (PhaseDiagram): phase diagram to initialize the agent with
             multiprocessing (bool): whether to use multiprocessing
                 for phase stability analysis
             ml_algorithm (sklearn-style regressor): Regression method
@@ -232,7 +226,7 @@ class AgentStabilityML5(StabilityAgent):
         """
         super(AgentStabilityML5, self).__init__(
             candidate_data=candidate_data, seed_data=seed_data,
-            n_query=n_query, pd=pd, hull_distance=hull_distance,
+            n_query=n_query, hull_distance=hull_distance,
             multiprocessing=multiprocessing
         )
 
@@ -286,7 +280,7 @@ class GaussianProcessStabilityAgent(StabilityAgent):
     Simple Gaussian Process Regressor based Stability Agent
     """
     def __init__(self, candidate_data=None, seed_data=None, n_query=1,
-                 hull_distance=0.0, pd=None, multiprocessing=True,
+                 hull_distance=0.0, multiprocessing=True,
                  alpha=0.5):
         """
         Args:
@@ -295,8 +289,6 @@ class GaussianProcessStabilityAgent(StabilityAgent):
             n_query (int): number of
             hull_distance (float): hull distance as a criteria for
                 which to deem a given material as "stable"
-            # TODO: is pd necessary as a constructor argument?
-            pd (PhaseDiagram): phase diagram to initialize the agent with
             multiprocessing (bool): whether to use multiprocessing
                 for phase stability analysis
             alpha (float): weighting factor for the stdev in making
@@ -304,7 +296,7 @@ class GaussianProcessStabilityAgent(StabilityAgent):
         """
         super(GaussianProcessStabilityAgent, self).__init__(
             candidate_data=candidate_data, seed_data=seed_data,
-            n_query=n_query, pd=pd, hull_distance=hull_distance,
+            n_query=n_query, hull_distance=hull_distance,
             multiprocessing=multiprocessing
         )
         self.multiprocessing = multiprocessing
@@ -369,7 +361,7 @@ class SVGProcessStabilityAgent(StabilityAgent):
 
     """
     def __init__(self, candidate_data=None, seed_data=None, n_query=1,
-                 hull_distance=0.0, pd=None, multiprocessing=True,
+                 hull_distance=0.0, multiprocessing=True,
                  alpha=0.5, M=600):
         """
         Args:
@@ -378,8 +370,6 @@ class SVGProcessStabilityAgent(StabilityAgent):
             n_query (int): number of
             hull_distance (float): hull distance as a criteria for
                 which to deem a given material as "stable"
-            # TODO: is pd necessary as a constructor argument?
-            pd (PhaseDiagram): phase diagram to initialize the agent with
             multiprocessing (bool): whether to use multiprocessing
                 for phase stability analysis
             alpha (float): weighting factor for the stdev in making
@@ -387,11 +377,11 @@ class SVGProcessStabilityAgent(StabilityAgent):
         """
         super(SVGProcessStabilityAgent, self).__init__(
             candidate_data=candidate_data, seed_data=seed_data,
-            n_query=n_query, pd=pd, hull_distance=hull_distance,
+            n_query=n_query, hull_distance=hull_distance,
             multiprocessing=multiprocessing
         )
-        self.alpha = alpha if alpha else 0.5
-        self.M = M if M else 600
+        self.alpha = alpha
+        self.M = M
 
         # Define non-argument SVG-specific attributes
         self.kernel = gpflow.kernels.RBF(273) * gpflow.kernels.Constant(273)
@@ -458,7 +448,7 @@ class SVGProcessStabilityAgent(StabilityAgent):
         self.model = model
 
         # GP makes predictions for Hf and uncertainty*alpha on candidate data
-        pred_y, pred_v =  model.predict_y(scaler.transform( self.candidate_data.drop(columns_to_drop, axis=1)))
+        pred_y, pred_v = model.predict_y(scaler.transform( self.candidate_data.drop(columns_to_drop, axis=1)))
         pred_y = pred_y * sig + mu
         self.pred_y = pred_y.reshape(-1,)
         self.pred_std = (pred_v**0.5).reshape(-1,)
@@ -529,7 +519,7 @@ class BaggedGaussianProcessStabilityAgent(StabilityAgent):
 
     """
     def __init__(self, candidate_data=None, seed_data=None, n_query=1,
-                 hull_distance=0.0, pd=None, multiprocessing=True,
+                 hull_distance=0.0, multiprocessing=True,
                  alpha=0.5, n_estimators=8, max_samples=5000,
                  bootstrap=False):
         """
@@ -539,8 +529,6 @@ class BaggedGaussianProcessStabilityAgent(StabilityAgent):
             n_query (int): number of
             hull_distance (float): hull distance as a criteria for
                 which to deem a given material as "stable"
-            # TODO: is pd necessary as a constructor argument?
-            pd (PhaseDiagram): phase diagram to initialize the agent with
             multiprocessing (bool): whether to use multiprocessing
                 for phase stability analysis
             alpha (float): scaling for stdev for estimation of best-
@@ -548,7 +536,7 @@ class BaggedGaussianProcessStabilityAgent(StabilityAgent):
         """
         super(BaggedGaussianProcessStabilityAgent, self).__init__(
             candidate_data=candidate_data, seed_data=seed_data,
-            n_query=n_query, pd=pd, hull_distance=hull_distance,
+            n_query=n_query, hull_distance=hull_distance,
             multiprocessing=multiprocessing
         )
 
@@ -580,7 +568,7 @@ class BaggedGaussianProcessStabilityAgent(StabilityAgent):
         )
         bag_reg.fit(X, y)
 
-        # TODO: this should probably be an static method
+        # TODO: make this a static method
         def _get_unc(bagging_regressor, X_test):
             stds = []
             pres = []
@@ -614,7 +602,7 @@ class AgentStabilityAdaBoost(StabilityAgent):
     of N_query options (frac), and explore the rest of its budget.
     """
     def __init__(self, candidate_data=None, seed_data=None, n_query=1,
-                 hull_distance=0.0, pd=None, multiprocessing=True,
+                 hull_distance=0.0, multiprocessing=True,
                  ml_algorithm=None, ml_algorithm_params=None,
                  uncertainty=True, alpha=0.5, n_estimators=10,
                  exploit_fraction=0.5):
@@ -625,8 +613,6 @@ class AgentStabilityAdaBoost(StabilityAgent):
             n_query (int): number of
             hull_distance (float): hull distance as a criteria for
                 which to deem a given material as "stable"
-            # TODO: is pd necessary as a constructor argument?
-            pd (PhaseDiagram): phase diagram to initialize the agent with
             multiprocessing (bool): whether to use multiprocessing
                 for phase stability analysis
             ml_algorithm (sklearn-style regressor): Regression method
@@ -645,7 +631,7 @@ class AgentStabilityAdaBoost(StabilityAgent):
         super(AgentStabilityAdaBoost, self).__init__(
             candidate_data=candidate_data, seed_data=seed_data,
             n_query=n_query, hull_distance=hull_distance,
-            pd=pd, multiprocessing=multiprocessing
+            multiprocessing=multiprocessing
         )
 
         self.ml_algorithm = ml_algorithm
