@@ -38,7 +38,7 @@ class StabilityAgent(HypothesisAgent, metaclass=abc.ABCMeta):
         Args:
             candidate_data (DataFrame): data about the candidates
             seed_data (DataFrame): data which to fit the Agent to
-            n_query (int): number of
+            n_query (int): number of hypotheses to generate
             hull_distance (float): hull distance as a criteria for
                 which to deem a given material as "stable"
             multiprocessing (bool, int): whether to use multiprocessing
@@ -178,16 +178,19 @@ class StabilityAgent(HypothesisAgent, metaclass=abc.ABCMeta):
 class QBCStabilityAgent(StabilityAgent):
     def __init__(self, candidate_data=None, seed_data=None, n_query=1,
                  hull_distance=0.0, multiprocessing=True, alpha=0.5,
-                 ml_algorithm=None, ml_algorithm_params=None, n_members=10):
+                 training_fraction=0.5, ml_algorithm=None,
+                 ml_algorithm_params=None, n_members=10):
         """
         Args:
             candidate_data (DataFrame): data about the candidates
             seed_data (DataFrame): data which to fit the Agent to
-            n_query (int): number of
+            n_query (int): number of hypotheses to generate
             hull_distance (float): hull distance as a criteria for
                 which to deem a given material as "stable"
             multiprocessing (bool): whether to use multiprocessing
                 for phase stability analysis
+            training_fraction (float): fraction of data to use for
+                training committee members
             alpha (float): weighting factor for the stdev in making
                 best-case predictions of the stability
             ml_algorithm (sklearn-style regressor): Regression method
@@ -202,14 +205,12 @@ class QBCStabilityAgent(StabilityAgent):
             multiprocessing=multiprocessing
         )
 
-        self.ml_algorithm = ml_algorithm
-        self.ml_algorithm_params = ml_algorithm_params
-        self.n_members = n_members
         self.alpha = alpha
         self.qbc = QBC(
-            N_members=self.n_members, frac=self.frac,
-            ML_algorithm=self.ml_algorithm,
-            ML_algorithm_params=self.ml_algorithm_params)
+            n_members=n_members, training_fraction=training_fraction,
+            ml_algorithm=ml_algorithm,
+            ml_algorithm_params=ml_algorithm_params
+        )
 
     def get_hypotheses(self, candidate_data, seed_data=None,
                        retrain_committee=True):
@@ -251,7 +252,7 @@ class AgentStabilityML5(StabilityAgent):
         Args:
             candidate_data (DataFrame): data about the candidates
             seed_data (DataFrame): data which to fit the Agent to
-            n_query (int): number of
+            n_query (int): number of hypotheses to generate
             hull_distance (float): hull distance as a criteria for
                 which to deem a given material as "stable"
             multiprocessing (bool): whether to use multiprocessing
@@ -316,7 +317,7 @@ class GaussianProcessStabilityAgent(StabilityAgent):
         Args:
             candidate_data (DataFrame): data about the candidates
             seed_data (DataFrame): data which to fit the Agent to
-            n_query (int): number of
+            n_query (int): number of hypotheses to generate
             hull_distance (float): hull distance as a criteria for
                 which to deem a given material as "stable"
             multiprocessing (bool): whether to use multiprocessing
@@ -392,7 +393,7 @@ class SVGProcessStabilityAgent(StabilityAgent):
         Args:
             candidate_data (DataFrame): data about the candidates
             seed_data (DataFrame): data which to fit the Agent to
-            n_query (int): number of
+            n_query (int): number of hypotheses to generate
             hull_distance (float): hull distance as a criteria for
                 which to deem a given material as "stable"
             multiprocessing (bool): whether to use multiprocessing
@@ -549,7 +550,7 @@ class BaggedGaussianProcessStabilityAgent(StabilityAgent):
         Args:
             candidate_data (DataFrame): data about the candidates
             seed_data (DataFrame): data which to fit the Agent to
-            n_query (int): number of
+            n_query (int): number of hypotheses to generate
             hull_distance (float): hull distance as a criteria for
                 which to deem a given material as "stable"
             multiprocessing (bool): whether to use multiprocessing
@@ -629,7 +630,7 @@ class AgentStabilityAdaBoost(StabilityAgent):
         Args:
             candidate_data (DataFrame): data about the candidates
             seed_data (DataFrame): data which to fit the Agent to
-            n_query (int): number of
+            n_query (int): number of hypotheses to generate
             hull_distance (float): hull distance as a criteria for
                 which to deem a given material as "stable"
             multiprocessing (bool): whether to use multiprocessing
