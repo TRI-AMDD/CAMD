@@ -117,4 +117,4 @@ class RandomAgent(HypothesisAgent):
             (List) of indices
 
         """
-        return self.candidate_data.sample(self.n_query).index.tolist()
+        return candidate_data.sample(self.n_query).index.tolist()
