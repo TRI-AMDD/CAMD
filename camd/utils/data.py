@@ -30,7 +30,7 @@ def load_dataframe(dataset_name):
     return pd.read_pickle(os.path.join(S3_CACHE, key))
 
 
-def load_default_atf_test():
+def load_default_atf_data():
     """
     Convenience function to load the default test ATF data
     which is a dataframe of OQMD data of binary compounds with

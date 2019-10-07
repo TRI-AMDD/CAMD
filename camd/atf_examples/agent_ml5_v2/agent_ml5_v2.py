@@ -5,12 +5,12 @@ from sklearn.neural_network import MLPRegressor
 from camd.agent.agents import AgentStabilityML5
 from camd.analysis import AnalyzeStability_mod
 from camd.experiment.base import ATFSampler
-from camd.utils.data import load_default_atf_test
+from camd.utils.data import load_default_atf_data
 
 ##########################################################
 # Load dataset and filter by N_species of 2 or less
 ##########################################################
-df = load_default_atf_test()
+df = load_default_atf_data()
 
 n_seed = 5000  # Starting sample size - a seed of this size will be randomly chosen.
 n_query = 200  # This many new candidates are "calculated with DFT" (i.e. requested from Oracle -- DFT)

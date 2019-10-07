@@ -4,12 +4,12 @@ from camd.loop import Loop
 from camd.agent.base import RandomAgent
 from camd.analysis import AnalyzeStability_mod
 from camd.experiment.base import ATFSampler
-from camd.utils.data import load_default_atf_test
+from camd.utils.data import load_default_atf_data
 
 ##########################################################
 # Load dataset and filter by n_species of 2 or less
 ##########################################################
-df = load_default_atf_test()
+df = load_default_atf_data()
 
 ##########################################################
 # Binary stable material discovery QBC based agent recipe
