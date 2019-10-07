@@ -15,10 +15,10 @@ structure_dict = domain.hypo_structures_dict
 
 agent = QBCStabilityAgent           # We use a query-by-committee (QBC) based agent
 agent_params = {                    # Parameters of the agent
-    'ML_algorithm': MLPRegressor,   # We use simple fully connected neural network as our regressor
-    'ML_algorithm_params': {'hidden_layer_sizes': (84, 50)},
-    'N_query': 3,                   # Agent is allowed 3 experiments per iteration
-    'N_members': 10,                # Committee size for QBC
+    'ml_algorithm': MLPRegressor,   # We use simple fully connected neural network as our regressor
+    'ml_algorithm_params': {'hidden_layer_sizes': (84, 50)},
+    'n_query': 3,                   # Agent is allowed 3 experiments per iteration
+    'n_members': 10,                # Committee size for QBC
     'hull_distance': 0.1,   # Distance to hull to consider a finding as discovery (eV/atom)
     'frac': 0.5
     }
