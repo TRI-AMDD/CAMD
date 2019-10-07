@@ -125,7 +125,7 @@ class AtfLoopTest(unittest.TestCase):
             'n_query': n_query,
             'n_members': 10,  # Committee size
             'hull_distance': 0.05,  # Distance to hull to consider a finding as discovery (eV/atom)
-            'frac': 0.5  # Fraction to exploit (rest will be explored -- randomly picked)
+            'exploit_fraction': 0.5  # Fraction to exploit (rest will be explored -- randomly picked)
         }
         analyzer = AnalyzeStability
         analyzer_params = {'hull_distance': 0.05}
@@ -213,7 +213,7 @@ class AtfLoopTest(unittest.TestCase):
             'ml_algorithm_params': {'hidden_layer_sizes': (84, 50)},
             'n_query': n_query,
             'hull_distance': 0.05,  # Distance to hull to consider a finding as discovery (eV/atom)
-            'frac': 1.0, # Fraction to exploit (rest will be explored -- randomly picked)
+            'exploit_fraction': 1.0,  # Fraction to exploit (rest will be explored -- randomly picked)
             'alpha': 0.5,  # Fraction of std to include in expected improvement
             'n_estimators': 10
         }

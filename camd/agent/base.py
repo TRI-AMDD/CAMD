@@ -105,14 +105,11 @@ class RandomAgent(HypothesisAgent):
     """
     Baseline agent: Randomly picks next experiments
     """
-    def __init__(self, candidate_data=None, seed_data=None, n_query=1,
-                 pd=None, hull_distance=0.0):
+    def __init__(self, candidate_data=None, seed_data=None, n_query=1):
 
         self.candidate_data = candidate_data
         self.seed_data = seed_data
-        self.hull_distance = hull_distance
         self.n_query = n_query
-        self.pd = pd
         self.cv_score = np.nan
         super(RandomAgent, self).__init__()
 
@@ -127,4 +124,4 @@ class RandomAgent(HypothesisAgent):
             (List) of indices
 
         """
-        return self.candidate_data.sample(self.n_query).index
+        return self.candidate_data.sample(self.n_query).index.tolist()

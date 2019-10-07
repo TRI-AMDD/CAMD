@@ -84,9 +84,50 @@ class StabilityAgent(HypothesisAgent, metaclass=abc.ABCMeta):
         self.pd.add_phases(phases)
         return self.pd
 
+    def update_data(self, candidate_data=None, seed_data=None):
+        """
+        Helper function to update the data according to the schema
+        of the default OQMD data.  Updates the candidate_data and
+        seed_data attributes, and returns the processed features
+        and targets associated with the candidates and seed data.
+
+        Args:
+            candidate_data (DataFrame): new candidate dataframe
+            seed_data (DataFrame): new seed dataframe
+
+        Returns:
+            (DataFrame): candidate features
+            (DataFrame): seed features
+            (DataFrame): seed targets
+
+        """
+        # Note: In the drop command, we're ignoring errors for
+        #   brevity.  This is a little dangerous, because
+        #   we might not drop everything we intend to
+        drop_columns = ['Composition', 'N_species', 'delta_e',
+                        'pred_delta_e', 'pred_stability']
+        if candidate_data is not None:
+            self.candidate_data = candidate_data
+            X_cand = candidate_data.drop(
+                drop_columns, axis=1, errors='ignore')
+        else:
+            X_cand = None
+        if seed_data is not None:
+            self.seed_data = seed_data
+            X_seed = self.seed_data.drop(
+                drop_columns, axis=1, errors='ignore')
+            y_seed = self.seed_data['delta_e']
+        else:
+            X_seed, y_seed = None, None
+
+        return X_cand, X_seed, y_seed
+
     def update_candidate_stabilities(self, formation_energies,
                                      sort=True, floor=-6.0):
         """
+        Updates the candidate dataframe with the stabilities
+        of the candidate compositions according to the requisite
+        phase diagram analysis.
 
         Args:
             formation_energies ([float]): list of predictions for formation
@@ -172,18 +213,15 @@ class QBCStabilityAgent(StabilityAgent):
 
     def get_hypotheses(self, candidate_data, seed_data=None,
                        retrain_committee=True):
-        self.seed_data = seed_data
+        X_cand, X_seed, y_seed = self.update_data(candidate_data, seed_data)
 
         # Retrain committee if untrained or if specified
         if not self.qbc.trained or retrain_committee:
-            self.qbc.fit(self.seed_data, self.seed_data['delta_e'],
-                         ignore_columns=['Composition', 'N_species', 'delta_e'])
+            self.qbc.fit(X_seed, y_seed)
         self.cv_score = self.qbc.cv_score
 
         # QBC makes predictions for Hf and uncertainty on candidate data
-        preds, stds = self.qbc.predict(
-            self.candidate_data, ignore_columns=['Composition', 'N_species', 'delta_e'])
-
+        preds, stds = self.qbc.predict(X_cand)
         expected = preds - stds * self.alpha
 
         # Update candidate data dataframe with predictions
@@ -194,7 +232,7 @@ class QBCStabilityAgent(StabilityAgent):
         stability_filter = self.candidate_data['pred_stability'] < self.hull_distance
         within_hull = self.candidate_data[stability_filter]
 
-        self.indices_to_compute = within_hull.head(self.n_query).index
+        self.indices_to_compute = within_hull.head(self.n_query).index.tolist()
         return self.indices_to_compute
 
 
@@ -235,24 +273,16 @@ class AgentStabilityML5(StabilityAgent):
         self.exploit_fraction = exploit_fraction
 
     def get_hypotheses(self, candidate_data, seed_data=None):
-        self.seed_data = seed_data
-
-        X = self.seed_data.drop(['Composition', 'N_species', 'delta_e'], axis=1)
+        X_cand, X_seed, y_seed = self.update_data(candidate_data, seed_data)
         steps = [('scaler', StandardScaler()), ('ML', self.ml_algorithm(**self.ml_algorithm_params))]
         pipeline = Pipeline(steps)
 
-        cv_score = cross_val_score(pipeline, X, self.seed_data['delta_e'],
+        cv_score = cross_val_score(pipeline, X_seed, self.seed_data['delta_e'],
                                    cv=KFold(5, shuffle=True), scoring='neg_mean_absolute_error')
         self.cv_score = np.mean(cv_score)*-1
-        pipeline.fit(X, self.seed_data['delta_e'])
+        pipeline.fit(X_seed, self.seed_data['delta_e'])
 
-        # TODO: more general data filtering
-        # Dropping columns not relevant for ML predictions, but also
-        # 'delta_e' column, if exists. The latter is to ensure delta_e
-        # does not end up in features if using after the fact data.
-        columns_to_drop = ['Composition', 'N_species', 'delta_e']
-        cand_X = self.candidate_data.drop(columns_to_drop, axis=1)
-        expected = pipeline.predict(cand_X)
+        expected = pipeline.predict(X_cand)
 
         # Update candidate data dataframe with predictions
         self.update_candidate_stabilities(
@@ -264,12 +294,12 @@ class AgentStabilityML5(StabilityAgent):
 
         # Exploitation part:
         n_exploitation = int(self.n_query * self.exploit_fraction)
-        to_compute = list(within_hull.head(n_exploitation).index)
+        to_compute = within_hull.head(n_exploitation).index.tolist()
         remaining = within_hull.tail(len(within_hull) - n_exploitation)
 
         # Exploration part (pick randomly from remainder):
         n_exploration = self.n_query - n_exploitation
-        to_compute.extend(remaining.sample(n_exploration).index)
+        to_compute.extend(remaining.sample(n_exploration).index.tolist())
 
         self.indices_to_compute = to_compute
         return self.indices_to_compute
@@ -304,25 +334,20 @@ class GaussianProcessStabilityAgent(StabilityAgent):
         self.GP = GaussianProcessRegressor(kernel=ConstantKernel(1) * RBF(1), alpha=0.002)
 
     def get_hypotheses(self, candidate_data, seed_data=None):
-        self.seed_data = seed_data
-
-        columns_to_drop = ['Composition', 'N_species', 'delta_e']
-        X = self.seed_data.drop(columns_to_drop, axis=1)
-        y = self.seed_data['delta_e']
+        X_cand, X_seed, y_seed = self.update_data(candidate_data=candidate_data, seed_data=seed_data)
 
         steps = [('scaler', StandardScaler()), ('GP', self.GP)]
         cv_pipeline = Pipeline(steps)
         self.cv_score = np.mean(
-            -1.0 * cross_val_score(cv_pipeline, X, y, cv=KFold(3, shuffle=True),
+            -1.0 * cross_val_score(cv_pipeline, X_seed, y_seed, cv=KFold(3, shuffle=True),
                                    scoring='neg_mean_absolute_error'))
 
         steps = [('scaler', StandardScaler()), ('GP', self.GP)]
         overall_pipeline = Pipeline(steps)
-        overall_pipeline.fit(X, y)
+        overall_pipeline.fit(X_seed, y_seed)
 
         # GP makes predictions for Hf and uncertainty*alpha on candidate data
-        preds, stds = overall_pipeline.predict(
-            self.candidate_data.drop(columns_to_drop, axis=1), return_std=True)
+        preds, stds = overall_pipeline.predict(X_cand, return_std=True)
         expected = preds - stds * self.alpha
 
         # Update candidate data dataframe with predictions
@@ -333,7 +358,7 @@ class GaussianProcessStabilityAgent(StabilityAgent):
         stability_filter = self.candidate_data['pred_stability'] < self.hull_distance
         within_hull = self.candidate_data[stability_filter]
 
-        self.indices_to_compute = within_hull.head(self.n_query).index
+        self.indices_to_compute = within_hull.head(self.n_query).index.tolist()
         return self.indices_to_compute
 
 
@@ -374,6 +399,8 @@ class SVGProcessStabilityAgent(StabilityAgent):
                 for phase stability analysis
             alpha (float): weighting factor for the stdev in making
                 best-case predictions of the stability
+            M (int): number of inducing points associated with the
+                SVGProcess
         """
         super(SVGProcessStabilityAgent, self).__init__(
             candidate_data=candidate_data, seed_data=seed_data,
@@ -392,15 +419,11 @@ class SVGProcessStabilityAgent(StabilityAgent):
         self.pred_std = None
 
     def get_hypotheses(self, candidate_data, seed_data=None):
-        self.seed_data = seed_data
-
-        columns_to_drop = ['Composition', 'N_species', 'delta_e']
-        X = self.seed_data.drop(columns_to_drop, axis=1)
-        y = self.seed_data['delta_e']
+        X_cand, X_seed, y_seed = self.update_data(candidate_data, seed_data)
 
         # Test model performance first.  Note we avoid doing CV to
         # reduce compute time. We simply do a 1-way split 80:20 (train:test)
-        X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+        X_train, X_test, y_train, y_test = train_test_split(X_seed, y_seed, test_size=0.2, random_state=42)
         scaler = StandardScaler()
         X_train_scaled = scaler.fit_transform(X_train)
 
@@ -431,11 +454,11 @@ class SVGProcessStabilityAgent(StabilityAgent):
 
         # Overall model
         scaler = StandardScaler()
-        X_scaled = scaler.fit_transform(X)
+        X_scaled = scaler.fit_transform(X_seed)
         cls = MiniBatchKMeans(n_clusters=self.M, batch_size=200)
         cls.fit(X_train_scaled)
         Z = cls.cluster_centers_
-        _y = np.array(y.to_list())
+        _y = np.array(y_seed.to_list())
         mu = np.mean(_y)
         sig = np.std(_y)
         model = gpflow.models.SVGP(
@@ -448,7 +471,7 @@ class SVGProcessStabilityAgent(StabilityAgent):
         self.model = model
 
         # GP makes predictions for Hf and uncertainty*alpha on candidate data
-        pred_y, pred_v = model.predict_y(scaler.transform( self.candidate_data.drop(columns_to_drop, axis=1)))
+        pred_y, pred_v = model.predict_y(scaler.transform(X_cand))
         pred_y = pred_y * sig + mu
         self.pred_y = pred_y.reshape(-1,)
         self.pred_std = (pred_v**0.5).reshape(-1,)
@@ -464,7 +487,7 @@ class SVGProcessStabilityAgent(StabilityAgent):
         stability_filter = self.candidate_data['pred_stability'] < self.hull_distance
         within_hull = self.candidate_data[stability_filter]
 
-        self.indices_to_compute = within_hull.head(self.n_query).index
+        self.indices_to_compute = within_hull.head(self.n_query).index.tolist()
         return self.indices_to_compute
 
     def run_adam(self, model, iterations):
@@ -548,11 +571,7 @@ class BaggedGaussianProcessStabilityAgent(StabilityAgent):
         self.GP = GaussianProcessRegressor(kernel=ConstantKernel(1) * RBF(1), alpha=0.002)
 
     def get_hypotheses(self, candidate_data, seed_data=None):
-        self.seed_data = seed_data
-
-        columns_to_drop = ['Composition', 'N_species', 'delta_e']
-        X = self.seed_data.drop(columns_to_drop, axis=1)
-        y = self.seed_data['delta_e']
+        X_cand, X_seed, y_seed = self.update_data(candidate_data, seed_data)
 
         steps = [('scaler', StandardScaler()), ('GP', self.GP)]
         pipeline = Pipeline(steps)
@@ -563,10 +582,10 @@ class BaggedGaussianProcessStabilityAgent(StabilityAgent):
             verbose=True, n_jobs=self.n_jobs)
         self.cv_score = np.mean(
             -1.0 * cross_val_score(
-                pipeline, X, y, cv=KFold(3, shuffle=True),
+                pipeline, X_seed, y_seed, cv=KFold(3, shuffle=True),
                 scoring='neg_mean_absolute_error')
         )
-        bag_reg.fit(X, y)
+        bag_reg.fit(X_seed, y_seed)
 
         # TODO: make this a static method
         def _get_unc(bagging_regressor, X_test):
@@ -579,7 +598,7 @@ class BaggedGaussianProcessStabilityAgent(StabilityAgent):
             return np.mean(np.array(pres), axis=0), np.min(np.array(stds), axis=0)
 
         # GP makes predictions for Hf and uncertainty*alpha on candidate data
-        preds, stds = _get_unc(bag_reg, self.candidate_data.drop(columns_to_drop, axis=1))
+        preds, stds = _get_unc(bag_reg, X_cand)
         expected = preds - stds * self.alpha
 
         # Update candidate data dataframe with predictions
@@ -590,7 +609,7 @@ class BaggedGaussianProcessStabilityAgent(StabilityAgent):
         stability_filter = self.candidate_data['pred_stability'] < self.hull_distance
         within_hull = self.candidate_data[stability_filter]
 
-        self.indices_to_compute = within_hull.head(self.n_query).index
+        self.indices_to_compute = within_hull.head(self.n_query).index.tolist()
         return self.indices_to_compute
 
 
@@ -636,15 +655,14 @@ class AgentStabilityAdaBoost(StabilityAgent):
 
         self.ml_algorithm = ml_algorithm
         self.ml_algorithm_params = ml_algorithm_params
-        self.frac = exploit_fraction
+        self.exploit_fraction = exploit_fraction
         self.uncertainty = uncertainty
         self.alpha = alpha
         self.n_estimators = n_estimators
 
     def get_hypotheses(self, candidate_data, seed_data=None):
-        self.seed_data = seed_data
+        X_cand, X_seed, y_seed = self.update_data(candidate_data, seed_data)
 
-        X = self.seed_data.drop(['Composition', 'N_species', 'delta_e'], axis=1)
         steps = [('scaler', StandardScaler()), ('ML', self.ml_algorithm(**self.ml_algorithm_params))]
         pipeline = Pipeline(steps)
 
@@ -652,7 +670,7 @@ class AgentStabilityAdaBoost(StabilityAgent):
             base_estimator=pipeline, n_estimators=self.n_estimators)
 
         cv_score = cross_val_score(
-            adaboost, X, self.seed_data['delta_e'],
+            adaboost, X_seed, y_seed,
             cv=KFold(3, shuffle=True), scoring='neg_mean_absolute_error')
         self.cv_score = np.mean(cv_score)*-1
 
@@ -660,24 +678,18 @@ class AgentStabilityAdaBoost(StabilityAgent):
         # prediction purposes (we want a single scaler)
 
         scaler = StandardScaler()
-        X_scaled = scaler.fit_transform(X)
+        X_scaled = scaler.fit_transform(X_seed)
         overall_adaboost = AdaBoostRegressor(
             base_estimator=self.ml_algorithm(**self.ml_algorithm_params),
             n_estimators=self.n_estimators
         )
         overall_adaboost.fit(X_scaled, self.seed_data['delta_e'])
 
-        # Dropping columns not relevant for ML predictions, but also
-        # 'delta_e' column, if exists. The latter is to ensure delta_e does not end up in features if using
-        # after the fact data.
-        columns_to_drop = ['Composition', 'N_species', 'delta_e']
-        cand_X = self.candidate_data.drop(columns_to_drop, axis=1)
-
-        cand_X = scaler.transform(cand_X)
-        expected = overall_adaboost.predict(cand_X)
+        X_cand = scaler.transform(X_cand)
+        expected = overall_adaboost.predict(X_cand)
 
         if self.uncertainty:
-            expected -= self.alpha * self._get_unc_ada(overall_adaboost, cand_X)
+            expected -= self.alpha * self._get_unc_ada(overall_adaboost, X_cand)
 
         # Update candidate data dataframe with predictions
         self.update_candidate_stabilities(
@@ -689,12 +701,12 @@ class AgentStabilityAdaBoost(StabilityAgent):
 
         # Exploitation part:
         n_exploitation = int(self.n_query * self.exploit_fraction)
-        to_compute = list(within_hull.head(n_exploitation).index)
+        to_compute = within_hull.head(n_exploitation).index.tolist()
         remaining = within_hull.tail(len(within_hull) - n_exploitation)
 
         # Exploration part (pick randomly from remainder):
         n_exploration = self.n_query - n_exploitation
-        to_compute.extend(remaining.sample(n_exploration).index)
+        to_compute.extend(remaining.sample(n_exploration).index.tolist())
 
         self.indices_to_compute = to_compute
         return self.indices_to_compute

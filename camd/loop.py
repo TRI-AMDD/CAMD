@@ -278,7 +278,7 @@ class Loop(MSONable):
             suggested_experiments = self.agent.get_hypotheses(self.candidate_data, self.seed_data)
         elif self.create_seed:
             np.random.seed(seed=random_state)
-            _agent = RandomAgent(self.candidate_data, N_query=self.create_seed)
+            _agent = RandomAgent(self.candidate_data, n_query=self.create_seed)
             print("Loop {} state: Agent {} hypothesizing".format('initialization', _agent.__class__.__name__))
             suggested_experiments = _agent.get_hypotheses(self.candidate_data)
         else:
