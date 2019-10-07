@@ -82,7 +82,7 @@ class AtfLoopTest(unittest.TestCase):
         n_seed = 200  # Starting sample size
         n_query = 10  # This many new candidates are "calculated with DFT" (i.e. requested from Oracle -- DFT)
         agent = RandomAgent
-        agent_params = {'hull_distance': 0.05, 'n_query': n_query}
+        agent_params = {'n_query': n_query}
         analyzer = AnalyzeStability
         analyzer_params = {'hull_distance': 0.05}
         experiment = ATFSampler
@@ -125,7 +125,7 @@ class AtfLoopTest(unittest.TestCase):
             'n_query': n_query,
             'n_members': 10,  # Committee size
             'hull_distance': 0.05,  # Distance to hull to consider a finding as discovery (eV/atom)
-            'exploit_fraction': 0.5  # Fraction to exploit (rest will be explored -- randomly picked)
+            'alpha': 0.5  # Fraction to exploit (rest will be explored -- randomly picked)
         }
         analyzer = AnalyzeStability
         analyzer_params = {'hull_distance': 0.05}
@@ -247,7 +247,7 @@ class AtfLoopTest(unittest.TestCase):
         candidate_data = df.iloc[38:209]
         n_query = 20  # This many new candidates are "calculated with DFT" (i.e. requested from Oracle -- DFT)
         agent = RandomAgent
-        agent_params = {'hull_distance': 0.05, 'n_query': n_query}
+        agent_params = {'n_query': n_query}
         analyzer = AnalyzeStability
         analyzer_params = {'hull_distance': 0.05}
         experiment = ATFSampler
