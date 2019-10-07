@@ -41,6 +41,7 @@ class Loop(MSONable):
             finalizer_params (dict): parameters of finalizer
             path (str): path in which to execute the loop. Defaults to full path of current folder if not given.
             seed_data (pandas.DataFrame): Seed Data for active learning, index is to be the assumed uid
+            create_seed (int): an initial seed size to create from the data
             heuristic_stopper (int or False): If int, the heuristic stopper will kick in to check if loop should be
                 terminated after this many iterations, if no discoveries in past #n loops.
             s3_prefix (str): prefix which to prepend all s3 synced files with,
