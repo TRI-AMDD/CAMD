@@ -75,6 +75,10 @@ class Loop(MSONable):
         self.create_seed = create_seed
 
         self.heuristic_stopper = heuristic_stopper
+        self._exp_raw_results = None
+        self._discovered = None
+        self.results_all_uids = None
+        self.results_new_uids = None
 
         # Check if there exists earlier iterations
         if os.path.exists(os.path.join(self.path, 'iteration.json')):
@@ -146,8 +150,8 @@ class Loop(MSONable):
         self.report()
 
         # Loop stopper if no discoveries in last few cycles.
-        if self.heuristic_stopper and self.iteration>self.heuristic_stopper and \
-                np.sum(pd.read_csv(os.path.join(self.path,'report.log'), delimiter='\s+')['N_Discovery'][-3:].values)==0:
+        if self.heuristic_stopper and self.iteration > self.heuristic_stopper and \
+                np.sum(pd.read_csv(os.path.join(self.path, 'report.log'), delimiter='\s+')['N_Discovery'][-3:].values) == 0:
             self.finalize()
             raise ValueError("Not enough new discoveries. Stopping the loop.")
 
@@ -208,7 +212,8 @@ class Loop(MSONable):
         self.run(finalize=True)
         self.finalize()
 
-    def auto_loop_in_directories(self, n_iterations=10, timeout=10, monitor=False, initialize=False, with_icsd=False):
+    def auto_loop_in_directories(self, n_iterations=10, timeout=10, monitor=False,
+                                 initialize=False, with_icsd=False):
         """
         Runs the loop repeatedly
         TODO: Stopping criterion from Analyzer
@@ -218,6 +223,8 @@ class Loop(MSONable):
             monitor (bool): Use Experiment's monitor method to keep track of requested experiments. Note, if this is set
                             True, timeout also needs to be adjusted. If this is not set True, make sure timeout is
                             sufficiently long.
+            initialize (bool): whether to initialize the loop
+            with_icsd (bool): whether to initialize with icsd seed
 
         """
         if initialize:
