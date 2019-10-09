@@ -19,7 +19,7 @@ n_seed = 5000  # Starting sample size - a seed of this size will be randomly cho
 n_query = 200  # This many new candidates are "calculated with DFT" (i.e. requested from Oracle -- DFT)
 agent = AgentStabilityAdaBoost
 agent_params = {
-    'ml_algorithm': MLPRegressor, # We will boost the simple NN regressor we use.
+    'ml_algorithm': MLPRegressor,  # We will boost the simple NN regressor we use.
     'ml_algorithm_params': {'hidden_layer_sizes': (84, 50)},
     'n_query': n_query,
     'hull_distance': 0.05,  # Distance to hull to consider a finding as discovery (eV/atom)

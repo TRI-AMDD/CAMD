@@ -14,6 +14,7 @@ from camd.log import camd_traced
 
 from sklearn.gaussian_process.kernels import RBF, ConstantKernel
 from sklearn.gaussian_process import GaussianProcessRegressor
+from sklearn.linear_model import LinearRegression
 from sklearn.model_selection import cross_val_score, KFold, train_test_split
 from sklearn.ensemble.bagging import BaggingRegressor
 from sklearn.preprocessing import StandardScaler
@@ -178,8 +179,7 @@ class StabilityAgent(HypothesisAgent, metaclass=abc.ABCMeta):
 class QBCStabilityAgent(StabilityAgent):
     def __init__(self, candidate_data=None, seed_data=None, n_query=1,
                  hull_distance=0.0, multiprocessing=True, alpha=0.5,
-                 training_fraction=0.5, ml_algorithm=None,
-                 ml_algorithm_params=None, n_members=10):
+                 training_fraction=0.5, regressor=None, n_members=10):
         """
         Args:
             candidate_data (DataFrame): data about the candidates
@@ -208,8 +208,7 @@ class QBCStabilityAgent(StabilityAgent):
         self.alpha = alpha
         self.qbc = QBC(
             n_members=n_members, training_fraction=training_fraction,
-            ml_algorithm=ml_algorithm,
-            ml_algorithm_params=ml_algorithm_params
+            regressor=regressor,
         )
 
     def get_hypotheses(self, candidate_data, seed_data=None,
@@ -246,8 +245,7 @@ class AgentStabilityML5(StabilityAgent):
     """
     def __init__(self, candidate_data=None, seed_data=None, n_query=1,
                  hull_distance=0.0, multiprocessing=True,
-                 ml_algorithm=None, ml_algorithm_params=None,
-                 exploit_fraction=0.5):
+                 regressor=None, exploit_fraction=0.5):
         """
         Args:
             candidate_data (DataFrame): data about the candidates
@@ -269,13 +267,12 @@ class AgentStabilityML5(StabilityAgent):
             multiprocessing=multiprocessing
         )
 
-        self.ml_algorithm = ml_algorithm
-        self.ml_algorithm_params = ml_algorithm_params
+        self.regressor = regressor or LinearRegression()
         self.exploit_fraction = exploit_fraction
 
     def get_hypotheses(self, candidate_data, seed_data=None):
         X_cand, X_seed, y_seed = self.update_data(candidate_data, seed_data)
-        steps = [('scaler', StandardScaler()), ('ML', self.ml_algorithm(**self.ml_algorithm_params))]
+        steps = [('scaler', StandardScaler()), ('ML', self.regressor)]
         pipeline = Pipeline(steps)
 
         cv_score = cross_val_score(pipeline, X_seed, self.seed_data['delta_e'],
