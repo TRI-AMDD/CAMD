@@ -252,7 +252,8 @@ class AnalyzeStability_mod(AnalyzerBase):
         super(AnalyzeStability_mod, self).__init__()
 
     def analyze(self, df=None, new_result_ids=None, all_result_ids=None):
-        self.df = df.drop_duplicates(keep='last').dropna()
+        include_columns = ['Composition', 'delta_e']
+        self.df = df[include_columns].drop_duplicates(keep='last').dropna()
         # Note some of id's in all_result_ids may not have corresponding
         # experiment, if those exps. failed.
         self.all_result_ids = all_result_ids
