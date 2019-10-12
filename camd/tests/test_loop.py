@@ -32,7 +32,7 @@ class LoopTest(unittest.TestCase):
 
             # Construct and start loop
             new_loop = Loop(df, AgentStabilityML5, ATFSampler,
-                            AnalyzeStability_mod, agent_params={}, create_seed=True,
+                            AnalyzeStability_mod, agent_params={}, create_seed=10,
                             analyzer_params={}, experiment_params=experiment_params,
                             s3_prefix="test")
             new_loop.initialize()

@@ -72,6 +72,7 @@ class Worker(object):
             chemsys ([str]):
 
         Returns:
+            None
 
         """
         if self.campaign == "proto-dft":
@@ -83,11 +84,17 @@ class Worker(object):
             raise ValueError("Campaign {} is not valid".format(self.campaign))
 
     def get_latest_chemsys(self):
+        """
+        Gets the last submitted chemsys
+
+        Returns:
+            (str): corresponding to last submitted chemsys
+
+        """
         bucket = boto3.resource("s3").Bucket(CAMD_S3_BUCKET)
 
         # Get submissions
         submission_prefix = '/'.join([self.campaign, "submit"])
-        # TODO: fix 1000 return value limit - MAT-838
         submit_objects = bucket.objects.filter(Prefix=submission_prefix)
         submission_times = {obj.key.split('/')[-2]: obj.get()['LastModified']
                             for obj in submit_objects
@@ -163,6 +170,12 @@ def get_common_prefixes(bucket, prefix):
 
 
 def main():
+    """
+    Main function for running this as a script
+
+    Returns:
+        None
+    """
     args = docopt(__doc__)
     campaign = args['--campaign']
     worker = Worker(campaign)
