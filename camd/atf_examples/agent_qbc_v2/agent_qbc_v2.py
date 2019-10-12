@@ -22,7 +22,6 @@ agent_params = {
     'ml_algorithm': MLPRegressor,
     'ml_algorithm_params': {'hidden_layer_sizes': (84, 50)},
     'n_query': n_query,
-    'n_species': 2,         # We'll restrict the search to binaries
     'n_members': 10,        # Committee size in QBC
     'hull_distance': 0.05,  # Distance to hull to consider a finding as discovery (eV/atom)
     'frac': 0.5             # Fraction of data to choose to form a committee member
