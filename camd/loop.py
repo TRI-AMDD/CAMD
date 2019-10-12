@@ -132,7 +132,7 @@ class Loop(MSONable):
 
         # Augment candidate space
         self.load("consumed_candidates")
-        self.candidate_space = list(set(self.candidate_data.index).difference(set(self.consumed_candidates)))
+        self.candidate_space = self.candidate_data.index.difference(self.consumed_candidates, sort=False).tolist()
         self.candidate_data = self.candidate_data.loc[self.candidate_space]
 
         # Analyze results
