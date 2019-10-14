@@ -2,6 +2,8 @@
 
 import time
 import abc
+import json
+import os
 from copy import deepcopy
 from multiprocessing import cpu_count
 from collections import OrderedDict
@@ -738,7 +740,7 @@ class DiverseAgentStabilityAdaBoost(StabilityAgent):
                  hull_distance=0.0, multiprocessing=True,
                  ml_algorithm=None, ml_algorithm_params=None,
                  uncertainty=True, alpha=0.5, n_estimators=10,
-                 exploit_fraction=0.5):
+                 exploit_fraction=0.5, diversify=False, dynamic_alpha=False):
         """
         Args:
             candidate_data (DataFrame): data about the candidates
@@ -759,6 +761,12 @@ class DiverseAgentStabilityAdaBoost(StabilityAgent):
                 algorithm
             exploit_fraction (float): fraction of n_query to assign to
                 exploitation hypotheses
+            diversify (bool): Turns on the diversification algorithm for
+                selected experiments.
+            dynamic_alpha (bool): Turns on a simple linear schedule where the
+                alpha (how much uncertainty is mixed into predictions) starts
+                from zero, and increases at a rate of 0.1/iter until it's capped
+                at parameter alpha specified for the rest of the iterations.
         """
 
         super(DiverseAgentStabilityAdaBoost, self).__init__(
@@ -773,6 +781,8 @@ class DiverseAgentStabilityAdaBoost(StabilityAgent):
         self.uncertainty = uncertainty
         self.alpha = alpha
         self.n_estimators = n_estimators
+        self.diversify = diversify
+        self.dynamic_alpha = dynamic_alpha
 
     def get_hypotheses(self, candidate_data, seed_data=None):
         X_cand, X_seed, y_seed = self.update_data(candidate_data, seed_data)
@@ -803,7 +813,13 @@ class DiverseAgentStabilityAdaBoost(StabilityAgent):
         expected = overall_adaboost.predict(X_cand)
 
         if self.uncertainty:
-            expected -= self.alpha * self._get_unc_ada(overall_adaboost, X_cand)
+            if self.dynamic_alpha and os.path.exists('iteration.json'):
+                with open('iteration.json', 'r') as f:
+                    iter = json.load(f)
+                print("dynamic alpha activated")
+                expected -= min(0.1*iter,self.alpha) * self._get_unc_ada(overall_adaboost, X_cand)
+            else:
+                expected -= self.alpha * self._get_unc_ada(overall_adaboost, X_cand)
 
         # Update candidate data dataframe with predictions
         self.update_candidate_stabilities(
@@ -815,8 +831,10 @@ class DiverseAgentStabilityAdaBoost(StabilityAgent):
 
         # Exploitation part:
         n_exploitation = int(self.n_query * self.exploit_fraction)
-        to_compute = diverse_quant( within_hull.index.tolist(), n_exploitation, self.candidate_data)
-
+        if self.diversify:
+            to_compute = diverse_quant( within_hull.index.tolist(), n_exploitation, self.candidate_data)
+        else:
+            to_compute = within_hull.head(n_exploitation).index.tolist()
         remaining = within_hull.tail(len(within_hull) - n_exploitation)
 
         # Exploration part (pick randomly from remainder):
