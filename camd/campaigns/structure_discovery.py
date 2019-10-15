@@ -61,11 +61,11 @@ def run_proto_dft_campaign(chemsys):
         # Set up agents and loop parameters
         agent = AgentStabilityAdaBoost
         agent_params = {
-            'ML_algorithm': MLPRegressor,
-            'ML_algorithm_params': {'hidden_layer_sizes': (84, 50)},
-            'N_query': 10,
+            'ml_algorithm': MLPRegressor,
+            'ml_algorithm_params': {'hidden_layer_sizes': (84, 50)},
+            'n_query': 10,
             'hull_distance': 0.2,  # Distance to hull to consider a finding as discovery (eV/atom)
-            'frac': 1.0,  # Fraction to exploit (rest will be explored -- randomly picked)
+            'exploit_fraction': 1.0,  # Fraction to exploit (rest will be explored -- randomly picked)
             'uncertainty': True,
             'alpha': 0.5,
             'n_estimators': 20
