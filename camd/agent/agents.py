@@ -629,117 +629,6 @@ class AgentStabilityAdaBoost(StabilityAgent):
                  hull_distance=0.0, multiprocessing=True,
                  ml_algorithm=None, ml_algorithm_params=None,
                  uncertainty=True, alpha=0.5, n_estimators=10,
-                 exploit_fraction=0.5):
-        """
-        Args:
-            candidate_data (DataFrame): data about the candidates
-            seed_data (DataFrame): data which to fit the Agent to
-            n_query (int): number of hypotheses to generate
-            hull_distance (float): hull distance as a criteria for
-                which to deem a given material as "stable"
-            multiprocessing (bool): whether to use multiprocessing
-                for phase stability analysis
-            ml_algorithm (sklearn-style regressor): Regression method
-            ml_algorithm_params (dict): parameters to pass to the regression
-                method
-            uncertainty (bool): whether uncertainty is included in
-                minimal predictions
-            alpha (float): weighting factor for the stdev in making
-                best-case predictions of the stability
-            n_estimators (int): number of estimators fro the AdaBoosting
-                algorithm
-            exploit_fraction (float): fraction of n_query to assign to
-                exploitation hypotheses
-        """
-
-        super(AgentStabilityAdaBoost, self).__init__(
-            candidate_data=candidate_data, seed_data=seed_data,
-            n_query=n_query, hull_distance=hull_distance,
-            multiprocessing=multiprocessing
-        )
-
-        self.ml_algorithm = ml_algorithm
-        self.ml_algorithm_params = ml_algorithm_params
-        self.exploit_fraction = exploit_fraction
-        self.uncertainty = uncertainty
-        self.alpha = alpha
-        self.n_estimators = n_estimators
-
-    def get_hypotheses(self, candidate_data, seed_data=None):
-        X_cand, X_seed, y_seed = self.update_data(candidate_data, seed_data)
-
-        steps = [('scaler', StandardScaler()), ('ML', self.ml_algorithm(**self.ml_algorithm_params))]
-        pipeline = Pipeline(steps)
-
-        adaboost = AdaBoostRegressor(
-            base_estimator=pipeline, n_estimators=self.n_estimators)
-
-        cv_score = cross_val_score(
-            adaboost, X_seed, y_seed,
-            cv=KFold(3, shuffle=True), scoring='neg_mean_absolute_error')
-        self.cv_score = np.mean(cv_score)*-1
-
-        # We will take standard scaler out of the pipleine for
-        # prediction purposes (we want a single scaler)
-
-        scaler = StandardScaler()
-        X_scaled = scaler.fit_transform(X_seed)
-        overall_adaboost = AdaBoostRegressor(
-            base_estimator=self.ml_algorithm(**self.ml_algorithm_params),
-            n_estimators=self.n_estimators
-        )
-        overall_adaboost.fit(X_scaled, self.seed_data['delta_e'])
-
-        X_cand = scaler.transform(X_cand)
-        expected = overall_adaboost.predict(X_cand)
-
-        if self.uncertainty:
-            expected -= self.alpha * self._get_unc_ada(overall_adaboost, X_cand)
-
-        # Update candidate data dataframe with predictions
-        self.update_candidate_stabilities(
-            expected, sort=True, floor=-6.0)
-
-        # Filter by stability according to hull distance
-        stability_filter = self.candidate_data['pred_stability'] < self.hull_distance
-        within_hull = self.candidate_data[stability_filter]
-
-        # Exploitation part:
-        n_exploitation = int(self.n_query * self.exploit_fraction)
-        to_compute = within_hull.head(n_exploitation).index.tolist()
-        remaining = within_hull.tail(len(within_hull) - n_exploitation)
-
-        # Exploration part (pick randomly from remainder):
-        n_exploration = self.n_query - n_exploitation
-        to_compute.extend(remaining.sample(n_exploration).index.tolist())
-
-        self.indices_to_compute = to_compute
-        return self.indices_to_compute
-
-    @staticmethod
-    def _get_unc_ada(ada, X):
-        preds = []
-        for i in ada.estimators_:
-            preds.append(i.predict(X))
-        preds = np.array(preds)
-        preds = preds.T
-        stds = []
-        for i in preds:
-            average = np.average(i, weights=ada.estimator_weights_)
-            _std = np.sqrt(np.average((i - average) ** 2, weights=ada.estimator_weights_))
-            stds.append(_std)
-        return np.array(stds)
-
-class DiverseAgentStabilityAdaBoost(StabilityAgent):
-    """
-    An agent that does a certain fraction of full exploration and
-    exploitation in each iteration.  It will exploit a fraction
-    of N_query options (frac), and explore the rest of its budget.
-    """
-    def __init__(self, candidate_data=None, seed_data=None, n_query=1,
-                 hull_distance=0.0, multiprocessing=True,
-                 ml_algorithm=None, ml_algorithm_params=None,
-                 uncertainty=True, alpha=0.5, n_estimators=10,
                  exploit_fraction=0.5, diversify=False, dynamic_alpha=False):
         """
         Args:
@@ -769,7 +658,7 @@ class DiverseAgentStabilityAdaBoost(StabilityAgent):
                 at parameter alpha specified for the rest of the iterations.
         """
 
-        super(DiverseAgentStabilityAdaBoost, self).__init__(
+        super(AgentStabilityAdaBoost, self).__init__(
             candidate_data=candidate_data, seed_data=seed_data,
             n_query=n_query, hull_distance=hull_distance,
             multiprocessing=multiprocessing
