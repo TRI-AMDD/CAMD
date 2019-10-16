@@ -60,17 +60,17 @@ class VectorParameterized(metaclass=abc.ABCMeta):
 
 
 # TODO: maximum minimum?
-class VariableLengthVectorVP(list, VectorParameterized, abc.ABCMeta):
+class VariableLengthVectorVP(list, VectorParameterized):
     PARAMETER_LIST = [
         ('length', int),
         ('vector', list)
     ]
 
-    @property
-    @classmethod
-    @abc.abstractmethod
-    def MAX_LENGTH(cls):
-        return NotImplementedError
+    # @property
+    # @classmethod
+    # @abc.abstractmethod
+    # def MAX_LENGTH(cls):
+    #     return NotImplementedError
 
     @classmethod
     def from_vector(cls, vector):
@@ -82,8 +82,8 @@ class VariableLengthVectorVP(list, VectorParameterized, abc.ABCMeta):
         return new
 
 
-class HiddenLayerVP(VariableLengthVectorVP):
-    MAX_LENGTH = 5
+# class HiddenLayerVP(VariableLengthVectorVP):
+#     MAX_LENGTH = 5
 
 
 class LinearRegVP(LinearRegression, VectorParameterized):
@@ -103,7 +103,7 @@ class RandomForestRegVP(RandomForestRegressor, VectorParameterized):
 
 class MLPRegVP(MLPRegressor, VectorParameterized):
     PARAMETER_LIST = [
-        ("hidden_layer_sizes", HiddenLayerVP),
+        ("hidden_layer_sizes", VariableLengthVectorVP),
         ("activation", ['identity', 'logistic', 'tanh', 'relu']),
         ("learning_rate", ['constant', 'invscaling', 'adaptive']),
     ]
@@ -158,5 +158,5 @@ class AgentVP(VectorParameterized):
 
 
 if __name__ == "__main__":
-    test = ScikitRegVP.from_vector([0, 1, 1, 0, 0, 1, 0, 0, 0])
+    test = ScikitRegVP.from_vector([0, 1, 1, 0, 0, 1, 0, 0, 0, 0, 1, 2, 3])
     test_agent = AgentVP.from_vector([0, 1, 1, 1, 0, 1, 1])
