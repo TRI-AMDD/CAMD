@@ -750,7 +750,27 @@ class AgentStabilityAdaBoost(StabilityAgent):
 
 def diverse_quant(points, target_length, df, quantiles=None):
     """
-    Diversify a sublist by eliminating entries based on a quantile threshold and Euclidean distance.
+    Diversify a sublist by eliminating entries based on comparisons with quantiles
+    threshold and Euclidean distance.
+
+    This method takes the points list (which would be the object within_hull in stability implementations),
+    and tries to select a diverse subset for the number of exploitation choices (target_length)
+    its allowed to make. It follows a simple algorithm: start from i = 0 of the points,
+    and go down the remainder of the list, removing entries that seem to be closer to i below a
+    certain distance threshold. It repeats this process for all i: i = 1, i = 2 ... i_max.
+    The method tries to adjust the distance threshold until it finds the shortest resulting
+    list that is longer than target_length. If it can't, it will simply
+    return points as it is. The threshold values are  decided by finding distances corresponding to
+    quantiles of the a sampled distribution of distances in the overall feature set.
+    The method does not alter the original ordering in the list points.
+    The algorithm is simple but I'm unaware of any other implementations of this in the literature,
+    and it seems to be working fine.
+    The intuition behind the algorithm is to make
+    risk-averse choices by avoiding the acquisition of too similar candidates,
+    in case one example among those entries is sufficient for the model to minimize its
+    uncertainty and/or make a decision to not acquire any other in that region.
+    So the resources would not be wasted and can be allocated to other promising choices in points.
+
     Args:
         points (list): Initial set of points, needs to have the internal preferred order
         target_length (int): length of desired sublist, that would diversify while trying to preserve order
