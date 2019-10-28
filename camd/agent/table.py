@@ -8,6 +8,8 @@ vectors
 import abc
 import inspect
 
+import numpy as np
+
 from camd.agent.agents import QBCStabilityAgent, AgentStabilityML5, \
     GaussianProcessStabilityAgent, SVGProcessStabilityAgent, \
     BaggedGaussianProcessStabilityAgent, AgentStabilityAdaBoost
@@ -60,17 +62,17 @@ class VectorParameterized(metaclass=abc.ABCMeta):
 
 
 # TODO: maximum minimum?
-class VariableLengthVectorVP(list, VectorParameterized, abc.ABCMeta):
-    PARAMETER_LIST = [
-        ('length', int),
-        ('vector', list)
-    ]
-
+class VariableLengthVectorVP(list, VectorParameterized, metaclass=abc.ABCMeta):
     @property
     @classmethod
     @abc.abstractmethod
     def MAX_LENGTH(cls):
         return NotImplementedError
+
+    PARAMETER_LIST = [
+        ('length', int),
+        ('vector', list)
+    ]
 
     @classmethod
     def from_vector(cls, vector):
@@ -95,9 +97,11 @@ class LinearRegVP(LinearRegression, VectorParameterized):
 
 class RandomForestRegVP(RandomForestRegressor, VectorParameterized):
     PARAMETER_LIST = [
-        ("n_estimators", int),
-        ("criterion", ["mse", "mae"]),
-        ("max_depth", int),
+        ("n_estimators", [50, 75, 100]),
+        ("max_features", np.arange(0.05, 1.01, 0.05)),
+        ("min_samples_split", range(2, 21)),
+        ("min_samples_leaf", range(1, 21)),
+        ("bootstrap", [True, False]),
     ]
 
 
@@ -129,7 +133,7 @@ class QBCStabilityAgentVP(QBCStabilityAgent, VectorParameterized):
         ("n_query", int),
         ("n_members", int),
         ("training_fraction", float),
-        ("regressor", ScikitRegVP),
+        ("regressor", [LinearRegVP, RandomForestRegVP, MLPRegVP]),
     ]
 
 
@@ -141,6 +145,10 @@ class AgentStabilityML5VP(AgentStabilityML5, VectorParameterized):
         ("regressor", ScikitRegVP),
     ]
 
+class LoopVP(Loop, VectorParameterized):
+    PARAMETER_LIST = [
+        ("agent", [AgentStabilityML5VP, QBCStabilityAgentVP])
+    ]
 
 class AgentVP(VectorParameterized):
     PARAMETER_LIST = [
@@ -155,6 +163,12 @@ class AgentVP(VectorParameterized):
             return item
         else:
             return getattr(self.agent, item)
+
+
+agent_config_table = [
+    (),
+    (),
+]
 
 
 if __name__ == "__main__":
