@@ -9,6 +9,7 @@ import numpy as np
 import itertools
 from indexed import IndexedOrderedDict
 from tqdm import tqdm
+import os
 
 
 sklearn_regressor_params = [
@@ -28,8 +29,10 @@ sklearn_regressor_params = [
         {
             "@class": ["sklearn.neural_network.MLPRegressor"],
             "hidden_layer_sizes": [
-                [80, 84],
-                [50, 55]
+                # I think there's a better way to support this, but need to think
+                (80, 50),
+                (84, 55),
+                (87, 60),
             ],
             "activation": ["identity", "logistic", "tanh", "relu"],
             "learning_rate": ["constant", "invscaling", "adaptive"]
@@ -56,47 +59,12 @@ agent_params = [
 ]
 
 
-def enumerate_parameters(config, prefix=None):
-    all_parameter_sets = []
-    for param_config in config:
-        # First we flatten the dict
-        flattened_params = []
-        for param_name, value_list in sorted(param_config.items()):
-            # Simple validation
-            if not isinstance(value_list, list):
-                raise ValueError("Values in config must be a list.")
-
-            # Begin building name
-            if prefix is not None:
-                name = "{}.{}".format(prefix, param_name)
-            else:
-                name = "{}".format(param_name)
-
-            # If values are dicts, recurse into the value list and generate parameter sets
-            if isinstance(value_list[0], dict):
-                flattened_params.append(
-                    enumerate_parameters(value_list, prefix=name))
-            # Early attempt at supporting multi-entry lists
-            # Probably a bit problematic
-            elif isinstance(value_list[0], list):
-                # Naming is a bit wonky here, because the value_list is a list of lists
-                for n, values in enumerate(value_list):
-                    name += ".{}".format(n)
-                    flattened_params.append([(name, value) for value in values])
-
-            else:
-                flattened_params.append([(name, value) for value in value_list])
-        # Accumulate and extend all_parameter_sets
-        for param_set in itertools.product(*flattened_params):
-            yield list(itertools.chain.from_iterable(param_set))
-
-
 class HashedParameterArray(object):
-    def __init__(self, ordering):
+    def __init__(self, ordering=None):
         # Construct IndexedOrderedDict
         self._iod = IndexedOrderedDict()
-        for n, value in enumerate(ordering):
-            self._iod[value] = n
+        if ordering:
+            self.extend(ordering)
 
     def __getitem__(self, index):
         return self._iod.keys()[index]
@@ -104,10 +72,13 @@ class HashedParameterArray(object):
     def __contains__(self, item):
         return item in self._iod.keys()
 
+    def __len__(self):
+        return len(self._iod)
+
     # Maybe this should be push or something?
     def append(self, item):
         if item in self._iod.keys():
-            return self._iod[item]
+            return self.get_index(item)
         # Otherwise adds item
         self._iod[item] = len(self._iod)
 
@@ -115,12 +86,15 @@ class HashedParameterArray(object):
         for item in items:
             self.append(item)
 
+    def get_index(self, item):
+        return self._iod[item]
+
 
 class ParameterTable(object):
     def __init__(self, configs=None):
-        self._parameter_names = []
+        self._parameter_names = HashedParameterArray()
         self._parameter_values = {}
-        self._parameter_table = IndexedOrderedDict()
+        self._parameter_table = HashedParameterArray()
         for config in configs:
             self.append(config)
 
@@ -128,47 +102,31 @@ class ParameterTable(object):
         flattened_params = []
         for parameter_name, value_list in sorted(config.items()):
             # Update the parameter vectors
-            if parameter_name in self._parameter_names:
-                if isinstance(value_list[0], dict):
-                    for value in value_list:
-                        self._parameter_values[parameter_name].append(value)
-                # Check if any new values, if so append to end of list
-                current_values = set(self._parameter_values[parameter_name])
-                for value in value_list:
-                    if isinstance(value, dict):
-                        # This should update the nested parameter table
-                        self._parameter_values[parameter_name].append(value)
-                    if value not in current_values:
-                        self._parameter_values[parameter_name].append(value)
-                # TODO: fix recursion here
-            else:
+            if parameter_name not in self._parameter_names:
                 self._parameter_names.append(parameter_name)
-                # Maybe I should hash on the int?
+                if not isinstance(value_list, (list, HashedParameterArray, ParameterTable)):
+                    raise ValueError("Values must be a list")
                 if isinstance(value_list[0], dict):
-                    self._parameter_values.update(
-                        {parameter_name: ParameterTable(configs=value_list)}
-                    )
-                elif isinstance(value_list[0], list):
-                    pass  # Deal with lists?
+                    self._parameter_values = ParameterTable(value_list)
+                # # Still thinking here,
+                # # Just gonna keep tuples for now
+                # elif isinstance(value_list[0], list):
+                #     pass
                 else:
-                    self._parameter_values.update(
-                        {parameter_name: value_list}
-                    )
-            # Cast name, value list to vectorized
+                    self._parameter_values = HashedParameterArray(value_list)
+            else:
+                self._parameter_values[parameter_name].extend(value_list)
             # I think this lookup could be improved
             flattened_params.append(
-                [(self._parameter_names.index(parameter_name),
-                  self._parameter_values[parameter_name].index(value))
+                [(self._parameter_names.get_index(parameter_name),
+                  self._parameter_values[parameter_name].get_index(value))
                  for value in value_list]
             )
         # Accumulate and extend all_parameter_sets
         total = np.prod([len(el) for el in flattened_params])
         for param_set in tqdm(itertools.product(*flattened_params), total=total):
             param_set = tuple(itertools.chain.from_iterable(param_set))
-            if self._parameter_table.get(param_set) is None:
-                # Maybe this should just be 0, but length makes indexing lookup fast
-                # if desired
-                self._parameter_table[param_set] = len(self._parameter_table)
+            self._parameter_table.append(param_set)
 
     def __len__(self):
         return len(self._parameter_table)
@@ -177,43 +135,56 @@ class ParameterTable(object):
         return iter(self._parameter_table)
 
     def __getitem__(self, item):
-        return self._parameter_table.keys()[item]
+        return self._parameter_table[item]
 
-    def row_(self, ):
-        raise NotImplementedError("Hydration not yet implemented")
-        # # First we flatten the dict
-        # flattened_params = []
-        # for param_name, value_list in sorted(param_config.items()):
-        #     # Simple validation
-        #     if not isinstance(value_list, list):
-        #         raise ValueError("Values in config must be a list.")
+    def hydrate_pair(self, param_index, value_index, construct_object=False):
+        name = self._parameter_names[param_index]
+        values = self._parameter_values[name]
+        if isinstance(values, ParameterTable):
+            sub_row = values[value_index]
+            return {name: values.hydrate_row(sub_row, construct_object=construct_object)}
+        else:
+            return {name: values[value_index]}
 
-        #     # Begin building name
-        #     if prefix is not None:
-        #         name = "{}.{}".format(prefix, param_name)
-        #     else:
-        #         name = "{}".format(param_name)
+    def hydrate_row(self, row, construct_object=False):
+        hydrated = {}
 
-        #     # If values are dicts, recurse into the value list and generate parameter sets
-        #     if isinstance(value_list[0], dict):
-        #         flattened_params.append(
-        #             enumerate_parameters(value_list, prefix=name))
-        #     # Early attempt at supporting multi-entry lists
-        #     # Probably a bit problematic
-        #     elif isinstance(value_list[0], list):
-        #         # Naming is a bit wonky here, because the value_list is a list of lists
-        #         for n, values in enumerate(value_list):
-        #             name += ".{}".format(n)
-        #             flattened_params.append([(name, value) for value in values])
+        # Group into pairs and update sequentially
+        for param_index, value_index in zip(row[0::2], row[1::2]):
+            hydrated.update(self.hydrate_pair(
+                param_index, value_index, construct_object=construct_object))
+        if construct_object:
+            class_path = hydrated.get("@class")
+            if class_path is not None:
+                modulepath, classname = os.path.splitext(class_path)
+                constructor = load_class(modulepath, classname)
+                hydrated = constructor(**hydrated)
 
-        #     else:
-        #         flattened_params.append([(name, value) for value in value_list])
-        # # Accumulate and extend all_parameter_sets
-        # for param_set in itertools.product(*flattened_params):
-        #     yield list(itertools.chain.from_iterable(param_set))
+        return hydrated
 
+    def hydrate_index(self, index, construct_object=False):
+        return self.hydrate_row(self[index], construct_object=construct_object)
+
+
+def load_class(modulepath, classname):
+    """
+    Load and return the class from the given module.
+    Args:
+        modulepath (str): dotted path to the module. eg: "pymatgen.io.vasp.sets"
+        classname (str): name of the class to be loaded.
+    Returns:
+        class
+    """
+    mod = __import__(modulepath, globals(), locals(), [classname], 0)
+    return getattr(mod, classname)
+
+
+# Some things to test
+# Whether prior iteration always has same first row set
+# Synchronicity of order and value for parameter lists/tables
 
 
 if __name__ == "__main__":
+    first = ParameterTable(agent_params[0:2])
     # for param_set in enumerate_parameters(config=agent_params, prefix="agent"):
     #     print(param_set)
