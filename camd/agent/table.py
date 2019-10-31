@@ -5,172 +5,101 @@ with agent testing, e. g. to categorize Agents via numerical
 vectors
 """
 
-import abc
-import inspect
-
 import numpy as np
-
-from camd.agent.agents import QBCStabilityAgent, AgentStabilityML5, \
-    GaussianProcessStabilityAgent, SVGProcessStabilityAgent, \
-    BaggedGaussianProcessStabilityAgent, AgentStabilityAdaBoost
-
-from sklearn.linear_model import LinearRegression
-from sklearn.ensemble import RandomForestRegressor
-from sklearn.neural_network import MLPRegressor
+import itertools
 
 
-class VectorParameterized(metaclass=abc.ABCMeta):
-    @property
-    @classmethod
-    @abc.abstractmethod
-    def PARAMETER_LIST(cls):
-        return NotImplementedError
-
-    @classmethod
-    def from_vector(cls, vector, **other_kwargs):
-        """
-        Recursively consume the vector
-        """
-        parameters = other_kwargs
-        for parameter_name, parameter_option in cls.PARAMETER_LIST:
-            if isinstance(parameter_option, list):
-                parameter_option = parameter_option[vector.pop(0)]
-                if VectorParameterized.is_superclass(parameter_option):
-                    parameters.update(
-                        {parameter_name: parameter_option.from_vector(vector)}
-                    )
-                else:
-                    parameters.update(
-                        {parameter_name: parameter_option}
-                    )
-            elif VectorParameterized.is_superclass(parameter_option):
-                parameters.update(
-                    {parameter_name: parameter_option.from_vector(vector)}
-                )
-            else:
-                parameters.update(
-                    {parameter_name: parameter_option(vector.pop(0))}
-                )
-        return cls(**parameters)
-
-    @classmethod
-    def is_superclass(cls, target):
-        if not inspect.isclass(target):
-            return False
-        else:
-            return issubclass(target, cls)
-
-
-# TODO: maximum minimum?
-class VariableLengthVectorVP(list, VectorParameterized, metaclass=abc.ABCMeta):
-    @property
-    @classmethod
-    @abc.abstractmethod
-    def MAX_LENGTH(cls):
-        return NotImplementedError
-
-    PARAMETER_LIST = [
-        ('length', int),
-        ('vector', list)
-    ]
-
-    @classmethod
-    def from_vector(cls, vector):
-        length = vector.pop(0)
-        new = []
-        actual_length = min(length, cls.MAX_LENGTH)
-        for i in range(actual_length):
-            new.append(vector.pop(0))
-        return new
-
-
-class HiddenLayerVP(VariableLengthVectorVP):
-    MAX_LENGTH = 5
-
-
-class LinearRegVP(LinearRegression, VectorParameterized):
-    PARAMETER_LIST = [
-        ("fit_intercept", [True, False]),
-        ("normalize", [True, False])
+sklearn_regressor_params = [
+        {
+            "@class": ["sklearn.linear_model.LinearRegression"],
+            "fit_intercept": [True, False],
+            "normalize": [True, False]
+        },
+        {
+            "@class": ["sklearn.ensemble.RandomForestRegressor"],
+            "n_estimators": [100],
+            "max_features": list(np.arange(0.05, 1.01, 0.05)),
+            "min_samples_split": list(range(2, 21)),
+            "min_samples_leaf": list(range(1, 21)),
+            "bootstrap": [True, False]
+        },
+        {
+            "@class": ["sklearn.neural_network.MLPRegressor"],
+            "hidden_layer_sizes": [
+                [80, 84],
+                [50, 55]
+            ],
+            "activation": ["identity", "logistic", "tanh", "relu"],
+            "learning_rate": ["constant", "invscaling", "adaptive"]
+        },
     ]
 
 
-class RandomForestRegVP(RandomForestRegressor, VectorParameterized):
-    PARAMETER_LIST = [
-        ("n_estimators", [50, 75, 100]),
-        ("max_features", np.arange(0.05, 1.01, 0.05)),
-        ("min_samples_split", range(2, 21)),
-        ("min_samples_leaf", range(1, 21)),
-        ("bootstrap", [True, False]),
-    ]
-
-
-class MLPRegVP(MLPRegressor, VectorParameterized):
-    PARAMETER_LIST = [
-        ("hidden_layer_sizes", HiddenLayerVP),
-        ("activation", ['identity', 'logistic', 'tanh', 'relu']),
-        ("learning_rate", ['constant', 'invscaling', 'adaptive']),
-    ]
-
-
-class ScikitRegVP(VectorParameterized):
-    PARAMETER_LIST = [
-        ("regressor", [LinearRegVP, RandomForestRegVP, MLPRegVP])
-    ]
-
-    def __init__(self, regressor):
-        self.regressor = regressor
-
-    def __getattr__(self, item):
-        if item == "regressor":
-            return item
-        else:
-            return getattr(self.regressor, item)
-
-
-class QBCStabilityAgentVP(QBCStabilityAgent, VectorParameterized):
-    PARAMETER_LIST = [
-        ("n_query", int),
-        ("n_members", int),
-        ("training_fraction", float),
-        ("regressor", [LinearRegVP, RandomForestRegVP, MLPRegVP]),
-    ]
-
-
-class AgentStabilityML5VP(AgentStabilityML5, VectorParameterized):
-    PARAMETER_LIST = [
-        ("n_query", int),
-        ("n_members", int),
-        ("training_fraction", float),
-        ("regressor", ScikitRegVP),
-    ]
-
-class LoopVP(Loop, VectorParameterized):
-    PARAMETER_LIST = [
-        ("agent", [AgentStabilityML5VP, QBCStabilityAgentVP])
-    ]
-
-class AgentVP(VectorParameterized):
-    PARAMETER_LIST = [
-        ("agent", [QBCStabilityAgentVP, AgentStabilityML5VP])
-    ]
-
-    def __init__(self, agent):
-        self.agent = agent
-
-    def __getattr__(self, item):
-        if item == "agent":
-            return item
-        else:
-            return getattr(self.agent, item)
-
-
-agent_config_table = [
-    (),
-    (),
+agent_params = [
+    {
+        "@class": ["camd.agent.QBCStabilityAgent"],
+        "n_query": [4, 6, 8],
+        "n_members": list(range(2, 5)),
+        "hull_distance": list(np.arange(0.05, 0.21, 0.05)),
+        "training_fraction": [0.4, 0.5, 0.6],
+        "regressor": sklearn_regressor_params
+    },
+    {
+        "@class": ["camd.agent.AgentStabilityML5"],
+        "n_query": [4, 6, 8],
+        "hull_distance": [0.5, 0.1, 0.15, 0.2],
+        "exploit_fraction": [0.4, 0.5, 0.6],
+        "regressor": sklearn_regressor_params
+    },
+    {
+        "@class": ["camd.agent.AgentStabilityML5"],
+        "hull_distance": [0.5, 0.1, 0.15, 0.2],
+        "n_query": [4, 6, 8],
+        "training_fraction": [0.4, 0.5, 0.6],
+        "regressor": sklearn_regressor_params
+    }
 ]
 
 
+def enumerate_parameters(config, prefix=None):
+    all_parameter_sets = []
+    for param_config in config:
+        # First we flatten the dict
+        flattened_params = []
+        for param_name, value_list in sorted(param_config.items()):
+            # Simple validation
+            if not isinstance(value_list, list):
+                raise ValueError("Values in config must be a list.")
+
+            # Begin building name
+            if prefix is not None:
+                name = "{}.{}".format(prefix, param_name)
+            else:
+                name = "{}".format(param_name)
+
+            # If values are dicts, recurse into the value list and generate parameter sets
+            if isinstance(value_list[0], dict):
+                flattened_params.append(
+                    enumerate_parameters(value_list, prefix=name))
+            # Early attempt at supporting multi-entry lists
+            # Probably a bit problematic
+            elif isinstance(value_list[0], list):
+                # Naming is a bit wonky here, because the value_list is a list of lists
+                for n, values in enumerate(value_list):
+                    name += ".{}".format(n)
+                    flattened_params.append([(name, value) for value in values])
+
+            else:
+                flattened_params.append([(name, value) for value in value_list])
+        # Accumulate and extend all_parameter_sets
+        for param_set in itertools.product(*flattened_params):
+            yield list(itertools.chain.from_iterable(param_set))
+
+
 if __name__ == "__main__":
-    test = ScikitRegVP.from_vector([0, 1, 1, 0, 0, 1, 0, 0, 0])
-    test_agent = AgentVP.from_vector([0, 1, 1, 1, 0, 1, 1])
+    iter = 0
+    for param_set in enumerate_parameters(config=agent_params, prefix="agent"):
+        print(param_set)
+        iter += 1
+        if iter > 500000:
+            break
