@@ -193,9 +193,7 @@ class QBCStabilityAgent(StabilityAgent):
                 training committee members
             alpha (float): weighting factor for the stdev in making
                 best-case predictions of the stability
-            ml_algorithm (sklearn-style regressor): Regression method
-            ml_algorithm_params (dict): parameters to pass to the regression
-                method
+            regressor (sklearn-style regressor): regressor
             n_members (int): number of committee members for the qbc
         """
 
@@ -206,6 +204,8 @@ class QBCStabilityAgent(StabilityAgent):
         )
 
         self.alpha = alpha
+        self.regressor = regressor
+        self.n_members = n_members
         self.qbc = QBC(
             n_members=n_members, training_fraction=training_fraction,
             regressor=regressor,
