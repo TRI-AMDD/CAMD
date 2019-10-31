@@ -101,19 +101,21 @@ class ParameterTable(object):
     def append(self, config):
         flattened_params = []
         for parameter_name, value_list in sorted(config.items()):
+            if isinstance(value_list[0], dict):
+                value_list = ParameterTable(value_list)
             # Update the parameter vectors
             if parameter_name not in self._parameter_names:
                 self._parameter_names.append(parameter_name)
                 if not isinstance(value_list, (list, HashedParameterArray, ParameterTable)):
                     raise ValueError("Values must be a list")
-                if isinstance(value_list[0], dict):
-                    self._parameter_values = ParameterTable(value_list)
+                if isinstance(value_list, ParameterTable):
+                    self._parameter_values[parameter_name] = value_list
                 # # Still thinking here,
                 # # Just gonna keep tuples for now
                 # elif isinstance(value_list[0], list):
                 #     pass
                 else:
-                    self._parameter_values = HashedParameterArray(value_list)
+                    self._parameter_values[parameter_name] = HashedParameterArray(value_list)
             else:
                 self._parameter_values[parameter_name].extend(value_list)
             # I think this lookup could be improved
@@ -137,10 +139,14 @@ class ParameterTable(object):
     def __getitem__(self, item):
         return self._parameter_table[item]
 
+    def get_index(self, value):
+        return self._parameter_table._iod[value]
+
     def hydrate_pair(self, param_index, value_index, construct_object=False):
         name = self._parameter_names[param_index]
         values = self._parameter_values[name]
         if isinstance(values, ParameterTable):
+            import nose; nose.tools.set_trace()
             sub_row = values[value_index]
             return {name: values.hydrate_row(sub_row, construct_object=construct_object)}
         else:
@@ -165,6 +171,10 @@ class ParameterTable(object):
     def hydrate_index(self, index, construct_object=False):
         return self.hydrate_row(self[index], construct_object=construct_object)
 
+    def extend(self, configs):
+        for config in configs:
+            self.append(config)
+
 
 def load_class(modulepath, classname):
     """
@@ -185,6 +195,7 @@ def load_class(modulepath, classname):
 
 
 if __name__ == "__main__":
-    first = ParameterTable(agent_params[0:2])
+    first = ParameterTable(agent_params)
+    first.hydrate_index(3)
     # for param_set in enumerate_parameters(config=agent_params, prefix="agent"):
     #     print(param_set)
