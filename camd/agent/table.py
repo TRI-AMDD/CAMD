@@ -100,7 +100,6 @@ class ParameterTable(object):
     def append(self, config):
         flattened_params = []
         for parameter_name, value_list in sorted(config.items()):
-
             # Update the parameter vectors
             if parameter_name not in self._parameter_names:
                 self._parameter_names.append(parameter_name)
@@ -116,10 +115,8 @@ class ParameterTable(object):
                 else:
                     self._parameter_values[parameter_name] = HashedParameterArray(value_list)
             else:
-                # Bit hackish, I think this could be reorganized
                 if isinstance(value_list[0], dict):
-                    self._parameter_values[parameter_name].extend(value_list)
-                    value_list = ParameterTable(value_list)
+                    value_list = self._parameter_values[parameter_name].extend(value_list)
                 else:
                     self._parameter_values[parameter_name].extend(value_list)
             # I think this lookup could be improved
@@ -129,10 +126,13 @@ class ParameterTable(object):
                  for value in value_list]
             )
         # Accumulate and extend all_parameter_sets
+        all_param_sets = []
         total = np.prod([len(el) for el in flattened_params])
         for param_set in tqdm(itertools.product(*flattened_params), total=total):
-            param_set = tuple(itertools.chain.from_iterable(param_set))
-            self._parameter_table.append(param_set)
+            tupled = tuple(itertools.chain.from_iterable(param_set))
+            all_param_sets.append(tupled)
+            self._parameter_table.append(tupled)
+        return all_param_sets
 
     def __len__(self):
         return len(self._parameter_table)
@@ -175,8 +175,10 @@ class ParameterTable(object):
         return self.hydrate_row(self[index], construct_object=construct_object)
 
     def extend(self, configs):
+        all_param_sets = []
         for config in configs:
-            self.append(config)
+            all_param_sets.extend(self.append(config))
+        return all_param_sets
 
 
 def load_class(class_path):
