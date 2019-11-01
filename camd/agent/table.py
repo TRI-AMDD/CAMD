@@ -10,7 +10,6 @@ import numpy as np
 import itertools
 from indexed import IndexedOrderedDict
 from tqdm import tqdm
-import os
 
 
 sklearn_regressor_params = [
@@ -43,7 +42,7 @@ sklearn_regressor_params = [
 
 agent_params = [
     {
-        "@class": ["camd.agent.QBCStabilityAgent"],
+        "@class": ["camd.agent.agents.QBCStabilityAgent"],
         "n_query": [4, 6, 8],
         "n_members": list(range(2, 5)),
         "hull_distance": list(np.arange(0.05, 0.21, 0.05)),
@@ -51,7 +50,7 @@ agent_params = [
         "regressor": sklearn_regressor_params
     },
     {
-        "@class": ["camd.agent.AgentStabilityML5"],
+        "@class": ["camd.agent.agents.AgentStabilityML5"],
         "n_query": [4, 6, 8],
         "hull_distance": [0.5, 0.1, 0.15, 0.2],
         "exploit_fraction": [0.4, 0.5, 0.6],
@@ -102,14 +101,13 @@ class ParameterTable(object):
     def append(self, config):
         flattened_params = []
         for parameter_name, value_list in sorted(config.items()):
-            if isinstance(value_list[0], dict):
-                value_list = ParameterTable(value_list)
             # Update the parameter vectors
             if parameter_name not in self._parameter_names:
                 self._parameter_names.append(parameter_name)
                 if not isinstance(value_list, (list, HashedParameterArray, ParameterTable)):
                     raise ValueError("Values must be a list")
-                if isinstance(value_list, ParameterTable):
+                if isinstance(value_list[0], dict):
+                    value_list = ParameterTable(value_list)
                     self._parameter_values[parameter_name] = value_list
                 # # Still thinking here,
                 # # Just gonna keep tuples for now
@@ -118,7 +116,10 @@ class ParameterTable(object):
                 else:
                     self._parameter_values[parameter_name] = HashedParameterArray(value_list)
             else:
-                self._parameter_values[parameter_name].extend(value_list)
+                if isinstance(value_list[0], dict):
+                    value_list = self._parameter_values[parameter_name].extend(value_list)
+                else:
+                    self._parameter_values[parameter_name].extend(value_list)
             # I think this lookup could be improved
             flattened_params.append(
                 [(self._parameter_names.get_index(parameter_name),
@@ -126,10 +127,13 @@ class ParameterTable(object):
                  for value in value_list]
             )
         # Accumulate and extend all_parameter_sets
+        all_param_sets = []
         total = np.prod([len(el) for el in flattened_params])
         for param_set in tqdm(itertools.product(*flattened_params), total=total):
-            param_set = tuple(itertools.chain.from_iterable(param_set))
-            self._parameter_table.append(param_set)
+            tupled = tuple(itertools.chain.from_iterable(param_set))
+            all_param_sets.append(tupled)
+            self._parameter_table.append(tupled)
+        return all_param_sets
 
     def __len__(self):
         return len(self._parameter_table)
@@ -147,7 +151,6 @@ class ParameterTable(object):
         name = self._parameter_names[param_index]
         values = self._parameter_values[name]
         if isinstance(values, ParameterTable):
-            import nose; nose.tools.set_trace()
             sub_row = values[value_index]
             return {name: values.hydrate_row(sub_row, construct_object=construct_object)}
         else:
@@ -163,8 +166,8 @@ class ParameterTable(object):
         if construct_object:
             class_path = hydrated.get("@class")
             if class_path is not None:
-                modulepath, classname = os.path.splitext(class_path)
-                constructor = load_class(modulepath, classname)
+                del hydrated['@class']
+                constructor = load_class(class_path)
                 hydrated = constructor(**hydrated)
 
         return hydrated
@@ -173,21 +176,26 @@ class ParameterTable(object):
         return self.hydrate_row(self[index], construct_object=construct_object)
 
     def extend(self, configs):
+        all_param_sets = []
         for config in configs:
-            self.append(config)
+            all_param_sets.extend(self.append(config))
+        return all_param_sets
 
 
-def load_class(modulepath, classname):
+def load_class(class_path):
     """
     Load and return the class from the given module.
+
     Args:
-        modulepath (str): dotted path to the module. eg: "pymatgen.io.vasp.sets"
-        classname (str): name of the class to be loaded.
+        class path (str): full path to class to be loaded, e. g.
+            sklearn.linear_model.LinearRegression
+
     Returns:
         class
     """
-    mod = __import__(modulepath, globals(), locals(), [classname], 0)
-    return getattr(mod, classname)
+    module_path, class_name = class_path.rsplit('.', 1)
+    mod = __import__(module_path, globals(), locals(), [class_name], 0)
+    return getattr(mod, class_name)
 
 
 # Some things to test
@@ -198,5 +206,4 @@ def load_class(modulepath, classname):
 if __name__ == "__main__":
     first = ParameterTable(agent_params)
     first.hydrate_index(3)
-    # for param_set in enumerate_parameters(config=agent_params, prefix="agent"):
-    #     print(param_set)
+    first.hydrate_index(3, construct_object=True)
