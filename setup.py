@@ -38,7 +38,8 @@ setup(
                       "awscli",
                       "docopt",
                       "tensorflow==1.14.0",
-                      "gpflow"
+                      "gpflow",
+                      "indexed.py"
                       ],
     # TODO: make this materials?
     dependency_links=[
