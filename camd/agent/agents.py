@@ -2,8 +2,11 @@
 
 import time
 import abc
+import json
+import os
 from copy import deepcopy
 from multiprocessing import cpu_count
+from collections import OrderedDict
 
 import gpflow
 import numpy as np
@@ -21,6 +24,7 @@ from sklearn.preprocessing import StandardScaler
 from sklearn.pipeline import Pipeline
 from sklearn.ensemble import AdaBoostRegressor
 from sklearn.cluster import MiniBatchKMeans
+from sklearn.metrics import pairwise_distances
 
 # TODO: Adaptive N_query and subsampling of candidate space
 # TODO: Exploit/Explore general method
@@ -619,7 +623,8 @@ class AgentStabilityAdaBoost(StabilityAgent):
     def __init__(self, candidate_data=None, seed_data=None, n_query=1,
                  hull_distance=0.0, multiprocessing=True,
                  regressor=None, uncertainty=True, alpha=0.5,
-                 n_estimators=10, exploit_fraction=0.5):
+                 n_estimators=10, exploit_fraction=0.5,
+                 diversify=False, dynamic_alpha=False):
         """
         Args:
             candidate_data (DataFrame): data about the candidates
@@ -638,6 +643,12 @@ class AgentStabilityAdaBoost(StabilityAgent):
                 algorithm
             exploit_fraction (float): fraction of n_query to assign to
                 exploitation hypotheses
+            diversify (bool): Turns on the diversification algorithm for
+                selected experiments.
+            dynamic_alpha (bool): Turns on a simple linear schedule where the
+                alpha (how much uncertainty is mixed into predictions) starts
+                from zero, and increases at a rate of 0.1/iter until it's capped
+                at parameter alpha specified for the rest of the iterations.
         """
 
         super(AgentStabilityAdaBoost, self).__init__(
@@ -650,6 +661,8 @@ class AgentStabilityAdaBoost(StabilityAgent):
         self.uncertainty = uncertainty
         self.alpha = alpha
         self.n_estimators = n_estimators
+        self.diversify = diversify
+        self.dynamic_alpha = dynamic_alpha
 
     def get_hypotheses(self, candidate_data, seed_data=None):
         X_cand, X_seed, y_seed = self.update_data(candidate_data, seed_data)
@@ -680,7 +693,13 @@ class AgentStabilityAdaBoost(StabilityAgent):
         expected = overall_adaboost.predict(X_cand)
 
         if self.uncertainty:
-            expected -= self.alpha * self._get_unc_ada(overall_adaboost, X_cand)
+            if self.dynamic_alpha and os.path.exists('iteration.json'):
+                with open('iteration.json', 'r') as f:
+                    iter = json.load(f)
+                print("dynamic alpha activated")
+                expected -= min(0.1*iter,self.alpha) * self._get_unc_ada(overall_adaboost, X_cand)
+            else:
+                expected -= self.alpha * self._get_unc_ada(overall_adaboost, X_cand)
 
         # Update candidate data dataframe with predictions
         self.update_candidate_stabilities(
@@ -692,7 +711,10 @@ class AgentStabilityAdaBoost(StabilityAgent):
 
         # Exploitation part:
         n_exploitation = int(self.n_query * self.exploit_fraction)
-        to_compute = within_hull.head(n_exploitation).index.tolist()
+        if self.diversify:
+            to_compute = diverse_quant( within_hull.index.tolist(), n_exploitation, self.candidate_data)
+        else:
+            to_compute = within_hull.head(n_exploitation).index.tolist()
         remaining = within_hull.tail(len(within_hull) - n_exploitation)
 
         # Exploration part (pick randomly from remainder):
@@ -715,3 +737,77 @@ class AgentStabilityAdaBoost(StabilityAgent):
             _std = np.sqrt(np.average((i - average) ** 2, weights=ada.estimator_weights_))
             stds.append(_std)
         return np.array(stds)
+
+
+def diverse_quant(points, target_length, df, quantiles=None):
+    """
+    Diversify a sublist by eliminating entries based on comparisons with quantiles
+    threshold and Euclidean distance.
+
+    This method takes the points list (which would be the object within_hull in stability implementations),
+    and tries to select a diverse subset for the number of exploitation choices (target_length)
+    its allowed to make. It follows a simple algorithm: start from i = 0 of the points,
+    and go down the remainder of the list, removing entries that seem to be closer to i below a
+    certain distance threshold. It repeats this process for all i: i = 1, i = 2 ... i_max.
+    The method tries to adjust the distance threshold until it finds the shortest resulting
+    list that is longer than target_length. If it can't, it will simply
+    return points as it is. The threshold values are  decided by finding distances corresponding to
+    quantiles of the a sampled distribution of distances in the overall feature set.
+    The method does not alter the original ordering in the list points.
+    The algorithm is simple but I'm unaware of any other implementations of this in the literature,
+    and it seems to be working fine.
+    The intuition behind the algorithm is to make
+    risk-averse choices by avoiding the acquisition of too similar candidates,
+    in case one example among those entries is sufficient for the model to minimize its
+    uncertainty and/or make a decision to not acquire any other in that region.
+    So the resources would not be wasted and can be allocated to other promising choices in points.
+
+    Args:
+        points (list): Initial set of points, needs to have the internal preferred order
+        target_length (int): length of desired sublist, that would diversify while trying to preserve order
+        df (DataFrame): feature vectors of points, where index labels contain elements of points
+        quantiles (list): quantilies to test for threshold. Defaults to [0.01, 0.02, 0.03, 0.04, 0.05]
+    Returns:
+        A diversified sublist of points
+    """
+    quantiles = quantiles if quantiles else [0.01, 0.02, 0.03, 0.04, 0.05]
+    if target_length >= len(points):
+        return points
+    if len(df) > 6000:
+        _df = df.sample(6000)
+    else:
+        _df = df
+    drop_columns = ['Composition', 'N_species', 'delta_e',
+                    'pred_delta_e', 'pred_stability']
+    scaler = StandardScaler()
+    X = scaler.fit_transform(_df.drop(drop_columns, axis=1, errors='ignore'))
+    flatD = pairwise_distances(X).flatten()
+
+    _df2 = df.loc[points]
+    X = scaler.transform(_df2.drop(drop_columns, axis=1, errors='ignore'))
+    D = pairwise_distances(X)
+
+    remove_len = len(points) - target_length
+    res = []
+    for alpha in quantiles:
+        q = np.quantile(flatD, alpha)
+        to_remove = []
+        for i in range(0, len(points)):
+            for j in range(i+1, len(points)):
+                if D[i, j] < q:
+                    to_remove.append(j)
+        _rl = len(set(to_remove))
+        print(_rl, remove_len)
+        if _rl >= remove_len:
+            break
+        res.append(to_remove)
+    if len(res) == 0:
+        return points
+    else:
+        d = OrderedDict()
+        for i in res[-1]: # fall back to the latest remove list before break
+            d[i] = None
+        final_remove_list = list(d.keys())
+
+        return [p for p in points if np.where(_df2.index==p)[0][0]
+                not in final_remove_list][:target_length]

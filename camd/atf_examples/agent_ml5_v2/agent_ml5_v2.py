@@ -12,14 +12,15 @@ from camd.utils.data import load_default_atf_data
 ##########################################################
 df = load_default_atf_data()
 
+## Epsilon-Greedy
+
 n_seed = 5000  # Starting sample size - a seed of this size will be randomly chosen.
 n_query = 200  # This many new candidates are "calculated with DFT" (i.e. requested from Oracle -- DFT)
 agent = AgentStabilityML5
 agent_params = {
     'ml_algorithm': MLPRegressor,
     'ml_algorithm_params': {'hidden_layer_sizes': (84, 50)},
-    'N_query': n_query,
-    'N_species': 2,         # We'll restrict the search to binaries
+    'n_query': n_query,
     'hull_distance': 0.05,  # Distance to hull to consider a finding as discovery (eV/atom)
     'frac': 0.5             # Fraction to exploit (rest will be explored -- randomly picked)
     }

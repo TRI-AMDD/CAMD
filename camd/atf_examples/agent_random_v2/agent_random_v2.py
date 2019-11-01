@@ -12,22 +12,17 @@ from camd.utils.data import load_default_atf_data
 df = load_default_atf_data()
 
 ##########################################################
-# Binary stable material discovery QBC based agent recipe
+# Binary stable material discovery Random Agent example
 ##########################################################
 n_seed = 5000  # Starting sample size
 n_query = 200  # This many new candidates are "calculated with DFT" (i.e. requested from Oracle -- DFT)
 agent = RandomAgent
-agent_params = {
-    'hull_distance': 0.05,  # Distance to hull to consider a finding as discovery (eV/atom)
-    'n_query': n_query,
-    'n_species': 2
-}
+agent_params = {'n_query': n_query}
 analyzer = AnalyzeStability_mod
 analyzer_params = {'hull_distance': 0.05}
 experiment = ATFSampler
 experiment_params = {'dataframe': df}
 candidate_data = df
-path = '.'
 ##########################################################
 new_loop = Loop(candidate_data, agent, experiment, analyzer,
                 agent_params=agent_params, analyzer_params=analyzer_params, experiment_params=experiment_params,

@@ -12,7 +12,7 @@ from camd.utils.data import load_default_atf_data
 df = load_default_atf_data()
 
 ##########################################################
-# Binary stable material discovery QBC based agent recipe
+# Binary stable material discovery GP bagging
 ##########################################################
 n_seed = 5000  # Starting sample size
 n_query = 200  # This many new candidates are "calculated with DFT" (i.e. requested from Oracle -- DFT)
