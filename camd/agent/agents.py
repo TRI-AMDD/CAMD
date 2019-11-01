@@ -300,8 +300,8 @@ class AgentStabilityML5(StabilityAgent):
         # Exploitation part:
         n_exploitation = int(self.n_query * self.exploit_fraction)
         to_compute = within_hull.head(n_exploitation).index.tolist()
-        remaining = within_hull.tail(len(within_hull)
-                                     - n_exploitation).append(self.candidate_data[~stability_filter])
+        remaining = within_hull.tail(len(within_hull)- n_exploitation)
+        remaining = remaining.append(self.candidate_data[~stability_filter])
 
         # Exploration part (pick randomly from remainder):
         n_exploration = self.n_query - n_exploitation
@@ -728,8 +728,8 @@ class AgentStabilityAdaBoost(StabilityAgent):
             to_compute = diverse_quant( within_hull.index.tolist(), n_exploitation, self.candidate_data)
         else:
             to_compute = within_hull.head(n_exploitation).index.tolist()
-        remaining = within_hull.tail(len(within_hull)
-                                     - n_exploitation).append(self.candidate_data[~stability_filter])
+        remaining = within_hull.tail(len(within_hull)- n_exploitation)
+        remaining = remaining.append(self.candidate_data[~stability_filter])
 
         # Exploration part (pick randomly from remainder):
         n_exploration = self.n_query - n_exploitation
