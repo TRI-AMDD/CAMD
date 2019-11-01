@@ -9,7 +9,7 @@ vectors
 import numpy as np
 import itertools
 from indexed import IndexedOrderedDict
-from tqdm import tqdm
+from camd import tqdm
 
 
 REGRESSOR_PARAMS = [
@@ -306,7 +306,7 @@ class ParameterTable(object):
         values = self._parameter_values[name]
         if isinstance(values, ParameterTable):
             sub_row = values[value_index]
-            return {name: values.hydrate_row(sub_row, construct_object=construct_object)}
+            return {name: values.hydrate(sub_row, construct_object=construct_object)}
         else:
             return {name: values[value_index]}
 
@@ -354,9 +354,7 @@ class ParameterTable(object):
             (dict) or object corresponding to parameter set index
 
         """
-        return self.hydrate_row(self[index], construct_object=construct_object)
-
-
+        return self.hydrate(self[index], construct_object=construct_object)
 
     def __len__(self):
         return len(self._parameter_sets)
