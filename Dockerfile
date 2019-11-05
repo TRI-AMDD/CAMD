@@ -18,6 +18,7 @@ COPY . /home/camd
 
 # Install package
 RUN source /opt/conda/bin/activate camd && \
+    pip install botocore boto3 && \
     pip install numpy && \
     pip install Django && \
     cd bulk_enumerator && python setup.py install && cd .. && \
