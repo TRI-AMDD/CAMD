@@ -68,7 +68,6 @@ def run_proto_dft_campaign(chemsys):
             'exploit_fraction': 1.0,  # Fraction to exploit (rest will be explored -- randomly picked)
             'uncertainty': True,
             'alpha': 0.5,
-            'diversify': True,
             'n_estimators': 20
         }
         analyzer = AnalyzeStability_mod
