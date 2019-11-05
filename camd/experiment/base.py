@@ -4,6 +4,7 @@ import abc
 
 from monty.json import MSONable
 from camd.log import camd_traced
+from camd.loop import Loop
 
 
 class Experiment(abc.ABC, MSONable):
@@ -100,3 +101,5 @@ class ATFSampler(Experiment):
 
     def monitor(self):
         return True
+
+
