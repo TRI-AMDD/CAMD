@@ -183,7 +183,7 @@ class StabilityAgent(HypothesisAgent, metaclass=abc.ABCMeta):
 class QBCStabilityAgent(StabilityAgent):
     def __init__(self, candidate_data=None, seed_data=None, n_query=1,
                  hull_distance=0.0, multiprocessing=True, alpha=0.5,
-                 training_fraction=0.5, regressor=None, n_members=10):
+                 training_fraction=0.5, model=None, n_members=10):
         """
         Args:
             candidate_data (DataFrame): data about the candidates
@@ -197,7 +197,7 @@ class QBCStabilityAgent(StabilityAgent):
                 training committee members
             alpha (float): weighting factor for the stdev in making
                 best-case predictions of the stability
-            regressor (sklearn-style regressor): regressor
+            model (sklearn-style regressor): regressor
             n_members (int): number of committee members for the qbc
         """
 
@@ -208,11 +208,11 @@ class QBCStabilityAgent(StabilityAgent):
         )
 
         self.alpha = alpha
-        self.regressor = regressor
+        self.model = model
         self.n_members = n_members
         self.qbc = QBC(
             n_members=n_members, training_fraction=training_fraction,
-            regressor=regressor,
+            model=model,
         )
 
     def get_hypotheses(self, candidate_data, seed_data=None,
@@ -249,7 +249,7 @@ class AgentStabilityML5(StabilityAgent):
     """
     def __init__(self, candidate_data=None, seed_data=None, n_query=1,
                  hull_distance=0.0, multiprocessing=True,
-                 regressor=None, exploit_fraction=0.5):
+                 model=None, exploit_fraction=0.5):
         """
         Args:
             candidate_data (DataFrame): data about the candidates
@@ -259,7 +259,7 @@ class AgentStabilityML5(StabilityAgent):
                 which to deem a given material as "stable"
             multiprocessing (bool): whether to use multiprocessing
                 for phase stability analysis
-            regressor (sklearn-style Regressor): Regression method
+            model (sklearn-style Regressor): Regression method
             exploit_fraction (float): fraction of n_query to assign to
                 exploitation hypotheses
         """
@@ -269,12 +269,12 @@ class AgentStabilityML5(StabilityAgent):
             multiprocessing=multiprocessing
         )
 
-        self.regressor = regressor or LinearRegression()
+        self.model = model or LinearRegression()
         self.exploit_fraction = exploit_fraction
 
     def get_hypotheses(self, candidate_data, seed_data=None):
         X_cand, X_seed, y_seed = self.update_data(candidate_data, seed_data)
-        steps = [('scaler', StandardScaler()), ('ML', self.regressor)]
+        steps = [('scaler', StandardScaler()), ('ML', self.model)]
         pipeline = Pipeline(steps)
 
         cv_score = cross_val_score(pipeline, X_seed, self.seed_data['delta_e'],
@@ -622,7 +622,7 @@ class AgentStabilityAdaBoost(StabilityAgent):
     """
     def __init__(self, candidate_data=None, seed_data=None, n_query=1,
                  hull_distance=0.0, multiprocessing=True,
-                 regressor=None, uncertainty=True, alpha=0.5,
+                 model=None, uncertainty=True, alpha=0.5,
                  n_estimators=10, exploit_fraction=0.5,
                  diversify=False, dynamic_alpha=False):
         """
@@ -634,7 +634,7 @@ class AgentStabilityAdaBoost(StabilityAgent):
                 which to deem a given material as "stable"
             multiprocessing (bool): whether to use multiprocessing
                 for phase stability analysis
-            regressor (sklearn-style regressor): Regression method
+            model (sklearn-style regressor): Regression method
             uncertainty (bool): whether uncertainty is included in
                 minimal predictions
             alpha (float): weighting factor for the stdev in making
@@ -656,7 +656,7 @@ class AgentStabilityAdaBoost(StabilityAgent):
             n_query=n_query, hull_distance=hull_distance,
             multiprocessing=multiprocessing
         )
-        self.regressor = regressor
+        self.model = model
         self.exploit_fraction = exploit_fraction
         self.uncertainty = uncertainty
         self.alpha = alpha
@@ -667,7 +667,7 @@ class AgentStabilityAdaBoost(StabilityAgent):
     def get_hypotheses(self, candidate_data, seed_data=None):
         X_cand, X_seed, y_seed = self.update_data(candidate_data, seed_data)
 
-        steps = [('scaler', StandardScaler()), ('ML', self.regressor)]
+        steps = [('scaler', StandardScaler()), ('ML', self.model)]
         pipeline = Pipeline(steps)
 
         adaboost = AdaBoostRegressor(
@@ -684,7 +684,7 @@ class AgentStabilityAdaBoost(StabilityAgent):
         scaler = StandardScaler()
         X_scaled = scaler.fit_transform(X_seed)
         overall_adaboost = AdaBoostRegressor(
-            base_estimator=self.regressor,
+            base_estimator=self.model,
             n_estimators=self.n_estimators
         )
         overall_adaboost.fit(X_scaled, self.seed_data['delta_e'])
