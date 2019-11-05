@@ -4,9 +4,10 @@ import abc
 
 from monty.json import MSONable
 from camd.log import camd_traced
-from camd.loop import Loop
 
 
+# TODO: rethink naming here, should it be ExperimentHandler?
+# TODO: rethink history storage
 class Experiment(abc.ABC, MSONable):
     """
     An abstract class for brokering experiments, this is a
@@ -18,8 +19,8 @@ class Experiment(abc.ABC, MSONable):
 
     def __init__(self, params):
         self._params = params
-        self.unique_ids = params['unique_ids'] if 'unique_ids' in params else []
-        self.job_status = params['job_status'] if 'job_status' in params else {}
+        self.job_status = None
+        self.unique_ids = None
 
     @abc.abstractmethod
     def get_state(self):
@@ -69,11 +70,10 @@ class Experiment(abc.ABC, MSONable):
 
         """
 
-    @classmethod
-    def from_job_status(cls, params, job_status):
-        params["job_status"] = job_status
-        params["unique_ids"] = list(job_status.keys())
-        return cls(params)
+    # TODO: docstring here?  what does job_status look like?
+    def update_job_status(self, job_status):
+        self.job_status = job_status
+        self.unique_ids = list(job_status.keys())
 
 
 @camd_traced
