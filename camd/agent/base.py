@@ -4,6 +4,7 @@ import numpy as np
 from sklearn.linear_model import LinearRegression
 from sklearn.preprocessing import StandardScaler
 from sklearn.model_selection import KFold, cross_val_score
+from sklearn.base import clone
 from camd import tqdm
 
 import abc
@@ -28,17 +29,17 @@ class QBC:
     """
     Uncertainty quantification for non-supporting regressors with Query-By-Committee
     """
-    def __init__(self, n_members, training_fraction, regressor=None,
+    def __init__(self, n_members, training_fraction, model=None,
                  test_full_model=True):
         """
         :param n_members: Number of committee members (i.e. models to train)
         :param training_fraction: fraction of data to use in training committee members
-        :param regressor: sklearn-style regressor
+        :param model: sklearn-style regressor
         :param ml_algorithm_params: (dict) parameters to pass to the algorithm
         """
         self.n_members = n_members
         self.training_fraction = training_fraction
-        self.regressor = regressor if regressor else LinearRegression()
+        self.model = model if model else LinearRegression()
         self.committee_models = []
         self.trained = False
         self.test_full_model = test_full_model
@@ -64,26 +65,28 @@ class QBC:
             scaler = StandardScaler()
             X = scaler.fit_transform(split_X[i])
             y = split_y[i]
-            self.regressor.fit(X, y)
-            self.committee_models.append([scaler, self.regressor])  # Note we're saving the scaler to use in predictions
+            model = clone(self.model)
+            model.fit(X, y)
+            # Saving the scaler and model to make predictions
+            self.committee_models.append([scaler, model])
 
         self.trained = True
 
         if self.test_full_model:
             # Get a CV score for an overall model with present dataset
-            overall_scaler = StandardScaler()
-            _X = overall_scaler.fit_transform(self._X, self._y)
-            self.regressor.fit(_X, self._y)
-            cv_score = cross_val_score(self.regressor, _X, self._y,
-                                       cv=KFold(5, shuffle=True), scoring='neg_mean_absolute_error')
+            full_scaler = StandardScaler()
+            _X = full_scaler.fit_transform(self._X, self._y)
+            full_model = clone(self.model)
+            full_model.fit(_X, self._y)
+            cv_score = cross_val_score(
+                full_model, _X, self._y, cv=KFold(5, shuffle=True),
+                scoring='neg_mean_absolute_error')
             self.cv_score = np.mean(cv_score) * -1
 
     def predict(self, X):
         # Apply the committee of models to candidate space
         committee_predictions = []
-        for i in tqdm(list(range(self.n_members))):
-            scaler = self.committee_models[i][0]
-            model = self.committee_models[i][1]
+        for scaler, model in tqdm(self.committee_models):
             _X = scaler.transform(X)
             committee_predictions.append(model.predict(_X))
         stds = np.std(np.array(committee_predictions), axis=0)
