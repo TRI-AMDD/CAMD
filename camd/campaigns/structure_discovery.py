@@ -14,7 +14,7 @@ from camd.loop import Loop
 from camd import CAMD_TEST_FILES, CAMD_S3_BUCKET
 from camd.utils.s3 import s3_sync
 
-from camd.analysis import AnalyzeStability_mod, FinalizeQqmdCampaign
+from camd.analysis import AnalyzeStability, FinalizeQqmdCampaign
 from camd.experiment.dft import OqmdDFTonMC1
 from sklearn.neural_network import MLPRegressor
 import pickle
@@ -70,7 +70,7 @@ def run_proto_dft_campaign(chemsys):
             'alpha': 0.5,
             'n_estimators': 20
         }
-        analyzer = AnalyzeStability_mod
+        analyzer = AnalyzeStability
         analyzer_params = {'hull_distance': 0.2}  # analysis criterion (need not be exactly same as agent's goal)
         experiment = OqmdDFTonMC1
         experiment_params = {'structure_dict': structure_dict, 'candidate_data': candidate_data, 'timeout': 30000}
@@ -112,7 +112,7 @@ def run_atf_campaign(chemsys):
     n_query = 10  # This many new candidates are "calculated with DFT" (i.e. requested from Oracle -- DFT)
     agent = RandomAgent
     agent_params = {'hull_distance': 0.05, 'N_query': n_query}
-    analyzer = AnalyzeStability_mod
+    analyzer = AnalyzeStability
     analyzer_params = {'hull_distance': 0.05}
     experiment = ATFSampler
     experiment_params = {'dataframe': df}
