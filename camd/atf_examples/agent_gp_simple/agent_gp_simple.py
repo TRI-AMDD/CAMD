@@ -3,7 +3,7 @@ from camd.loop import Loop
 import pandas as pd
 
 from camd.agent.agents import GaussianProcessStabilityAgent
-from camd.analysis import AnalyzeStability_mod
+from camd.analysis import AnalyzeStability
 from camd.experiment.base import ATFSampler
 from camd.utils.data import load_default_atf_data
 
@@ -23,7 +23,7 @@ agent_params = {
     'hull_distance': 0.05,  # Distance to hull to consider a finding as discovery (eV/atom)
     'alpha': 0.5
     }
-analyzer = AnalyzeStability_mod
+analyzer = AnalyzeStability
 analyzer_params = {'hull_distance': 0.05}
 experiment = ATFSampler
 experiment_params = {'dataframe': df}

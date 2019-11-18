@@ -10,7 +10,7 @@ from monty.tempfile import ScratchDir
 from camd import CAMD_TEST_FILES, CAMD_S3_BUCKET
 from camd.loop import Loop
 from camd.agent.agents import AgentStabilityML5
-from camd.analysis import AnalyzeStability_mod
+from camd.analysis import AnalyzeStability
 from camd.experiment.base import ATFSampler
 
 
@@ -32,7 +32,7 @@ class LoopTest(unittest.TestCase):
 
             # Construct and start loop
             new_loop = Loop(df, AgentStabilityML5, ATFSampler,
-                            AnalyzeStability_mod, agent_params={}, create_seed=10,
+                            AnalyzeStability, agent_params={}, create_seed=10,
                             analyzer_params={}, experiment_params=experiment_params,
                             s3_prefix="test")
             new_loop.initialize()
@@ -48,7 +48,7 @@ class LoopTest(unittest.TestCase):
 
             # Construct and start loop
             new_loop = Loop(df, AgentStabilityML5, ATFSampler,
-                            AnalyzeStability_mod, agent_params={}, create_seed=True,
+                            AnalyzeStability, agent_params={}, create_seed=True,
                             analyzer_params={}, experiment_params=experiment_params,
                             )
             new_loop.generate_report_plot(
