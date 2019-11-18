@@ -251,17 +251,21 @@ class AnalyzeStability_mod(AnalyzerBase):
         self.space = None
         super(AnalyzeStability_mod, self).__init__()
 
-    def get_subspace(self, elements, df=None):
-        comps = self.df.loc[all_result_ids]['Composition'].dropna()
-        system_elements = []
-        for comp in comps:
-            system_elements += list(Composition(comp).as_dict().keys())
-        elems = set(system_elements)
-        ind_to_include = []
-        for ind in self.df.index:
-            if set(Composition(self.df.loc[ind]['Composition']).as_dict().keys()).issubset(elems):
-                ind_to_include.append(ind)
-        _df = self.df.loc[ind_to_include]
+    def filter_dataframe_by_composition(self, elements, df=None):
+        pass
+
+
+    def get_subspace(self, elements=None, df=None):
+        df = df or self.df
+        if elements is not None:
+            elements = set(elements)
+            ind_to_include = []
+            for ind in self.df.index:
+                if set(Composition(df.loc[ind]['Composition']).as_dict().keys()).issubset(elements):
+                    ind_to_include.append(ind)
+            _df = df.loc[ind_to_include]
+        else:
+            _df = df
 
         phases = []
         for data in _df.iterrows():
@@ -272,6 +276,7 @@ class AnalyzeStability_mod(AnalyzerBase):
         pd = PhaseData()
         pd.add_phases(phases)
         space = PhaseSpaceAL(bounds=ELEMENTS, data=pd)
+        return space
 
     def analyze(self, df=None, new_result_ids=None, all_result_ids=None):
         include_columns = ['Composition', 'delta_e']
