@@ -251,6 +251,28 @@ class AnalyzeStability_mod(AnalyzerBase):
         self.space = None
         super(AnalyzeStability_mod, self).__init__()
 
+    def get_subspace(self, elements, df=None):
+        comps = self.df.loc[all_result_ids]['Composition'].dropna()
+        system_elements = []
+        for comp in comps:
+            system_elements += list(Composition(comp).as_dict().keys())
+        elems = set(system_elements)
+        ind_to_include = []
+        for ind in self.df.index:
+            if set(Composition(self.df.loc[ind]['Composition']).as_dict().keys()).issubset(elems):
+                ind_to_include.append(ind)
+        _df = self.df.loc[ind_to_include]
+
+        phases = []
+        for data in _df.iterrows():
+            phases.append(Phase(data[1]['Composition'], energy=data[1]['delta_e'], per_atom=True, description=data[0]))
+        for el in ELEMENTS:
+            phases.append(Phase(el, 0.0, per_atom=True))
+
+        pd = PhaseData()
+        pd.add_phases(phases)
+        space = PhaseSpaceAL(bounds=ELEMENTS, data=pd)
+
     def analyze(self, df=None, new_result_ids=None, all_result_ids=None):
         include_columns = ['Composition', 'delta_e']
         self.df = df[include_columns].drop_duplicates(keep='last').dropna()
@@ -293,7 +315,7 @@ class AnalyzeStability_mod(AnalyzerBase):
         pd.add_phases(phases)
         space = PhaseSpaceAL(bounds=ELEMENTS, data=pd)
 
-        if all_result_ids:
+        if all_result_ids is not None:
             all_new_phases = [p for p in space.phases if p.description in all_result_ids]
         else:
             all_new_phases = None
