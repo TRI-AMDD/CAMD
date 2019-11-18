@@ -4,6 +4,7 @@ from monty.os import makedirs_p
 import boto3
 from camd.analysis import update_run_w_structure
 
+
 def get_all_s3_folders():
     client = boto3.client('s3')
     result = client.list_objects(

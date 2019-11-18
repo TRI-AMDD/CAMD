@@ -54,7 +54,7 @@ def update_run(folder):
                 print("{}: {}".format(folder, iteration))
                 if not os.path.isdir(str(iteration)) or not os.path.isdir(str(iteration-1)):
                     continue
-                with open(os.path.join(str(iteration),"seed_data.pickle"), "rb") as f:
+                with open(os.path.join(str(iteration), "seed_data.pickle"), "rb") as f:
                     result_df = pickle.load(f)
                 all_result_ids = loadfn(
                     os.path.join(str(iteration-1), "consumed_candidates.json"))
