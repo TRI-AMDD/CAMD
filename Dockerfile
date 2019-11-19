@@ -18,7 +18,7 @@ COPY . /home/camd
 
 # Install package
 RUN source /opt/conda/bin/activate camd && \
-    pip install tensorflow-probability && \
+    pip install gpflow && \
     pip install numpy && \
     pip install Django && \
     pip install botocore && \
