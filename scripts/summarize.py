@@ -23,6 +23,7 @@ def get_structure_data(structure):
             "spacegroup_sym": sga.get_space_group_symbol(),
             "spacegroup_num": sga.get_space_group_number()}
 
+
 def process_run():
     folder = os.getcwd()
     if os.path.isfile("error.json"):
@@ -70,6 +71,7 @@ def process_run():
                          for key, structure in unique_structures.items()}
         symmetry_df = pd.DataFrame.from_dict(symmetry_data, orient='index')
         summary = pd.concat([summary, symmetry_df], axis=1)
+        summary['url'] = simulation_data['url']
         return summary
 
 
@@ -87,17 +89,24 @@ def main():
     problem_folders = []
 
     local_folders = os.listdir('cache')
-    # local_folders = ['Au-Cl-Li']
+    # local_folders = ['Mn-S']
     for local_folder in tqdm(local_folders):
         with cd(os.path.join('cache', local_folder)):
             if CATCH_ERRORS:
                 try:
                     all_dfs.append(process_run())
+                    success = True
                 except Exception as e:
                     print(e)
                     problem_folders.append(local_folder)
+                    success = False
             else:
                 all_dfs.append(process_run())
+                success = True
+        if success and all_dfs[-1] is not None:
+            chemsys = os.path.split(local_folder)[-1]
+            all_dfs[-1].to_csv("summaries/{}.csv".format(chemsys))
+
     output = pd.concat(all_dfs, axis=0)
     output = output.sort_values('stabilities')
     output.to_csv("summary.csv")
