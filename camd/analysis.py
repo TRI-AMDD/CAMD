@@ -207,13 +207,14 @@ class AnalyzeStability(AnalyzerBase):
         self.multiprocessing = multiprocessing
         self.entire_space = entire_space
         self.space = None
+        self.stabilities = None
         super(AnalyzeStability, self).__init__()
 
     def filter_dataframe_by_composition(self, elements, df=None):
         """
         Filters dataframe by composition
         """
-        df = df or self.df
+        df = df if df is not None else self.df
         elements = set(elements)
         ind_to_include = []
         for ind in self.df.index:
@@ -225,7 +226,7 @@ class AnalyzeStability(AnalyzerBase):
         """
         Gets PhaseSpace object associated with dataframe
         """
-        _df = df or self.df
+        _df = df if df is not None else self.df
         phases = []
         for data in _df.iterrows():
             phases.append(Phase(data[1]['Composition'], energy=data[1]['delta_e'], per_atom=True, description=data[0]))
@@ -294,6 +295,7 @@ class AnalyzeStability(AnalyzerBase):
         # Key stabilities by ID
         stabilities_by_id = {phase.description: phase.stability
                              for phase in all_new_phases}
+        self.stabilities = stabilities_by_id
 
         # Get stabilities of new and all ids
         stabilities_of_new = np.array([stabilities_by_id.get(uid, np.nan)
@@ -417,11 +419,11 @@ class AnalyzeStability(AnalyzerBase):
         plot.close()
 
         if filename is not None and save_hull_distance:
-            if self.stabilities_of_all is None:
+            if self.stabilities is None:
                 print("ERROR: No stability information in analyzer.")
                 return None
             with open(filename.split(".")[0]+'.json', 'w') as f:
-                json.dump(self.stabilities_of_all, f)
+                json.dump(self.stabilities, f)
 
 
 class PhaseSpaceAL(PhaseSpace):
@@ -589,7 +591,7 @@ def update_run_w_structure(folder, hull_distance=0.2):
                     unique_s_dict[s_a.structure_ids[i]] = s_a.structures[i]
 
             with open("discovered_unique_structures.json", "w") as f:
-                json.dump(dict([(k, s.as_dict()) for k,s in unique_s_dict.items()]), f)
+                json.dump(dict([(k, s.as_dict()) for k, s in unique_s_dict.items()]), f)
 
             with open('structure_report.log', "w") as f:
                 f.write("consumed discovery unique_discovery duplicate in_icsd \n")
