@@ -7,13 +7,21 @@ import pandas as pd
 from tqdm import tqdm
 from monty.os import makedirs_p, cd
 from monty.serialization import loadfn
+from pymatgen import Composition
+from pymatgen.symmetry.analyzer import SpacegroupAnalyzer
 from camd.analysis import AnalyzeStability
 from add_structure_analysis import get_all_s3_folders, sync_s3_folder
 
-S3_SYNC = False
+S3_SYNC = True
 API_URL = "http://camd-api.matr.io"
 CATCH_ERRORS = True
 
+
+def get_structure_data(structure):
+    sga = SpacegroupAnalyzer(structure)
+    return {"xtal_system": sga.get_crystal_system(),
+            "spacegroup_sym": sga.get_space_group_symbol(),
+            "spacegroup_num": sga.get_space_group_number()}
 
 def process_run():
     folder = os.getcwd()
@@ -53,6 +61,15 @@ def process_run():
         summary['bandgap'] = simulation_data['bandgap']
         # Apply garcia correction
         summary['bandgap_garcia_exp'] = 1.358 * summary['bandgap'] + 0.904
+        summary['structure'] = pd.Series(unique_structures)
+        summary['chemsys'] = ['-'.join(sorted(list(Composition(comp).as_dict().keys())))
+                              for comp in summary['Composition']]
+
+        # Add structure data
+        symmetry_data = {key: get_structure_data(structure)
+                         for key, structure in unique_structures.items()}
+        symmetry_df = pd.DataFrame.from_dict(symmetry_data, orient='index')
+        summary = pd.concat([summary, symmetry_df], axis=1)
         return summary
 
 
@@ -65,11 +82,12 @@ def main():
         for run in all_s3_prefixes:
             local_folder = run.split('/')[-2]
             sync_s3_folder(run, local_folder=local_folder)
+        os.chdir('..')
     all_dfs = []
     problem_folders = []
 
     local_folders = os.listdir('cache')
-    # local_folders = ['Mn-S']
+    # local_folders = ['Au-Cl-Li']
     for local_folder in tqdm(local_folders):
         with cd(os.path.join('cache', local_folder)):
             if CATCH_ERRORS:
