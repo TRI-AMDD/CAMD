@@ -22,6 +22,7 @@ setup(
     # a proper install, pin numpy/networkx/matplotlib
     setup_requires=["numpy>=1.16"],
     install_requires=["numpy>=1.16",
+                      "python-dateutil==2.8.0",
                       "networkx==2.2",
                       "matplotlib",
                       "qmpy",
