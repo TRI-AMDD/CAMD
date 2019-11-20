@@ -38,14 +38,8 @@ setup(
                       "autologging",
                       "awscli",
                       "docopt",
-<<<<<<< HEAD
-                      "tensorflow==1.14.0",
-                      "gpflow",
-                      "indexed.py"
-=======
                       "tensorflow",
                       "gpflow"
->>>>>>> summarize_script
                       ],
     # TODO: make this materials?
     dependency_links=[
