@@ -22,6 +22,7 @@ setup(
     # a proper install, pin numpy/networkx/matplotlib
     setup_requires=["numpy>=1.16"],
     install_requires=["numpy>=1.16",
+                      "python-dateutil==2.8.0",
                       "networkx==2.2",
                       "matplotlib",
                       "qmpy",
@@ -37,9 +38,14 @@ setup(
                       "autologging",
                       "awscli",
                       "docopt",
+<<<<<<< HEAD
                       "tensorflow==1.14.0",
                       "gpflow",
                       "indexed.py"
+=======
+                      "tensorflow",
+                      "gpflow"
+>>>>>>> summarize_script
                       ],
     # TODO: make this materials?
     dependency_links=[
