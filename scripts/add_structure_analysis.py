@@ -4,6 +4,7 @@ from monty.os import makedirs_p
 import boto3
 from camd.analysis import update_run_w_structure
 
+
 def get_all_s3_folders():
     client = boto3.client('s3')
     result = client.list_objects(
@@ -31,8 +32,8 @@ def main():
     all_s3_prefixes = get_all_s3_folders()
     makedirs_p("cache")
     os.chdir("cache")
-    print(all_s3_prefixes)
-    for run in all_s3_prefixes:
+    print(list(enumerate(all_s3_prefixes)))
+    for run in all_s3_prefixes[27:]:
         local_folder = run.split('/')[-2]
         sync_s3_folder(run, local_folder=local_folder)
         update_run_w_structure(local_folder)

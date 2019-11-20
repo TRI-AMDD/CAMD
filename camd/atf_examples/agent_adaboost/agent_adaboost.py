@@ -3,7 +3,7 @@ from camd.loop import Loop
 
 from sklearn.neural_network import MLPRegressor
 from camd.agent.agents import AgentStabilityAdaBoost
-from camd.analysis import AnalyzeStability_mod
+from camd.analysis import AnalyzeStability
 from camd.experiment.base import ATFSampler
 from camd.utils.data import load_default_atf_data
 
@@ -27,7 +27,7 @@ agent_params = {
     'exploit_fraction': 0.75,  # Fraction to exploit (rest will be explored -- randomly picked)
     'n_estimators': 20      # number of estimators in AdaBoost
 }
-analyzer = AnalyzeStability_mod
+analyzer = AnalyzeStability
 analyzer_params = {'hull_distance': 0.05}
 experiment = ATFSampler
 experiment_params = {'dataframe': df}
