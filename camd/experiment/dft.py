@@ -15,22 +15,19 @@ import pandas as pd
 from monty.os import cd
 from monty.tempfile import ScratchDir
 from pymatgen.io.vasp.outputs import Vasprun
+from pymatgen import Composition
 from camd.experiment.base import Experiment
+from camd.utils.data import QMPY_REFERENCES, \
+    QMPY_REFERENCES_HUBBARD
 
 
 class OqmdDFTonMC1(Experiment):
-    def __init__(self, params):
-
-        if 'structure_dict' not in params:
-            raise ValueError("A dictionary of structures must be provided as input as structure_dict")
-
-        self.structure_dict = params['structure_dict']
-        self.poll_time = params['poll_time'] if 'poll_time' in params else 60
-        self.timeout = params['timeout'] if 'timeout' in params else 7200
-
-        self.unique_ids = params['unique_ids'] if 'unique_ids' in params else []
-        self.job_status = params['job_status'] if 'job_status' in params else {}
-        super().__init__(params)
+    def __init__(self, poll_time=60, timeout=7200,
+                 current_data=None, job_status=None):
+        self.poll_time = poll_time
+        self.timeout = timeout
+        super().__init__(current_data=current_data,
+                         job_status=job_status)
 
     @property
     def state(self):
@@ -42,12 +39,8 @@ class OqmdDFTonMC1(Experiment):
         else:
             return "unstarted"
 
-    @property
-    def state_detailed(self):
-        return NotImplementedError("Not implemented")
-
     def get_state(self):
-        self.job_status = check_dft_calcs(self.job_status)
+        self.job_status = check_dft_calcs(self.current_data)
         return all([doc['status'] in ['SUCCEEDED', 'FAILED']
                     for doc in self.job_status.values()])
 
@@ -58,8 +51,10 @@ class OqmdDFTonMC1(Experiment):
         results_dict = {}
         for structure_id, calc in self.job_status.items():
             if calc['status'] == "SUCCEEDED":
-                delta_e = get_qmpy_formation_energy(calc['result']['output']['final_energy_per_atom'],
-                                                    calc['result']['pretty_formula'], 1)
+                delta_e = get_qmpy_formation_energy(
+                    calc['result']['output']['final_energy_per_atom'],
+                    calc['result']['pretty_formula'], 1
+                )
 
                 results_dict[structure_id] = delta_e
 
@@ -75,13 +70,20 @@ class OqmdDFTonMC1(Experiment):
     def submit(self, unique_ids=None):
         """
         Args:
-            unique_ids (list): Unique ids for structures to run from the structure_dict. If None, all entries in
-            structure_dict are submitted.
+            unique_ids (list): Unique ids for structures to run
+                from the structure_dict. If None, all entries in
+                structure_dict are submitted.
+
         Returns:
+            (str): string corresponding to job status
 
         """
-        self.unique_ids = unique_ids if unique_ids else list(self.structure_dict.keys())
-        self._structures_to_run = dict([(k, v) for k, v in self.structure_dict.items() if k in self.unique_ids])
+        self.unique_ids = unique_ids if unique_ids else \
+            list(self.structure_dict.keys())
+        self._structures_to_run = {
+            structure_id: structure for structure_id, structure
+            in self.structure_dict.items() if structure_id in self.unique_ids
+        }
         self.job_status = submit_dft_calcs_to_mc1(self._structures_to_run)
         return self.job_status
 
@@ -284,34 +286,24 @@ def get_dft_calcs_from_northwestern(uids):
 
 
 def get_qmpy_formation_energy(total_e, formula, n_atoms):
-    mus = {u'Ac': -4.1060035325, u'Ag': -2.8217729525, u'Al': -3.74573946, u'Ar': -0.00636995, u'As': -4.651918435,
-           u'Au': -3.26680174, u'B': -6.67796758, u'Ba': -1.92352708, u'Be': -3.75520865, u'Bi': -4.038931855,
-           u'Br': -1.31759562258416, u'C': -9.2170759925, u'Ca': -1.977817, u'Cd': -0.90043514, u'Ce': -4.7771708225,
-           u'Cl': -1.47561368438088, u'Co': -7.089565, u'Cr': -9.50844998, u'Cs': -0.85462775, u'Cu': -3.7159594,
-           u'Dy': -4.60150328333333, u'Er': -4.56334055, u'Eu': -1.8875732, u'F': -1.45692429086889, u'Fe': -8.3078978,
-           u'Ga': -3.031846515, u'Gd': -4.6550712925, u'Ge': -4.623692585, u'H': -3.38063384781582, u'He': -0.004303435,
-           u'Hf': -9.955368785, u'Hg': -0.358963825033731, u'Ho': -4.57679364666667, u'I': -1.35196205757168,
-           u'In': -2.71993876, u'Ir': -8.8549203, u'K': -1.096699335, u'Kr': -0.004058825, u'La': -4.93543556,
-           u'Li': -1.89660627, u'Lu': -4.524181525, u'Mg': -1.54251595083333, u'Mn': -9.0269032462069,
-           u'Mo': -10.8480839, u'N': -8.11974103465649, u'Na': -1.19920373914835, u'Nb': -10.09391206,
-           u'Nd': -4.762916335, u'Ne': -0.02931791, u'Ni': -5.56661952, u'Np': -12.94027372125, u'O': -4.52329546412125,
-           u'Os': -11.22597601, u'P': -5.15856496104006, u'Pa': -9.49577589, u'Pb': -3.70396484, u'Pd': -5.17671826,
-           u'Pm': -4.7452352875, u'Pr': -4.7748066125, u'Pt': -6.05575959, u'Pu': -14.29838348, u'Rb': -0.9630733,
-           u'Re': -12.422818875, u'Rh': -7.26940476, u'Ru': -9.2019888, u'S': -3.83888286598664, u'Sb': -4.117563025,
-           u'Sc': -6.328367185, u'Se': -3.48117276, u'Si': -5.424892535, u'Sm': -4.7147675825, u'Sn': -3.9140929231488,
-           u'Sr': -1.6829138, u'Ta': -11.85252937, u'Tb': -5.28775675533333, u'Tc': -10.360747885,
-           u'Te': -3.14184237666667, u'Th': -7.41301719, u'Ti': -7.69805778621374, u'Tl': -2.359420025,
-           u'Tm': -4.47502416, u'U': -11.292348705, u'V': -8.94097896, u'W': -12.96020695, u'Xe': 0.00306349,
-           u'Y': -6.464420635, u'Yb': -1.51277545, u'Zn': -1.2660268, u'Zr': -8.54717235}
-    hubbard_mus = {u'Co': 2.0736240219357, u'Cr': 2.79591214925926, u'Cu': 1.457571831687, u'Fe': 2.24490453841424,
-                   u'Mn': 2.08652912841877, u'Ni': 2.56766185643768, u'Np': 2.77764768949249, u'Pu': 2.2108747749433,
-                   u'Th': 1.06653674624248, u'U': 2.57513786752409, u'V': 2.67812162528461}
+    """
+    Helper function to computer qmpy-compatible formation
+    energy using reference energies extracted from OQMD
 
-    from pymatgen import Composition
-    c = Composition(formula).fractional_composition
-    e = total_e / n_atoms
-    for k,v in c.as_dict().items():
-        e -= mus[k]*v
-        if (k in hubbard_mus) and ('O' in c):
-            e-=hubbard_mus[k]*v
-    return e
+    Args:
+        total_e (float): total energy
+        formula (str): chemical formula
+        n_atoms (int): number of atoms
+
+    Returns:
+        (float): qmpy-compatible formation energy
+
+    """
+    composition = Composition(formula).fractional_composition
+    energy = total_e / n_atoms
+    for element, weight in composition.as_dict().items():
+        energy -= QMPY_REFERENCES[element] * weight
+        if (element in QMPY_REFERENCES_HUBBARD) \
+                and ('O' in composition):
+            energy -= QMPY_REFERENCES_HUBBARD[element] * weight
+    return energy

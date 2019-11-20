@@ -17,10 +17,9 @@ class Experiment(abc.ABC, MSONable):
     we might just want to use FireWorks for this
     """
 
-    def __init__(self, params):
-        self._params = params
-        self.job_status = None
-        self.unique_ids = None
+    def __init__(self, current_data=None, job_status=None):
+        self.current_data = current_data
+        self.job_status = job_status
 
     @abc.abstractmethod
     def get_state(self):
@@ -41,17 +40,6 @@ class Experiment(abc.ABC, MSONable):
 
         """
 
-    def get_parameter(self, parameter_name):
-        """
-        Args:
-            parameter_name (str): name of parameter to get
-
-        Returns:
-            parameter value
-
-        """
-        return self._params[parameter_name]
-
     def _update_results(self, indices):
         self.results = self.get_results(indices)
 
@@ -62,18 +50,16 @@ class Experiment(abc.ABC, MSONable):
         """
 
     @abc.abstractmethod
-    def submit(self, unique_ids):
+    def submit(self, data):
         """
-        # Accepts job requests by unique id of candidates
+        Args:
+            data (DataFrame): dataframe containing all necessary
+                data to conduct the experiment(s).  May be one
+                row, may be multiple rows
+
         Returns:
-            str: 'unstarted', 'pending', 'completed'
-
+            None
         """
-
-    # TODO: docstring here?  what does job_status look like?
-    def update_job_status(self, job_status):
-        self.job_status = job_status
-        self.unique_ids = list(job_status.keys())
 
 
 @camd_traced
@@ -82,22 +68,39 @@ class ATFSampler(Experiment):
     A simple after the fact sampler that just samples
     a dataframe according to index_values
     """
+    def __init__(self, dataframe, current_data=None, job_status=None):
+        self.dataframe = dataframe
+        super(ATFSampler, self).__init__(
+            current_data=current_data,
+            job_status=job_status
+        )
 
     def start(self):
         """There's no start procedure for this particular experiment"""
         pass
 
     def get_state(self):
-        """This experiment should be complete on construction"""
+        """
+        This experiment should be complete on construction
+        """
         return "completed"
 
-    def get_results(self, index_values):
-        dataframe = self.get_parameter('dataframe')
-        return dataframe.loc[index_values].dropna(axis=0, how='any')
+    def get_results(self):
+        """
+        Simply samples the dataframe associated with the ATFSampler
+        object according to the last submitted data
 
-    def submit(self, index_values):
+        Returns:
+            (DataFrame): DataFrame of results
+
+        """
+        indices = self.current_data.index
+        return self.dataframe.loc[indices].dropna(axis=0, how='any')
+
+    def submit(self, data):
         """This does nothing, since the "experiments" are already done"""
-        return {index_value: "completed" for index_value in index_values}
+        self.current_data = data
+        return None
 
     def monitor(self):
         return True

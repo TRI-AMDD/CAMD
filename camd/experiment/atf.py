@@ -9,24 +9,44 @@ from camd.utils.data import load_default_atf_data
 
 
 class LocalAgentSimulation(Experiment):
-    def __init__(self, params):
-        self.dataframe = params.get("dataframe", load_default_atf_data())
-        self.iterations = params.get("iterations", 50)
-        self.analyzer = params.get("analyzer", AnalyzeStability(hull_distance=0.05))
-        self.n_seed = params.get("n_seed", 500)
-        self.job_status = "unstarted"
-        super(LocalAgentSimulation, self).__init__(params)
+    def __init__(self, dataframe, iterations, analyzer, n_seed,
+                 current_data=None, job_status="unstarted"):
+        """
+        Args:
+            dataframe:
+            iterations:
+            analyzer:
+            n_seed:
+            current_data:
+            job_status:
+        """
+        self.dataframe = dataframe
+        self.iterations = iterations
+        self.analyzer = analyzer
+        self.n_seed = n_seed
+        super(LocalAgentSimulation, self).__init__(
+            current_data=current_data, job_status=job_status)
 
-    def submit(self, agent):
+    def submit(self, data):
+        """
+        Args:
+            data (DataFrame): data associated with agent
+
+        Returns:
+            None
+
+        """
+        self.current_data = data
+        agent = data['agent']
         loop = Loop(
-            candidate_data=self.params['dataframe'],
-            agent=self.params['agent'],
-            analyzer=self.params['analyzer'],
-            experiment=ATFSampler({"dataframe": self.dataframe}),
+            candidate_data=self.dataframe,
+            agent=agent,
+            analyzer=self.analyzer,
+            experiment=ATFSampler(dataframe=self.dataframe),
             create_seed=self.n_seed,
         )
         loop.auto_loop(n_iterations=self.iterations, initialize=True)
-        self.update_job_status("completed")
+        self.job_status = "completed"
 
     def monitor(self):
         pass

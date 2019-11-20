@@ -23,15 +23,18 @@ from matminer.featurizers.structure import (SiteStatsFingerprint, StructuralHete
 
 class DomainBase(abc.ABC):
     """
-    Domains combine geberation and featurization and prepare the search space for CAMD Loop.
+    Domains combine generation and featurization and prepare the
+    search space for CAMD Loop.
     """
     @abc.abstractmethod
     def candidates(self):
         """
         Primary method for every Domain to provide candidates.
+
         Returns:
-            pandas.DataFrame: features for generated hypothetical structures. The Index of dataframe should be
-                the unique ids for the structures.
+            (pandas.DataFrame): features for generated hypothetical
+                structures.  The Index of dataframe should be the
+                unique ids for the structures.
         """
         pass
 
@@ -48,6 +51,7 @@ class DomainBase(abc.ABC):
     def sample(self, num_samples):
         """
         Abstract method for sampling from created domain
+
         Args:
             num_samples:
         Returns:
@@ -57,7 +61,10 @@ class DomainBase(abc.ABC):
     @property
     def bounds_string(self):
         """
-        Returns: a string representation of search space bounds: e.g. "Ir-Fe-O" or "x1-x2-x3"
+        Property representation of search space bounds
+        Returns:
+            (str): representation of search space bounds, e.g.
+                "Ir-Fe-O" or "x1-x2-x3"
         """
         return '-'.join(self.bounds)
 
@@ -83,9 +90,12 @@ class StructureDomain(DomainBase):
         self._hypo_structures = None
 
     @classmethod
-    def from_bounds(cls, bounds, n_max_atoms=None, charge_balanced=True, create_subsystems=False, **kwargs):
+    def from_bounds(cls, bounds, n_max_atoms=None, charge_balanced=True,
+                    create_subsystems=False, **kwargs):
         """
-        Convenience constructor that delivers an ML-ready domain from defined chemical boundaries.
+        Convenience constructor that delivers an ML-ready domain
+        from defined chemical boundaries.
+
         Args:
             bounds:
             charge_balanced:
