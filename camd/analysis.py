@@ -23,11 +23,15 @@ from camd import S3_CACHE
 from monty.os import cd
 from monty.serialization import loadfn
 
-ELEMENTS = ['Ru', 'Re', 'Rb', 'Rh', 'Be', 'Ba', 'Bi', 'Br', 'H', 'P', 'Os', 'Ge', 'Gd', 'Ga', 'Pr', 'Pt', 'Pu', 'C',
-            'Pb', 'Pa', 'Pd', 'Xe', 'Pm', 'Ho', 'Hf', 'Hg', 'He', 'Mg', 'K', 'Mn', 'O', 'S', 'W', 'Zn', 'Eu', 'Zr',
-            'Er', 'Ni', 'Na', 'Nb', 'Nd', 'Ne', 'Np', 'Fe', 'B', 'F', 'Sr', 'N', 'Kr', 'Si', 'Sn', 'Sm', 'V', 'Sc',
-            'Sb', 'Se', 'Co', 'Cl', 'Ca', 'Ce', 'Cd', 'Tm', 'Cs', 'Cr', 'Cu', 'La', 'Li', 'Tl', 'Lu', 'Th', 'Ti', 'Te',
-            'Tb', 'Tc', 'Ta', 'Yb', 'Dy', 'I', 'U', 'Y', 'Ac', 'Ag', 'Ir', 'Al', 'As', 'Ar', 'Au', 'In', 'Mo']
+ELEMENTS = ['Ru', 'Re', 'Rb', 'Rh', 'Be', 'Ba', 'Bi', 'Br', 'H', 'P',
+            'Os', 'Ge', 'Gd', 'Ga', 'Pr', 'Pt', 'Pu', 'C', 'Pb', 'Pa',
+            'Pd', 'Xe', 'Pm', 'Ho', 'Hf', 'Hg', 'He', 'Mg', 'K', 'Mn',
+            'O', 'S', 'W', 'Zn', 'Eu', 'Zr', 'Er', 'Ni', 'Na', 'Nb',
+            'Nd', 'Ne', 'Np', 'Fe', 'B', 'F', 'Sr', 'N', 'Kr', 'Si',
+            'Sn', 'Sm', 'V', 'Sc', 'Sb', 'Se', 'Co', 'Cl', 'Ca', 'Ce',
+            'Cd', 'Tm', 'Cs', 'Cr', 'Cu', 'La', 'Li', 'Tl', 'Lu', 'Th',
+            'Ti', 'Te', 'Tb', 'Tc', 'Ta', 'Yb', 'Dy', 'I', 'U', 'Y', 'Ac',
+            'Ag', 'Ir', 'Al', 'As', 'Ar', 'Au', 'In', 'Mo']
 
 
 # TODO: Eval Performance = start / stop?
@@ -59,29 +63,34 @@ class AnalyzerBase(abc.ABC):
 @camd_traced
 class AnalyzeStructures(AnalyzerBase):
     """
-    This class tests if a list of structures are unique. The typical use case here is comparing
-    hypothetical structures (post-DFT relaxation) and those from ICSD.
-
+    This class tests if a list of structures are unique. Typically
+    used for comparing hypothetical structures (post-DFT relaxation)
+    and those from ICSD.
     """
-    def __init__(self, structures=None, hull_distance = None):
+    def __init__(self, structures=None, hull_distance=None):
         self.structures = structures if structures else []
+        self.structure_ids = None
         self.unique_structures = None
         self.groups = None
+        self.energies = None
         self.against_icsd = False
         self.structure_is_unique = None
         self.hull_distance = hull_distance
         super(AnalyzeStructures, self).__init__()
 
-    def analyze(self, structures=None, structure_ids=None, against_icsd=False,
-                        energies=None):
+    def analyze(self, structures=None, structure_ids=None,
+                against_icsd=False, energies=None):
         """
-        One encounter of a given structure will be labeled as True, its remaining matching structures as False.
+        One encounter of a given structure will be labeled as True, its
+        remaining matching structures as False.
+
         Args:
             structures (list): a list of structures to be compared.
-            labels (list): uids of strucures, optional.
+            structure_ids (list): uids of structures, optional.
             against_icsd (bool): whether a comparison to icsd is also made.
-            energies (list): list of energies (per atom) corresponding to structures. If given,
-                the lowest energy instance of a given structure will be return as the unique one. Otherwise,
+            energies (list): list of energies (per atom) corresponding
+                to structures. If given, the lowest energy instance of a
+                given structure will be return as the unique one. Otherwise,
                 there is no such guarantee. (optional)
         Returns:
             ([bool]) list of bools corresponding to the given list of
@@ -98,8 +107,8 @@ class AnalyzeStructures(AnalyzerBase):
 
         if self.energies:
             for i in range(len(self.groups)):
-                self.groups[i] = [ x for _,x in sorted( zip([ self.energies[self.structures.index(s)]
-                                                              for s in self.groups[i] ], self.groups[i] ) )]
+                self.groups[i] = [x for _, x in sorted(zip([self.energies[self.structures.index(s)]
+                                                            for s in self.groups[i]], self.groups[i]))]
 
         self._unique_structures = [i[0] for i in self.groups]
         for s in structures:
@@ -179,6 +188,7 @@ class AnalyzeStructures(AnalyzerBase):
 class FinalizeQqmdCampaign:
     def __init__(self, hull_distance=None):
         self.hull_distance = hull_distance if hull_distance else 0.2
+        self.path = None
 
     def finalize(self, path=None):
         """
@@ -187,60 +197,8 @@ class FinalizeQqmdCampaign:
         self.path = path if path else '.'
         update_run_w_structure(self.path, hull_distance=self.hull_distance)
 
-@camd_traced
+
 class AnalyzeStability(AnalyzerBase):
-    """
-    This the original stability analyzer. It will be replaced with AnalyzeStability_mod in the near future as
-    we finish adding the new functionality to the new class and fully test.
-    """
-    def __init__(self, df=None, new_result_ids=None, hull_distance=None, multiprocessing=True):
-        self.df = df
-        self.new_result_ids = new_result_ids
-        self.hull_distance = hull_distance if hull_distance else 0.05
-        self.multiprocessing = multiprocessing
-        self.space = None
-        self.stabilities_of_all = None
-        super(AnalyzeStability, self).__init__()
-
-    def analyze(self, df=None, new_result_ids=None, all_result_ids=None):
-        self.df = df
-        self.new_result_ids = new_result_ids
-        phases = []
-        for data in self.df.iterrows():
-            phases.append(Phase(data[1]['Composition'], energy=data[1]['delta_e'], per_atom=True, description=data[0]))
-        for el in ELEMENTS:
-            phases.append(Phase(el, 0.0, per_atom=True))
-
-        pd = PhaseData()
-        pd.add_phases(phases)
-        space = PhaseSpaceAL(bounds=ELEMENTS, data=pd)
-
-        if self.multiprocessing:
-            space.compute_stabilities_multi()
-        else:
-            space.compute_stabilities_mod()
-        self.space = space
-
-        # Add dtype so that None values can be compared
-        stabilities_of_space_uids = np.array([p.stability for p in space.phases],
-                                             dtype=np.float) <= self.hull_distance
-        stabilities_of_new = {}
-        for _p in space.phases:
-            if _p.description in self.new_result_ids:
-                stabilities_of_new[_p.description] = _p.stability
-
-        self.stabilities_of_new = stabilities_of_new
-        stabilities_of_new_uids = np.array([stabilities_of_new[uid] for uid in self.new_result_ids],
-                                           dtype=np.float) <= self.hull_distance
-
-        # array of bools for stable vs not for new uids, and all experiments, respectively
-        return stabilities_of_new_uids, stabilities_of_space_uids
-
-    def present(self):
-        pass
-
-
-class AnalyzeStability_mod(AnalyzerBase):
     def __init__(self, df=None, new_result_ids=None, hull_distance=None,
                  multiprocessing=True, entire_space=False):
         self.df = df
@@ -249,40 +207,26 @@ class AnalyzeStability_mod(AnalyzerBase):
         self.multiprocessing = multiprocessing
         self.entire_space = entire_space
         self.space = None
-        super(AnalyzeStability_mod, self).__init__()
+        self.stabilities = None
+        super(AnalyzeStability, self).__init__()
 
-    def analyze(self, df=None, new_result_ids=None, all_result_ids=None):
-        include_columns = ['Composition', 'delta_e']
-        self.df = df[include_columns].drop_duplicates(keep='last').dropna()
-        # Note some of id's in all_result_ids may not have corresponding
-        # experiment, if those exps. failed.
-        self.all_result_ids = all_result_ids
-        self.new_result_ids = new_result_ids
+    def filter_dataframe_by_composition(self, elements, df=None):
+        """
+        Filters dataframe by composition
+        """
+        df = df if df is not None else self.df
+        elements = set(elements)
+        ind_to_include = []
+        for ind in self.df.index:
+            if set(Composition(df.loc[ind]['Composition']).as_dict().keys()).issubset(elements):
+                ind_to_include.append(ind)
+        return df.loc[ind_to_include]
 
-        if not self.entire_space:
-            # This option constrains the phase space to that of the target
-            # compounds. This should be more efficient when searching in
-            # a specified chemistry, less efficient if larger spaces are
-            # being scanned without chemistry focus.
-
-            # TODO: Fix this line to be compatible with
-            # later versions of pandas (i.e. b/c all_result_ids may contain
-            # things not in df currently (b/c of failed experiments).
-            # We should test comps = self.df.loc[self.df.index.intersection(all_result_ids)]
-
-            comps = self.df.loc[all_result_ids]['Composition'].dropna()
-            system_elements = []
-            for comp in comps:
-                system_elements += list(Composition(comp).as_dict().keys())
-            elems = set(system_elements)
-            ind_to_include = []
-            for ind in self.df.index:
-                if set(Composition(self.df.loc[ind]['Composition']).as_dict().keys()).issubset(elems):
-                    ind_to_include.append(ind)
-            _df = self.df.loc[ind_to_include]
-        else:
-            _df = self.df
-
+    def get_phase_space(self, df=None):
+        """
+        Gets PhaseSpace object associated with dataframe
+        """
+        _df = df if df is not None else self.df
         phases = []
         for data in _df.iterrows():
             phases.append(Phase(data[1]['Composition'], energy=data[1]['delta_e'], per_atom=True, description=data[0]))
@@ -292,8 +236,51 @@ class AnalyzeStability_mod(AnalyzerBase):
         pd = PhaseData()
         pd.add_phases(phases)
         space = PhaseSpaceAL(bounds=ELEMENTS, data=pd)
+        return space
 
-        if all_result_ids:
+    def analyze(self, df=None, new_result_ids=None, all_result_ids=None,
+                return_within_hull=True):
+        """
+        Args:
+            df (DataFrame): data frame with structure-data for formation
+                energy, composition, etc.
+            new_result_ids (list): list of ids from the dataframe index
+                corresponding to new results
+            all_result_ids (list): list of ids from the dataframe index
+                corresponding to all desired analyzed results
+            return_within_hull (bool): whether to return boolean array
+                corresponding to whether stabilities are within hull
+                or raw results
+
+        Returns:
+
+        """
+        include_columns = ['Composition', 'delta_e']
+        self.df = df[include_columns].drop_duplicates(keep='last').dropna()
+        # Note some of id's in all_result_ids may not have corresponding
+        # experiment, if those exps. failed.
+        self.all_result_ids = all_result_ids
+        self.new_result_ids = new_result_ids
+
+        if not self.entire_space:
+            # Constrains the phase space to that of the target compounds.
+            # More efficient when searching in a specified chemistry,
+            # less efficient if larger spaces are without specified chemistry.
+            comps = self.df.loc[all_result_ids]['Composition'].dropna()
+            system_elements = []
+            for comp in comps:
+                system_elements += list(Composition(comp).as_dict().keys())
+            # TODO: Fix this line to be compatible with
+            # later versions of pandas (i.e. b/c all_result_ids may contain
+            # things not in df currently (b/c of failed experiments).
+            # We should test comps = self.df.loc[self.df.index.intersection(all_result_ids)]
+            _df = self.filter_dataframe_by_composition(system_elements)
+        else:
+            _df = self.df
+
+        space = self.get_phase_space(_df)
+
+        if all_result_ids is not None:
             all_new_phases = [p for p in space.phases if p.description in all_result_ids]
         else:
             all_new_phases = None
@@ -305,40 +292,23 @@ class AnalyzeStability_mod(AnalyzerBase):
 
         self.space = space
 
-        stabilities_of_new = {}
-        for _p in all_new_phases:
-            if _p.description in self.new_result_ids:
-                stabilities_of_new[_p.description] = _p.stability
-        self.stabilities_of_new = stabilities_of_new
+        # Key stabilities by ID
+        stabilities_by_id = {phase.description: phase.stability
+                             for phase in all_new_phases}
+        self.stabilities = stabilities_by_id
 
-        stabilities_of_new_uids = []
-        for uid in self.new_result_ids:
-            if uid in stabilities_of_new:
-                stabilities_of_new_uids.append(stabilities_of_new[uid])
-            else:
-                stabilities_of_new_uids.append(np.nan)
-        stabilities_of_new_uids = np.array(stabilities_of_new_uids, dtype=np.float) <= self.hull_distance
+        # Get stabilities of new and all ids
+        stabilities_of_new = np.array([stabilities_by_id.get(uid, np.nan)
+                                       for uid in self.new_result_ids])
+        stabilities_of_all = np.array([stabilities_by_id.get(uid, np.nan)
+                                       for uid in self.all_result_ids])
 
+        # Cast to boolean if specified
+        if return_within_hull:
+            stabilities_of_new = stabilities_of_new <= self.hull_distance
+            stabilities_of_all = stabilities_of_all <= self.hull_distance
 
-        stabilities_of_all = {}
-        for _p in all_new_phases:
-            if _p.description in self.all_result_ids:
-                stabilities_of_all[_p.description] = _p.stability
-        self.stabilities_of_all = stabilities_of_all
-
-        stabilities_of_space_uids = []
-        for uid in self.all_result_ids:
-            if uid in stabilities_of_all:
-                stabilities_of_space_uids.append(stabilities_of_all[uid])
-            else:
-                stabilities_of_space_uids.append(np.nan)
-        stabilities_of_space_uids = np.array(stabilities_of_space_uids, dtype=np.float) <= self.hull_distance
-
-        # stabilities_of_new_uids = np.array([stabilities_of_new[uid] for uid in self.new_result_ids],
-        #                                    dtype=np.float) <= self.hull_distance
-
-        # array of bools for stable vs not for new uids, and all experiments, respectively
-        return stabilities_of_new_uids, stabilities_of_space_uids
+        return stabilities_of_new, stabilities_of_all
 
     def present(self, df=None, new_result_ids=None, all_result_ids=None,
                 filename=None, save_hull_distance=False, finalize=False):
@@ -449,11 +419,11 @@ class AnalyzeStability_mod(AnalyzerBase):
         plot.close()
 
         if filename is not None and save_hull_distance:
-            if self.stabilities_of_all is None:
+            if self.stabilities is None:
                 print("ERROR: No stability information in analyzer.")
                 return None
             with open(filename.split(".")[0]+'.json', 'w') as f:
-                json.dump(self.stabilities_of_all, f)
+                json.dump(self.stabilities, f)
 
 
 class PhaseSpaceAL(PhaseSpace):
@@ -605,7 +575,7 @@ def update_run_w_structure(folder, hull_distance=0.2):
                 df = pickle.load(f)
 
             all_ids = loadfn("consumed_candidates.json")
-            st_a = AnalyzeStability_mod(df=df, hull_distance=hull_distance)
+            st_a = AnalyzeStability(df=df, hull_distance=hull_distance)
             _, stablities_of_discovered = st_a.analyze(df, all_ids, all_ids)
 
             # Having calculated stabilities again, we plot the overall hull.
@@ -621,7 +591,7 @@ def update_run_w_structure(folder, hull_distance=0.2):
                     unique_s_dict[s_a.structure_ids[i]] = s_a.structures[i]
 
             with open("discovered_unique_structures.json", "w") as f:
-                json.dump(dict([(k,s.as_dict()) for k,s in unique_s_dict.items()]), f)
+                json.dump(dict([(k, s.as_dict()) for k, s in unique_s_dict.items()]), f)
 
             with open('structure_report.log', "w") as f:
                 f.write("consumed discovery unique_discovery duplicate in_icsd \n")
@@ -630,5 +600,3 @@ def update_run_w_structure(folder, hull_distance=0.2):
                         str(len(unique_s_dict)) + ' '
                         + str(len(s_a.structures) - sum(s_a._not_duplicate)) + ' '
                         + str(sum([not i for i in s_a._icsd_filter])))
-if __name__ == '__main__':
-    update_run_w_structure('/Users/muratahan.aykol/local_dev/CAMD/scripts/cache/Mn-P-S')
