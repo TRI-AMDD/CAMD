@@ -15,7 +15,7 @@ def initialize_agent_campaign(name, dataframe, agent_pool=None):
 
     Args:
         name (name): name of the campaign to initialize
-        dataframe (DataFrame):
+        dataframe (DataFrame): dataframe to use for sampling agents
         agent_pool (ParameterTable): parameter table of agents
 
     Returns:
@@ -65,12 +65,3 @@ def update_agent_pool(name, params):
     pickled_agent = pickle.dumps(agent_pool)
     client.Object(CAMD_S3_BUCKET, "{}/agent_pool.pickle").put(
         Body=pickled_agent)
-
-
-# class StabilityAgentSimulator(Experiment):
-#     """
-#     An experiment class which is intended to simulate the
-#     performance of an agent on making predictions of a
-#     dataframe
-#     """
-#     def __init__(self, dataframe, agent, analyzer=None):

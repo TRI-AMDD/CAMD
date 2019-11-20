@@ -27,16 +27,14 @@ agent_params = {
     'exploit_fraction': 0.75,  # Fraction to exploit (rest will be explored -- randomly picked)
     'n_estimators': 20      # number of estimators in AdaBoost
 }
-analyzer = AnalyzeStability
-analyzer_params = {'hull_distance': 0.05}
-experiment = ATFSampler
-experiment_params = {'dataframe': df}
+agent = agent(**agent_params)
+analyzer = AnalyzeStability(hull_distance=0.05)
+experiment = ATFSampler(params={"dataframe": df})
 candidate_data = df
 ##########################################################
 new_loop = Loop(
     candidate_data, agent, experiment, analyzer,
-    agent_params=agent_params, analyzer_params=analyzer_params,
-    experiment_params=experiment_params,
-    create_seed=n_seed)
+    create_seed=n_seed
+)
 
 new_loop.auto_loop(n_iterations=4, timeout=5, initialize=True)
