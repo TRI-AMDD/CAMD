@@ -12,7 +12,7 @@ from camd.analysis import AnalyzeStability as AnalyzeStability
 from camd.experiment import ATFSampler
 from camd.loop import Loop
 from camd.utils.s3 import cache_s3_objs
-from camd import S3_CACHE, CAMD_TEST_FILES
+from camd import CAMD_TEST_FILES
 from camd.utils.data import load_default_atf_data
 
 
