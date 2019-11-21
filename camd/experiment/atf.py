@@ -3,12 +3,10 @@
 This module provides resources for agent optimization campaigns
 """
 from camd.experiment.base import Experiment, ATFSampler
-from camd.analysis import AnalyzeStability
 from camd.loop import Loop
-from camd.utils.data import load_default_atf_data
 
 
-class AgentSimulation(Experiment):
+class LocalAgentSimulation(Experiment):
     def __init__(self, atf_dataframe, iterations, analyzer, n_seed,
                  current_data=None, job_status="unstarted"):
         """
@@ -24,7 +22,7 @@ class AgentSimulation(Experiment):
         self.iterations = iterations
         self.analyzer = analyzer
         self.n_seed = n_seed
-        super(AgentSimulation, self).__init__(
+        super(LocalAgentSimulation, self).__init__(
             current_data=current_data, job_status=job_status)
 
     def submit(self, data):
@@ -50,4 +48,3 @@ class AgentSimulation(Experiment):
 
     def monitor(self):
         pass
-
