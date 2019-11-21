@@ -13,6 +13,7 @@ from camd.experiment import ATFSampler
 from camd.loop import Loop
 from camd.utils.s3 import cache_s3_objs
 from camd import S3_CACHE, CAMD_TEST_FILES
+from camd.utils.data import load_default_atf_data
 
 
 CAMD_LONG_TESTS = os.environ.get("CAMD_LONG_TESTS", False)
@@ -34,26 +35,14 @@ class AftLoopTestLong(unittest.TestCase):
         shutil.rmtree(self.tempdir)
 
     def test_random_agent_loop(self):
-
-        self.assertTrue(os.path.exists(os.path.join(S3_CACHE, 'camd/shared-data/oqmd_voro_March25_v2.csv')))
-
-        df = pd.read_csv(os.path.join(S3_CACHE, 'camd/shared-data/oqmd_voro_March25_v2.csv')).sample(frac=0.2)
+        df = load_default_atf_data()
         n_seed = 5000
-        n_query = 200
-        agent = RandomAgent
-        agent_params = {
-            'hull_distance': 0.05,
-            'n_query': n_query,
-        }
-        analyzer = AnalyzeStability
-        analyzer_params = {'hull_distance': 0.05}
-        experiment = ATFSampler
-        experiment_params = {'params': {'dataframe': df}}
+        agent = RandomAgent(n_query=200)
+        analyzer = AnalyzeStability(hull_distance=0.05)
+        experiment = ATFSampler(dataframe=df)
         candidate_data = df
-        path = '.'
 
         new_loop = Loop(candidate_data, agent, experiment, analyzer,
-                        agent_params=agent_params, analyzer_params=analyzer_params, experiment_params=experiment_params,
                         create_seed=n_seed)
 
         new_loop.initialize()
@@ -78,19 +67,13 @@ class AtfLoopTest(unittest.TestCase):
         shutil.rmtree(self.tempdir)
 
     def test_random_agent_loop(self):
-        df = pd.read_csv(os.path.join(CAMD_TEST_FILES, 'test_df.csv'))
+        df = load_default_atf_data()
         n_seed = 200  # Starting sample size
-        n_query = 10  # This many new candidates are "calculated with DFT" (i.e. requested from Oracle -- DFT)
-        agent = RandomAgent
-        agent_params = {'n_query': n_query}
-        analyzer = AnalyzeStability
-        analyzer_params = {'hull_distance': 0.05}
-        experiment = ATFSampler
-        experiment_params = {'dataframe': df}
+        agent = RandomAgent(n_query=10)
+        analyzer = AnalyzeStability(hull_distance=0.05)
+        experiment = ATFSampler(dataframe=df)
         candidate_data = df
         new_loop = Loop(candidate_data, agent, experiment, analyzer,
-                        agent_params=agent_params, analyzer_params=analyzer_params,
-                        experiment_params=experiment_params,
                         create_seed=n_seed)
 
         new_loop.initialize()
@@ -102,8 +85,6 @@ class AtfLoopTest(unittest.TestCase):
 
         # Testing the continuation
         new_loop = Loop(candidate_data, agent, experiment, analyzer,
-                        agent_params=agent_params, analyzer_params=analyzer_params,
-                        experiment_params=experiment_params,
                         create_seed=n_seed)
         self.assertTrue(new_loop.initialized)
         self.assertEqual(new_loop.iteration, 6)
@@ -118,25 +99,14 @@ class AtfLoopTest(unittest.TestCase):
         df_sub = df[df['N_species'] <= 3]
         n_seed = 200  # Starting sample size
         n_query = 10  # This many new candidates are "calculated with DFT" (i.e. requested from Oracle -- DFT)
-        agent = QBCStabilityAgent
-        agent_params = {
-            'ml_algorithm': MLPRegressor,
-            'ml_algorithm_params': {'hidden_layer_sizes': (84, 50)},
-            'n_query': n_query,
-            'n_members': 10,  # Committee size
-            'hull_distance': 0.05,  # Distance to hull to consider a finding as discovery (eV/atom)
-            'alpha': 0.5  # Fraction to exploit (rest will be explored -- randomly picked)
-        }
-        analyzer = AnalyzeStability
-        analyzer_params = {'hull_distance': 0.05}
-        experiment = ATFSampler
-        experiment_params = {'dataframe': df_sub}
+        agent = QBCStabilityAgent(model=MLPRegressor(hidden_layer_sizes=(84, 50)),
+                                  n_query=10, hull_distance=0.05, alpha=0.5)
+        analyzer = AnalyzeStability(hull_distance=0.05)
+        experiment = ATFSampler(dataframe=df_sub)
         candidate_data = df_sub
         path = '.'
 
         new_loop = Loop(candidate_data, agent, experiment, analyzer,
-                        agent_params=agent_params, analyzer_params=analyzer_params,
-                        experiment_params=experiment_params,
                         create_seed=n_seed)
         new_loop.initialize()
         self.assertTrue(new_loop.initialized)
@@ -149,22 +119,12 @@ class AtfLoopTest(unittest.TestCase):
         df_sub = df[df['N_species'] <= 3]
         n_seed = 200  # Starting sample size
         n_query = 10  # This many new candidates are "calculated with DFT" (i.e. requested from Oracle -- DFT)
-        agent = GaussianProcessStabilityAgent
-        agent_params = {
-            'n_query': n_query,
-            'hull_distance': 0.05,  # Distance to hull to consider a finding as discovery (eV/atom)
-            'alpha': 0.5  # Fraction of std to include in expected improvement
-        }
-        analyzer = AnalyzeStability
-        analyzer_params = {'hull_distance': 0.05}
-        experiment = ATFSampler
-        experiment_params = {'dataframe': df_sub}
+        agent = GaussianProcessStabilityAgent(n_query=n_query, hull_distance=0.05, alpha=0.5)
+        analyzer = AnalyzeStability(hull_distance=0.05)
+        experiment = ATFSampler(dataframe=df_sub)
         candidate_data = df_sub
-        path = '.'
 
         new_loop = Loop(candidate_data, agent, experiment, analyzer,
-                        agent_params=agent_params, analyzer_params=analyzer_params,
-                        experiment_params=experiment_params,
                         create_seed=n_seed)
         new_loop.initialize()
         self.assertTrue(new_loop.initialized)
@@ -176,25 +136,18 @@ class AtfLoopTest(unittest.TestCase):
         df = pd.read_csv(os.path.join(CAMD_TEST_FILES, 'test_df.csv'))
         df_sub = df[df['N_species'] <= 3]
         n_seed = 200  # Starting sample size
-        n_query = 10  # This many new candidates are "calculated with DFT" (i.e. requested from Oracle -- DFT)
-        agent = BaggedGaussianProcessStabilityAgent
-        agent_params = {
-            'n_query': n_query,
-            'hull_distance': 0.05,  # Distance to hull to consider a finding as discovery (eV/atom)
-            'alpha': 0.5,  # Fraction of std to include in expected improvement
-            'n_estimators': 2,
-            'max_samples': 195
-        }
-        analyzer = AnalyzeStability
-        analyzer_params = {'hull_distance': 0.05}
-        experiment = ATFSampler
-        experiment_params = {'dataframe': df_sub}
+        agent = BaggedGaussianProcessStabilityAgent(
+            n_query=10,
+            hull_distance=0.05,
+            alpha=0.5, # Fraction of std to include in expected improvement
+            n_estimators=2,
+            max_samples=195
+        )
+        analyzer = AnalyzeStability(hull_distance=0.05)
+        experiment = ATFSampler(df_sub)
         candidate_data = df_sub
-        path = '.'
 
         new_loop = Loop(candidate_data, agent, experiment, analyzer,
-                        agent_params=agent_params, analyzer_params=analyzer_params,
-                        experiment_params=experiment_params,
                         create_seed=n_seed)
         new_loop.initialize()
         self.assertTrue(new_loop.initialized)
@@ -207,26 +160,14 @@ class AtfLoopTest(unittest.TestCase):
         df_sub = df[df['N_species'] <= 3]
         n_seed = 200  # Starting sample size
         n_query = 10  # This many new candidates are "calculated with DFT" (i.e. requested from Oracle -- DFT)
-        agent = AgentStabilityAdaBoost
-        agent_params = {
-            'ml_algorithm': MLPRegressor,
-            'ml_algorithm_params': {'hidden_layer_sizes': (84, 50)},
-            'n_query': n_query,
-            'hull_distance': 0.05,  # Distance to hull to consider a finding as discovery (eV/atom)
-            'exploit_fraction': 1.0,  # Fraction to exploit (rest will be explored -- randomly picked)
-            'alpha': 0.5,  # Fraction of std to include in expected improvement
-            'n_estimators': 10
-        }
-        analyzer = AnalyzeStability
-        analyzer_params = {'hull_distance': 0.05}
-        experiment = ATFSampler
-        experiment_params = {'dataframe': df_sub}
+        agent = AgentStabilityAdaBoost(model=MLPRegressor(hidden_layer_sizes=(84, 50)),
+                                       n_query=10, exploit_fraction=1.0, alpha=0.5,
+                                       n_estimators=10)
+        analyzer = AnalyzeStability(hull_distance=0.05)
+        experiment = ATFSampler(df_sub)
         candidate_data = df_sub
-        path = '.'
 
         new_loop = Loop(candidate_data, agent, experiment, analyzer,
-                        agent_params=agent_params, analyzer_params=analyzer_params,
-                        experiment_params=experiment_params,
                         create_seed=n_seed)
         new_loop.initialize()
         self.assertTrue(new_loop.initialized)
@@ -236,7 +177,6 @@ class AtfLoopTest(unittest.TestCase):
 
     def test_mp_loop(self):
         df = pd.read_csv(os.path.join(CAMD_TEST_FILES, 'test_df_analysis.csv'),)
-                         # index_col="id")
         df['id'] = [int(mp_id.replace("mp-", "").replace('mvc-', ''))
                     for mp_id in df['id']]
         df.set_index("id")
@@ -246,16 +186,12 @@ class AtfLoopTest(unittest.TestCase):
         seed_data = df.iloc[:38]
         candidate_data = df.iloc[38:209]
         n_query = 20  # This many new candidates are "calculated with DFT" (i.e. requested from Oracle -- DFT)
-        agent = RandomAgent
-        agent_params = {'n_query': n_query}
-        analyzer = AnalyzeStability
-        analyzer_params = {'hull_distance': 0.05}
-        experiment = ATFSampler
-        experiment_params = {'dataframe': df}
+        agent = RandomAgent(n_query=20)
+        analyzer = AnalyzeStability(hull_distance=0.05)
+        experiment = ATFSampler(dataframe=df)
         # candidate_data = df
         new_loop = Loop(candidate_data, agent, experiment, analyzer,
-                        agent_params=agent_params, analyzer_params=analyzer_params,
-                        experiment_params=experiment_params, seed_data=seed_data)
+                        seed_data=seed_data)
 
         new_loop.initialize()
         self.assertFalse(new_loop.create_seed)
@@ -269,9 +205,7 @@ class AtfLoopTest(unittest.TestCase):
                     os.path.isfile("report.png"))
 
         # Testing the continuation
-        new_loop = Loop(candidate_data, agent, experiment, analyzer,
-                        agent_params=agent_params, analyzer_params=analyzer_params,
-                        experiment_params=experiment_params)
+        new_loop = Loop(candidate_data, agent, experiment, analyzer)
         self.assertTrue(new_loop.initialized)
         self.assertEqual(new_loop.iteration, 6)
         self.assertEqual(new_loop.loop_state, None)
@@ -279,6 +213,7 @@ class AtfLoopTest(unittest.TestCase):
         new_loop.run()
         self.assertTrue(True)
         self.assertEqual(new_loop.iteration, 7)
+
 
 @unittest.skipUnless(CAMD_LONG_TESTS, SKIP_MSG)
 class AtfSVGPLoopTest(unittest.TestCase):
@@ -295,24 +230,12 @@ class AtfSVGPLoopTest(unittest.TestCase):
         df = pd.read_csv(os.path.join(CAMD_TEST_FILES, 'test_df.csv'))
         df_sub = df[df['N_species'] <= 3]
         n_seed = 200  # Starting sample size
-        n_query = 10  # This many new candidates are "calculated with DFT" (i.e. requested from Oracle -- DFT)
-        agent = SVGProcessStabilityAgent
-        agent_params = {
-            'n_query': n_query,
-            'hull_distance': 0.05,  # Distance to hull to consider a finding as discovery (eV/atom)
-            'alpha': 0.5,  # Fraction of std to include in expected improvement
-            'M': 100  # number of inducing points for SVGP
-        }
-        analyzer = AnalyzeStability
-        analyzer_params = {'hull_distance': 0.05}
-        experiment = ATFSampler
-        experiment_params = {'dataframe': df_sub}
+        agent = SVGProcessStabilityAgent(n_query=10, hull_distance=0.05, alpha=0.5, M=100)
+        analyzer = AnalyzeStability(hull_distance=0.05)
+        experiment = ATFSampler(df_sub)
         candidate_data = df_sub
-        path = '.'
 
         new_loop = Loop(candidate_data, agent, experiment, analyzer,
-                        agent_params=agent_params, analyzer_params=analyzer_params,
-                        experiment_params=experiment_params,
                         create_seed=n_seed)
         new_loop.initialize()
         self.assertTrue(new_loop.initialized)
