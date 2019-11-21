@@ -120,8 +120,7 @@ class Loop(MSONable):
         # Get new results
         print("Loop {} state: Getting new results".format(self.iteration))
         self.load('submitted_experiment_requests')
-        new_experimental_results = self.experiment.get_results(
-            self.submitted_experiment_requests)
+        new_experimental_results = self.experiment.get_results()
         os.chdir(self.path)
 
         # Load, expand, save seed_data
@@ -178,7 +177,8 @@ class Loop(MSONable):
 
         # Experiments submitted
         print("Loop {} state: Running experiments".format(self.iteration))
-        self.job_status = self.experiment.submit(suggested_experiments)
+        experiment_data = self.candidate_data.loc[suggested_experiments]
+        self.job_status = self.experiment.submit(experiment_data)
         self.save("job_status")
 
         self.submitted_experiment_requests = suggested_experiments
@@ -313,7 +313,8 @@ class Loop(MSONable):
                 "No seed data available. Either supply or ask for creation.")
 
         print("Loop {} state: Running experiments".format(self.iteration))
-        self.job_status = self.experiment.submit(suggested_experiments)
+        experiment_data = self.candidate_data.loc[suggested_experiments]
+        self.job_status = self.experiment.submit(experiment_data)
 
         self.submitted_experiment_requests = suggested_experiments
         self.consumed_candidates = suggested_experiments
