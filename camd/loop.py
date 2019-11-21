@@ -157,7 +157,9 @@ class Loop(MSONable):
             new_discoveries = report['N_Discovery'][-3:].values.sum()
             if new_discoveries == 0:
                 self.finalize()
-                raise ValueError("Not enough new discoveries. Stopping the loop.")
+                print("Not enough new discoveries. Stopping the loop.")
+                return True
+
 
         # Loop stopper if finalization is desired but will be done
         # outside of run (e.g. auto_loop)
@@ -173,7 +175,8 @@ class Loop(MSONable):
         # Loop stopper if agent doesn't have anything to suggest.
         if len(suggested_experiments) == 0:
             self.finalize()
-            raise ValueError("No space left to explore. Stopping the loop.")
+            print("No space left to explore. Stopping the loop.")
+            return True
 
         # Experiments submitted
         print("Loop {} state: Running experiments".format(self.iteration))

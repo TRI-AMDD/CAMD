@@ -174,7 +174,8 @@ class StabilityAgent(HypothesisAgent, metaclass=abc.ABCMeta):
             [phase.stability for phase in candidate_phases]
 
         if sort:
-            self.candidate_data = self.candidate_data.sort_values('pred_stability')
+            self.candidate_data = self.candidate_data.sort_values(
+                'pred_stability')
 
         return self.candidate_data
 
@@ -749,34 +750,50 @@ class AgentStabilityAdaBoost(StabilityAgent):
 
 def diverse_quant(points, target_length, df, quantiles=None):
     """
-    Diversify a sublist by eliminating entries based on comparisons with quantiles
-    threshold and Euclidean distance.
+    Diversify a sublist by eliminating entries based on comparisons
+    with quantiles threshold and Euclidean distance.
 
-    This method takes the points list (which would be the object within_hull in stability implementations),
-    and tries to select a diverse subset for the number of exploitation choices (target_length)
-    its allowed to make. It follows a simple algorithm: start from i = 0 of the points,
-    and go down the remainder of the list, removing entries that seem to be closer to i below a
-    certain distance threshold. It repeats this process for all i: i = 1, i = 2 ... i_max.
-    The method tries to adjust the distance threshold until it finds the shortest resulting
-    list that is longer than target_length. If it can't, it will simply
-    return points as it is. The threshold values are  decided by finding distances corresponding to
-    quantiles of the a sampled distribution of distances in the overall feature set.
+    This method takes the points list (which would be the object
+    within_hull in stability implementations), and tries to select
+    a diverse subset for the number of exploitation choices (
+    target_length) it's allowed to make.
+
+    It follows a simple algorithm: start from i = 0 of the points,
+    and go down the remainder of the list, removing entries that
+    seem to be closer to i below a certain distance threshold.
+
+    It repeats this process for all i: i = 1, i = 2 ... i_max.
+    The method tries to adjust the distance threshold until it
+    finds the shortest resulting list that is longer than
+    target_length. If it can't, it will simply return points
+    as it is. The threshold values are  decided by finding
+    distances corresponding to quantiles of the a sampled
+    distribution of distances in the overall feature set.
+
     The method does not alter the original ordering in the list points.
-    The algorithm is simple but I'm unaware of any other implementations of this in the literature,
-    and it seems to be working fine.
-    The intuition behind the algorithm is to make
-    risk-averse choices by avoiding the acquisition of too similar candidates,
-    in case one example among those entries is sufficient for the model to minimize its
-    uncertainty and/or make a decision to not acquire any other in that region.
-    So the resources would not be wasted and can be allocated to other promising choices in points.
+    The algorithm is simple but I'm unaware of any other implementations
+    of this in the literature, and it seems to be working fine.
+    The intuition behind the algorithm is to make risk-averse choices
+    by avoiding the acquisition of too similar candidates,
+    in case one example among those entries is sufficient for
+    the model to minimize its uncertainty and/or make a decision
+    to not acquire any other in that region.  So the resources
+    would not be wasted and can be allocated to other promising
+    choices in points.
 
     Args:
-        points (list): Initial set of points, needs to have the internal preferred order
-        target_length (int): length of desired sublist, that would diversify while trying to preserve order
-        df (DataFrame): feature vectors of points, where index labels contain elements of points
-        quantiles (list): quantilies to test for threshold. Defaults to [0.01, 0.02, 0.03, 0.04, 0.05]
+        points (list): Initial set of points, needs to have the
+            internal preferred order
+        target_length (int): length of desired sublist, that would
+            diversify while trying to preserve order
+        df (DataFrame): feature vectors of points, where index labels
+            contain elements of points
+        quantiles (list): quantilies to test for threshold. Defaults
+            to [0.01, 0.02, 0.03, 0.04, 0.05]
+
     Returns:
         A diversified sublist of points
+
     """
     quantiles = quantiles if quantiles else [0.01, 0.02, 0.03, 0.04, 0.05]
     if target_length >= len(points):
@@ -813,7 +830,7 @@ def diverse_quant(points, target_length, df, quantiles=None):
         return points
     else:
         d = OrderedDict()
-        for i in res[-1]: # fall back to the latest remove list before break
+        for i in res[-1]:  # fall back to the latest remove list before break
             d[i] = None
         final_remove_list = list(d.keys())
 

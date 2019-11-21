@@ -27,15 +27,20 @@ class HypothesisAgent(metaclass=abc.ABCMeta):
 
 class QBC:
     """
-    Uncertainty quantification for non-supporting regressors with Query-By-Committee
+    Uncertainty quantification for non-supporting regressors
+    with Query-By-Committee
     """
     def __init__(self, n_members, training_fraction, model=None,
                  test_full_model=True):
         """
-        :param n_members: Number of committee members (i.e. models to train)
-        :param training_fraction: fraction of data to use in training committee members
-        :param model: sklearn-style regressor
-        :param ml_algorithm_params: (dict) parameters to pass to the algorithm
+
+        Args:
+            n_members (int): Number of committee members or models to train
+            training_fraction (float): fraction of data to use in training
+                committee members
+            model (sklearn.RegressorMixin): sklearn-style regressor
+            test_full_model (bool): whether or not to test the full
+                model
         """
         self.n_members = n_members
         self.training_fraction = training_fraction
@@ -106,12 +111,11 @@ class RandomAgent(HypothesisAgent):
         self.cv_score = np.nan
         super(RandomAgent, self).__init__()
 
-    def get_hypotheses(self, candidate_data, seed_data=None):
+    def get_hypotheses(self, candidate_data):
         """
 
         Args:
             candidate_data (DataFrame): candidate data
-            seed_data (DataFrame): seed data
 
         Returns:
             (List) of indices
