@@ -8,23 +8,23 @@ from camd.loop import Loop
 from camd.utils.data import load_default_atf_data
 
 
-class LocalAgentSimulation(Experiment):
-    def __init__(self, dataframe, iterations, analyzer, n_seed,
+class AgentSimulation(Experiment):
+    def __init__(self, atf_dataframe, iterations, analyzer, n_seed,
                  current_data=None, job_status="unstarted"):
         """
         Args:
-            dataframe:
+            atf_dataframe:
             iterations:
             analyzer:
             n_seed:
             current_data:
             job_status:
         """
-        self.dataframe = dataframe
+        self.atf_dataframe = atf_dataframe
         self.iterations = iterations
         self.analyzer = analyzer
         self.n_seed = n_seed
-        super(LocalAgentSimulation, self).__init__(
+        super(AgentSimulation, self).__init__(
             current_data=current_data, job_status=job_status)
 
     def submit(self, data):
@@ -39,10 +39,10 @@ class LocalAgentSimulation(Experiment):
         self.current_data = data
         agent = data['agent']
         loop = Loop(
-            candidate_data=self.dataframe,
+            candidate_data=self.atf_dataframe,
             agent=agent,
             analyzer=self.analyzer,
-            experiment=ATFSampler(dataframe=self.dataframe),
+            experiment=ATFSampler(dataframe=self.atf_dataframe),
             create_seed=self.n_seed,
         )
         loop.auto_loop(n_iterations=self.iterations, initialize=True)
@@ -50,3 +50,4 @@ class LocalAgentSimulation(Experiment):
 
     def monitor(self):
         pass
+

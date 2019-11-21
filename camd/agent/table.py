@@ -50,7 +50,7 @@ AGENT_PARAMS = [
     {
         "@class": ["camd.agent.agents.AgentStabilityML5"],
         "n_query": [4, 6, 8],
-        "hull_distance": [0.5, 0.1, 0.15, 0.2],
+        "hull_distance": [0.05, 0.1, 0.15, 0.2],
         "exploit_fraction": [0.4, 0.5, 0.6],
         "regressor": REGRESSOR_PARAMS
     },
