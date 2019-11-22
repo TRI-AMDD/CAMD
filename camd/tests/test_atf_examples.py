@@ -98,13 +98,11 @@ class AtfLoopTest(unittest.TestCase):
         df = pd.read_csv(os.path.join(CAMD_TEST_FILES, 'test_df.csv'))
         df_sub = df[df['N_species'] <= 3]
         n_seed = 200  # Starting sample size
-        n_query = 10  # This many new candidates are "calculated with DFT" (i.e. requested from Oracle -- DFT)
         agent = QBCStabilityAgent(model=MLPRegressor(hidden_layer_sizes=(84, 50)),
                                   n_query=10, hull_distance=0.05, alpha=0.5)
         analyzer = AnalyzeStability(hull_distance=0.05)
         experiment = ATFSampler(dataframe=df_sub)
         candidate_data = df_sub
-        path = '.'
 
         new_loop = Loop(candidate_data, agent, experiment, analyzer,
                         create_seed=n_seed)
@@ -159,7 +157,6 @@ class AtfLoopTest(unittest.TestCase):
         df = pd.read_csv(os.path.join(CAMD_TEST_FILES, 'test_df.csv'))
         df_sub = df[df['N_species'] <= 3]
         n_seed = 200  # Starting sample size
-        n_query = 10  # This many new candidates are "calculated with DFT" (i.e. requested from Oracle -- DFT)
         agent = AgentStabilityAdaBoost(model=MLPRegressor(hidden_layer_sizes=(84, 50)),
                                        n_query=10, exploit_fraction=1.0, alpha=0.5,
                                        n_estimators=10)

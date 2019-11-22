@@ -234,7 +234,7 @@ class QBCStabilityAgent(StabilityAgent):
             expected, sort=True, floor=-6.0)
 
         # Find the most stable ones up to n_query within hull_distance
-        stability_filter = self.candidate_data['pred_stability'] < self.hull_distance
+        stability_filter = self.candidate_data['pred_stability'] <= self.hull_distance
         within_hull = self.candidate_data[stability_filter]
 
         self.indices_to_compute = within_hull.head(self.n_query).index.tolist()
@@ -290,7 +290,7 @@ class AgentStabilityML5(StabilityAgent):
             expected, sort=True, floor=-6.0)
 
         # Filter by stability according to hull distance
-        stability_filter = self.candidate_data['pred_stability'] < self.hull_distance
+        stability_filter = self.candidate_data['pred_stability'] <= self.hull_distance
         within_hull = self.candidate_data[stability_filter]
 
         # Exploitation part:
@@ -360,7 +360,7 @@ class GaussianProcessStabilityAgent(StabilityAgent):
             expected, sort=True, floor=-6.0)
 
         # Find the most stable ones up to n_query within hull_distance
-        stability_filter = self.candidate_data['pred_stability'] < self.hull_distance
+        stability_filter = self.candidate_data['pred_stability'] <= self.hull_distance
         within_hull = self.candidate_data[stability_filter]
 
         self.indices_to_compute = within_hull.head(self.n_query).index.tolist()
@@ -489,7 +489,7 @@ class SVGProcessStabilityAgent(StabilityAgent):
             expected, sort=True, floor=-6.0)
 
         # Find the most stable ones up to n_query within hull_distance
-        stability_filter = self.candidate_data['pred_stability'] < self.hull_distance
+        stability_filter = self.candidate_data['pred_stability'] <= self.hull_distance
         within_hull = self.candidate_data[stability_filter]
 
         self.indices_to_compute = within_hull.head(self.n_query).index.tolist()
@@ -611,7 +611,7 @@ class BaggedGaussianProcessStabilityAgent(StabilityAgent):
             expected, sort=True, floor=-6.0)
 
         # Find the most stable ones up to n_query within hull_distance
-        stability_filter = self.candidate_data['pred_stability'] < self.hull_distance
+        stability_filter = self.candidate_data['pred_stability'] <= self.hull_distance
         within_hull = self.candidate_data[stability_filter]
 
         self.indices_to_compute = within_hull.head(self.n_query).index.tolist()
@@ -711,7 +711,7 @@ class AgentStabilityAdaBoost(StabilityAgent):
             expected, sort=True, floor=-6.0)
 
         # Filter by stability according to hull distance
-        stability_filter = self.candidate_data['pred_stability'] < self.hull_distance
+        stability_filter = self.candidate_data['pred_stability'] <= self.hull_distance
         within_hull = self.candidate_data[stability_filter]
 
         # Exploitation part:
@@ -720,7 +720,7 @@ class AgentStabilityAdaBoost(StabilityAgent):
             to_compute = diverse_quant( within_hull.index.tolist(), n_exploitation, self.candidate_data)
         else:
             to_compute = within_hull.head(n_exploitation).index.tolist()
-        remaining = within_hull.tail(len(within_hull)- n_exploitation)
+        remaining = within_hull.tail(len(within_hull) - n_exploitation)
         remaining = remaining.append(self.candidate_data[~stability_filter])
 
         # Exploration part (pick randomly from remainder):

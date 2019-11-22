@@ -115,7 +115,7 @@ class Loop(MSONable):
             6. Submit new experiments
         """
         if not self.initialized:
-            raise ValueError("Loop needs to be properly initialized.")
+            raise ValueError("Loop must be initialized.")
 
         # Get new results
         print("Loop {} state: Getting new results".format(self.iteration))
@@ -382,8 +382,10 @@ class Loop(MSONable):
         data = pd.read_csv(report_filename, delim_whitespace=True)
         plt = pretty_plot(6, 4.5)
         ax = plt.gca()
-        ax = data.plot(kind='bar', x='Iteration', y='Total_Discovery',
-                       legend=False, ax=ax)
+        ax = data.plot(
+            kind='bar', x='Iteration', y='Total_Discovery',
+            legend=False, ax=ax
+        )
         ax.set_ylabel("Total materials discovered")
         fig = ax.get_figure()
         if filename:
