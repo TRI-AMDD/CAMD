@@ -111,11 +111,14 @@ class RandomAgent(HypothesisAgent):
         self.cv_score = np.nan
         super(RandomAgent, self).__init__()
 
-    def get_hypotheses(self, candidate_data):
+    def get_hypotheses(self, candidate_data, seed_data=None):
         """
 
         Args:
             candidate_data (DataFrame): candidate data
+            seed_data (DataFrame): seed data, there's none in this
+                case, but keep the kwarg for adherence to the
+                superclass signature
 
         Returns:
             (List) of indices

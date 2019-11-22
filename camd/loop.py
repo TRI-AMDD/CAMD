@@ -88,7 +88,7 @@ class Loop(MSONable):
         if self.initialized:
             self.create_seed = False
             self.load('job_status')
-            self.experiment.update_job_status(self.job_status)
+            self.experiment.job_status = self.job_status
             self.load('submitted_experiment_requests')
             self.load('seed_data', method='pickle')
             self.load('consumed_candidates')

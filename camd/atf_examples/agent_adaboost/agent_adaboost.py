@@ -29,7 +29,7 @@ agent_params = {
 }
 agent = agent(**agent_params)
 analyzer = AnalyzeStability(hull_distance=0.05)
-experiment = ATFSampler(params={"dataframe": df})
+experiment = ATFSampler(dataframe=df)
 candidate_data = df
 ##########################################################
 new_loop = Loop(
