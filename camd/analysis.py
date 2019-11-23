@@ -299,9 +299,9 @@ class AnalyzeStability(AnalyzerBase):
 
         # Get stabilities of new and all ids
         stabilities_of_new = np.array([stabilities_by_id.get(uid, np.nan)
-                                       for uid in self.new_result_ids])
+                                       for uid in self.new_result_ids], dtype=np.float)
         stabilities_of_all = np.array([stabilities_by_id.get(uid, np.nan)
-                                       for uid in self.all_result_ids])
+                                       for uid in self.all_result_ids], dtype=np.float)
 
         # Cast to boolean if specified
         if return_within_hull:
