@@ -29,22 +29,22 @@ class OqmdDFTonMC1(Experiment):
         super().__init__(current_data=current_data,
                          job_status=job_status)
 
-    @property
-    def state(self):
-        if self.get_state() and self.job_status:
-            return "completed"
-        elif sum([doc['status'] in ['SUCCEEDED', 'FAILED']
-                  for doc in self.job_status.values()]) > 0:
-            return "active"
-        else:
-            return "unstarted"
+    # @property
+    # def state(self):
+    #     if self.get_state() and self.job_status:
+    #         return "completed"
+    #     elif sum([doc['status'] in ['SUCCEEDED', 'FAILED']
+    #               for doc in self.job_status.values()]) > 0:
+    #         return "active"
+    #     else:
+    #         return "unstarted"
 
     def get_state(self):
         self.job_status = check_dft_calcs(self.current_data)
         return all([doc['status'] in ['SUCCEEDED', 'FAILED']
                     for doc in self.job_status.values()])
 
-    def get_results(self, indices, populate_candidate_data=True):
+    def get_results(self, populate_candidate_data=True):
         # This gets the formation energies.
         if not self.get_state():
             warnings.warn("Some calculations did not finish.")
@@ -67,24 +67,19 @@ class OqmdDFTonMC1(Experiment):
         else:
             return results_dict
 
-    def submit(self, unique_ids=None):
+    def submit(self, data):
         """
         Args:
-            unique_ids (list): Unique ids for structures to run
-                from the structure_dict. If None, all entries in
-                structure_dict are submitted.
+            data (DataFrame): dataframe representing structure
+                inputs to experiment
 
         Returns:
             (str): string corresponding to job status
 
         """
-        self.unique_ids = unique_ids if unique_ids else \
-            list(self.structure_dict.keys())
-        self._structures_to_run = {
-            structure_id: structure for structure_id, structure
-            in self.structure_dict.items() if structure_id in self.unique_ids
-        }
-        self.job_status = submit_dft_calcs_to_mc1(self._structures_to_run)
+        self.update_current_data(data)
+        submission_dict = dict(zip(data.index, data['structure'].values))
+        self.job_status = submit_dft_calcs_to_mc1(submission_dict)
         return self.job_status
 
     def monitor(self):

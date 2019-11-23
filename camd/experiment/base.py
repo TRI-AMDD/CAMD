@@ -17,21 +17,32 @@ class Experiment(abc.ABC, MSONable):
     we might just want to use FireWorks for this
     """
 
-    def __init__(self, current_data=None, job_status=None):
+    def __init__(self, current_data=None, job_status=None,
+                 history=None):
         self.current_data = current_data
         self.job_status = job_status
+        self._history = history or []
 
-    @abc.abstractmethod
-    def get_state(self):
+    def update_current_data(self, data):
         """
-        # TODO: refine this into something more universal
+        Updates current data with dataframe,
+        stores old data in history
+
+        Args:
+            data (DataFrame):
+
         Returns:
-            str: 'unstarted', 'pending', 'completed'
+            None
 
         """
+        if self.current_data is not None:
+            current_results = self.get_results()
+            self._history.append((self.current_data, current_results))
+
+        self.current_data = data
 
     @abc.abstractmethod
-    def get_results(self, indices):
+    def get_results(self):
         """
         Args:
             indices (list): uids / indices of experiments to get the results for
