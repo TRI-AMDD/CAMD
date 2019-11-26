@@ -26,11 +26,10 @@ class Mc1Test(unittest.TestCase):
         bad_silicon.append("Si", [0.1, 0.333, 0.15])
         self.assertEqual(len(bad_silicon), 4)
         data = pd.DataFrame(
-            {"structure":
-                {
-                    "good": good_silicon,
-                    "bad": bad_silicon
-                }
+            {"structure": {
+                "good": good_silicon,
+                "bad": bad_silicon
+            }
             }
         )
 

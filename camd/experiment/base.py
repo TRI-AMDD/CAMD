@@ -51,9 +51,6 @@ class Experiment(abc.ABC, MSONable):
 
         """
 
-    def _update_results(self, indices):
-        self.results = self.get_results(indices)
-
     @abc.abstractmethod
     def monitor(self):
         """
@@ -86,16 +83,6 @@ class ATFSampler(Experiment):
             job_status=job_status
         )
 
-    def start(self):
-        """There's no start procedure for this particular experiment"""
-        pass
-
-    def get_state(self):
-        """
-        This experiment should be complete on construction
-        """
-        return "completed"
-
     def get_results(self):
         """
         Simply samples the dataframe associated with the ATFSampler
@@ -111,6 +98,7 @@ class ATFSampler(Experiment):
     def submit(self, data):
         """This does nothing, since the "experiments" are already done"""
         self.current_data = data
+        self.job_status = "COMPLETED"
         return None
 
     def monitor(self):

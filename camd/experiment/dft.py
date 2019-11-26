@@ -9,11 +9,9 @@ import shlex
 import subprocess
 import traceback
 import warnings
-import datetime
+from datetime import datetime
 
-import pandas as pd
 from monty.os import cd
-from monty.tempfile import ScratchDir
 from pymatgen.io.vasp.outputs import Vasprun
 from pymatgen import Composition
 from camd.experiment.base import Experiment
@@ -22,6 +20,11 @@ from camd.utils.data import QMPY_REFERENCES, \
 
 
 class OqmdDFTonMC1(Experiment):
+    """
+    An experiment class to manage Density Functional theory
+    experiments on the MC1, an AWS-batch-based DFT-calculation
+    system.
+    """
     def __init__(self, poll_time=60, timeout=7200,
                  current_data=None, job_status=None):
         self.poll_time = poll_time
@@ -29,199 +32,219 @@ class OqmdDFTonMC1(Experiment):
         super().__init__(current_data=current_data,
                          job_status=job_status)
 
-    # @property
-    # def state(self):
-    #     if self.get_state() and self.job_status:
-    #         return "completed"
-    #     elif sum([doc['status'] in ['SUCCEEDED', 'FAILED']
-    #               for doc in self.job_status.values()]) > 0:
-    #         return "active"
-    #     else:
-    #         return "unstarted"
+    def _update_job_status(self):
+        """
+        Updates the aggregate job status according to the
+        entries of the current data's "status" column
 
-    def get_state(self):
-        self.job_status = check_dft_calcs(self.current_data)
-        return all([doc['status'] in ['SUCCEEDED', 'FAILED']
-                    for doc in self.job_status.values()])
+        Returns:
+            None
 
-    def get_results(self, populate_candidate_data=True):
-        # This gets the formation energies.
-        if not self.get_state():
-            warnings.warn("Some calculations did not finish.")
-        results_dict = {}
-        for structure_id, calc in self.job_status.items():
-            if calc['status'] == "SUCCEEDED":
-                delta_e = get_qmpy_formation_energy(
-                    calc['result']['output']['final_energy_per_atom'],
-                    calc['result']['pretty_formula'], 1
-                )
+        """
+        all_job_statuses = self.current_data['status']
+        all_jobs_complete = all([status in ['SUCCEEDED', 'FAILED']
+                                 for status in all_job_statuses])
+        if all_jobs_complete:
+            self.job_status = "COMPLETED"
 
-                results_dict[structure_id] = delta_e
+    def update_results(self):
+        """
+        Updates the results by checking the AWS Batch system
+        via check_dft_calcs
 
-        if populate_candidate_data:
-            candidate_data = self.get_parameter("candidate_data")
-            _df = candidate_data.loc[results_dict.keys()]
-            _df['delta_e'] = pd.Series(results_dict)
-            _df = _df.reindex(sorted(_df.columns), axis=1)
-            return _df
-        else:
-            return results_dict
+        Returns:
+            None
+
+        """
+        # Update data
+        self.check_dft_calcs()
+
+        # Update time
+        elapsed_time = datetime.utcnow() - self.current_data["start_time"]
+        elapsed_time = [e.total_seconds() for e in elapsed_time]
+        self.current_data["elapsed_time"] = elapsed_time
+
+        # Update job status
+        self._update_job_status()
+
+    def get_results(self):
+        """
+        Gets the results from the current run.
+
+        Returns:
+            (DataFrame): dataframe corresponding to the
+                current set of results
+
+        """
+        if self.job_status is not "COMPLETED":
+            self.update_results()
+        if self.job_status is not "COMPLETED":
+            warnings.warn("Some calculations have not finished")
+        return self.current_data
 
     def submit(self, data):
         """
         Args:
             data (DataFrame): dataframe representing structure
-                inputs to experiment
+                inputs to experiment.  This dataframe must have
+                a 'structure' column
 
         Returns:
             (str): string corresponding to job status
 
         """
         self.update_current_data(data)
-        submission_dict = dict(zip(data.index, data['structure'].values))
-        self.job_status = submit_dft_calcs_to_mc1(submission_dict)
+        # Populate new columns
+        new_columns = ['path', 'status', 'start_time', 'jobId',
+                       'jobName', 'result', 'error', 'delta_e',
+                       'elapsed_time']
+        for new_column in new_columns:
+            self.current_data[new_column] = None
+
+        self.submit_dft_calcs_to_mc1()
+        self.job_status = 'PENDING'
         return self.job_status
+
+    def print_status(self):
+        """
+        Prints current status of experiment according to
+        the data in the current_data attribute
+
+        Returns:
+            None
+
+        """
+        status_string = ""
+        for structure_id, row in self.current_data.iterrows():
+            status_string += "{}: {} {}\n".format(
+                structure_id, row["status"], row["elapsed_time"])
+        print("Calc status:\n{}".format(status_string))
+        print("Timeout is set as {}.".format(self.timeout))
 
     def monitor(self):
         """
-        Returns:
-            (dict): calculation status, including results
-        """
-        finished = self.get_state()
-        with ScratchDir("."):
-            while not finished:
-                time.sleep(self.poll_time)
-                finished = self.get_state()
-                for doc in self.job_status.values():
-                    doc["elapsed_time"] = time.time() - doc["start_time"]
-                status_string = "\n".join(["{}: {} {}".format(key, value["status"],
-                                                              datetime.timedelta(0,value["elapsed_time"]))
-                                           for key, value in self.job_status.items()])
-                print("Calc status:\n{}".format(status_string))
-                print("Timeout is set as {}.".format(datetime.timedelta(0, self.timeout)))
+        Method for continuously polling for completion
 
-                for doc in self.job_status.values():
-                    doc["elapsed_time"] = time.time() - doc["start_time"]
-                    if doc["elapsed_time"] > self.timeout:
-                        if doc['status'] not in ['SUCCEEDED', 'FAILED']:
-                            # Update job status to reflect timeout
-                            doc.update({"status": "FAILED",
-                                        "error": "timeout"})
-                            # Kill AWS job
-                            kill_cmd = "aws batch terminate-job --region=us-east-1 --job-id {} --reason camd_timeout".format(
-                                doc['jobId'])
-                            kill_result = subprocess.check_output(shlex.split(kill_cmd))
+        Returns:
+            (str): calculation status string
+
+        """
+        while self.job_status is not 'COMPLETED':
+            time.sleep(self.poll_time)
+            self.update_results()
+            self.print_status()
+            self.kill_lapsed_jobs()
 
         return self.job_status
 
-    @classmethod
-    def from_job_status(cls, params, job_status):
-        params["job_status"] = job_status
-        params["unique_ids"] = list(job_status.keys())
-        return cls(params)
+    def submit_dft_calcs_to_mc1(self):
+        """
+        Helper method for submitting DFT calculations to MC1
+        """
+        tri_path = os.environ.get("TRI_PATH")
+        if not tri_path:
+            raise ValueError("TRI_PATH must be specified as env variable to "
+                             "use camd MC1 interface")
 
+        # Create run directory
+        uuid_string = str(uuid.uuid4()).replace('-', '')
+        parent_dir = os.path.join(tri_path, "model", "oqmdvasp", "3",
+                                  "u", "camd", "run{}".format(uuid_string))
+        if any(['_' in value for value in self.current_data.index]):
+            raise ValueError("Structure keys cannot contain underscores for "
+                             "mc1 compatibility")
 
-def submit_dft_calcs_to_mc1(structure_dict):
-    """
-    Placeholder function for fetching DFT calculations from MC1
-    using oqmd container
+        for structure_id, row in self.current_data.iterrows():
+            calc_path = os.path.join(parent_dir, structure_id, "_1")
+            os.makedirs(calc_path)
+            with cd(calc_path):
+                # Write input cif file and python model file
+                row['structure'].to(filename="POSCAR")
+                with open("model.py", "w") as f:
+                    f.write(MODEL_TEMPLATE)
 
-    Args:
-        structure_dict (dict): dictionary of structures keyed by
-            some string identifier
-    """
-    starting_dir = os.getcwd()
-    tri_path = os.environ.get("TRI_PATH")
-    if not tri_path:
-        raise ValueError("TRI_PATH must be specified as env variable to "
-                         "use camd MC1 interface")
-    # Create run directory
-    uuid_string = str(uuid.uuid4()).replace('-', '')
-    parent_dir = os.path.join(tri_path, "model", "oqmdvasp", "3",
-                              "u", "camd", "run{}".format(uuid_string))
-    if any(['_' in key for key in structure_dict.keys()]):
-        raise ValueError("Structure keys cannot contain underscores for "
-                         "mc1 compatibility")
+                # Submit to mc1
+                # TODO: ensure this is checked for failure to submit
+                print("Submitting job: {}".format(structure_id))
+                try:
+                    response = subprocess.check_output(
+                        ["trisub", "-q", "oqmd_test_queue",
+                         "-r", "16000", "-c", "16", "-g", "us-east-1"]
+                    )
+                except subprocess.CalledProcessError as e:
+                    print(e.output)
 
-    calc_status = {}
-    for structure_id, structure in structure_dict.items():
-        calc_path = os.path.join(parent_dir, structure_id, "_1")
-        os.makedirs(calc_path)
-        with cd(calc_path):
-            # Write input cif file and python model file
-            structure.to(filename="POSCAR")
-            with open("model.py", "w") as f:
-                f.write(MODEL_TEMPLATE)
+                response = response.decode('utf-8')
+                response = re.findall("({.+})", response, re.DOTALL)[0]
+                data = json.loads(response)
+                data.update({"path": os.getcwd(),
+                             "status": "SUBMITTED",
+                             "start_time": datetime.utcnow()})
+                update_dataframe_row(self.current_data, structure_id, data)
 
-            # Submit to mc1
-            # TODO: ensure this is checked for failure to submit
-            print("Submitting job: {}".format(structure_id))
-            try:
-                calc = subprocess.check_output(["trisub", "-q", "oqmd_test_queue", "-r", "16000", "-c", "16"])
-            except subprocess.CalledProcessError as e:
-                print(e.output)
+    def check_dft_calcs(self):
+        """
+        Helper function to check DFT calculations via polling
+        AWS batch.  Updates current data with latest AWS batch
+        response.
+        """
+        for structure_id, calc in self.current_data.iterrows():
+            if calc['status'] in ['SUCCEEDED', 'FAILED']:
+                continue
+            path = calc['path']
+            print("Checking status of {}: {}".format(path, structure_id))
+            aws_cmd = "aws batch describe-jobs --jobs " \
+                      "--region=us-east-1 {}".format(calc['jobId'])
+            result = subprocess.check_output(shlex.split(aws_cmd))
+            result = json.loads(result)
+            aws_status = result["jobs"][0]["status"]
+            if aws_status == "SUCCEEDED":
+                os.chdir(path)
+                subprocess.call('trisync')
+                os.chdir('simulation')
+                try:
+                    vr = Vasprun('static/vasprun.xml').as_dict()
+                    delta_e = get_qmpy_formation_energy(
+                        vr['output']['final_energy_per_atom'],
+                        vr['pretty_formula'], 1)
+                    data = {"status": "SUCCEEDED", "error": None, "result": vr,
+                            "delta_e": delta_e}
+                except Exception as e:
+                    error_doc = {}
+                    with open('err') as errfile:
+                        error_doc.update({"trisub_stderr": errfile.read()})
+                    error_doc.update({"camd_exception": "{}".format(e),
+                                      "camd_traceback": traceback.format_exc()})
 
-            calc = calc.decode('utf-8')
-            calc = re.findall("({.+})", calc, re.DOTALL)[0]
-            calc = json.loads(calc)
-            calc.update({"path": os.getcwd(),
-                         "status": "SUBMITTED",
-                         "start_time": time.time()})
-            calc_status[structure_id] = calc
+                    # Dump error docs to avoid Pandas issues with dict values
+                    data = {"status": "FAILED", "error": json.dumps(error_doc)}
 
-    return calc_status
+            elif aws_status == "FAILED":
+                error_doc = {"aws_fail": result['jobs'][0]['attempts'][-1]['statusReason']}
+                data = {"status": "FAILED", "error": json.dumps(error_doc)}
+            else:
+                data = {"status": aws_status}
+            update_dataframe_row(self.current_data, structure_id, data)
 
+    def kill_lapsed_jobs(self):
+        """
+        Method for killing lapsed jobs according to the amount
+        of elapsed time and the object's timeout attribute
 
-def check_dft_calcs(calc_status):
-    """
+        Returns:
+            None
+        """
+        running_jobs = self.current_data[self.current_data['status'] == 'SUBMITTED']
+        lapsed_jobs = running_jobs[running_jobs['elapsed_time'] > self.timeout]
 
-    Args:
-        calc_status (dict):
-
-    Returns:
-        updated calc_status dictionary
-
-    """
-    for structure_id, calc in calc_status.items():
-        if calc['status'] in ['SUCCEEDED', 'FAILED']:
-            continue
-        path = calc['path']
-        print("Checking status of {}: {}".format(path, structure_id))
-        aws_cmd = "aws batch describe-jobs --jobs --region=us-east-1 {}".format(calc['jobId'])
-        result = subprocess.check_output(shlex.split(aws_cmd))
-        result = json.loads(result)
-        aws_status = result["jobs"][0]["status"]
-        if aws_status == "SUCCEEDED":
-            os.chdir(path)
-            subprocess.call('trisync')
-            os.chdir('simulation')
-            try:
-                vr = Vasprun('static/vasprun.xml')
-                calc.update({
-                    "status": "SUCCEEDED",
-                    "error": None,
-                    "result": vr.as_dict()
-                })
-            except Exception as e:
-                error_doc = {}
-                with open('err') as errfile:
-                    error_doc.update({"trisub_stderr": errfile.read()})
-                error_doc.update({"camd_exception": "{}".format(e),
-                                  "camd_traceback": traceback.format_exc()})
-                calc.update({
-                    "status": "FAILED",
-                    "error": error_doc,
-                    "result": None
-                })
-        elif aws_status == "FAILED":
-            error_doc = {"aws_fail": result['jobs'][0]['attempts'][-1]['statusReason']}
-            calc.update({"status": "FAILED",
-                         "error": error_doc
-                         })
-        else:
-            calc.update({"status": aws_status})
-    return calc_status
-
+        # Kill AWS job
+        for structure_id, row in lapsed_jobs.iterrows():
+            kill_cmd = "aws batch terminate-job --region=us-east-1 " \
+                       "--job-id {} --reason camd_timeout".format(row['jobId'])
+            kill_result = subprocess.check_output(shlex.split(kill_cmd))
+            self.current_data.loc[structure_id, 'status'] = 'FAILED'
+            self.current_data.loc[structure_id, 'error'] = 'timeout'
+        self._update_job_status()
 
 
 MODEL_TEMPLATE = """
@@ -265,21 +288,6 @@ if __name__ == '__main__':
 """
 
 
-def get_dft_calcs_aft(uids, df):
-    """
-    Mock function that mimics fetching DFT calculations
-    """
-    uids = [uids] if type(uids) != list else uids
-    return df.loc[uids]
-
-
-def get_dft_calcs_from_northwestern(uids):
-    """
-    Placeholder function for fetching DFT calculations from Northwestern
-    """
-    raise NotImplementedError("Northwestern interface not yet implemented")
-
-
 def get_qmpy_formation_energy(total_e, formula, n_atoms):
     """
     Helper function to computer qmpy-compatible formation
@@ -302,3 +310,22 @@ def get_qmpy_formation_energy(total_e, formula, n_atoms):
                 and ('O' in composition):
             energy -= QMPY_REFERENCES_HUBBARD[element] * weight
     return energy
+
+
+def update_dataframe_row(dataframe, index, update_dict):
+    """
+    Method to update a dataframe row via an update_dictionary
+    and an index, similarly to Dict.update()
+
+    Args:
+        dataframe (DataFrame): DataFrame for which rows should
+            be updated
+        index: index value for dataframe
+        update_dict ({}): update dictionary for dataframe
+
+    Returns:
+        None
+
+    """
+    for key, value in update_dict.items():
+        dataframe.loc[index, key] = value
