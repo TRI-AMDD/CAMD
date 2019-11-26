@@ -17,7 +17,7 @@ class ATFSamplerTest(unittest.TestCase):
         test_dataframe = pd.DataFrame({"index": np.arange(5),
                                        "squared": np.arange(5) ** 2})
         simple_exp = ATFSampler(test_dataframe)
-        self.assertEqual(simple_exp.get_state(), "completed")
+        self.assertEqual(simple_exp.job_status, "COMPLETED")
         simple_exp.submit(test_dataframe.loc[[0, 2, 3]])
         simple_exp.monitor()
         self.assertTrue(

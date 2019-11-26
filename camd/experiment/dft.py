@@ -203,10 +203,11 @@ class OqmdDFTonMC1(Experiment):
                 subprocess.call('trisync')
                 os.chdir('simulation')
                 try:
-                    vr = Vasprun('static/vasprun.xml').as_dict()
+                    vr = Vasprun('static/vasprun.xml')
+                    vr_dict = vr.as_dict()
                     delta_e = get_qmpy_formation_energy(
-                        vr['output']['final_energy_per_atom'],
-                        vr['pretty_formula'], 1)
+                        vr_dict['output']['final_energy_per_atom'],
+                        vr_dict['pretty_formula'], 1)
                     data = {"status": "SUCCEEDED", "error": None, "result": vr,
                             "delta_e": delta_e}
                 except Exception as e:
@@ -234,7 +235,7 @@ class OqmdDFTonMC1(Experiment):
         Returns:
             None
         """
-        running_jobs = self.current_data[self.current_data['status'] == 'SUBMITTED']
+        running_jobs = self.current_data[self.current_data['status'] == 'RUNNING']
         lapsed_jobs = running_jobs[running_jobs['elapsed_time'] > self.timeout]
 
         # Kill AWS job

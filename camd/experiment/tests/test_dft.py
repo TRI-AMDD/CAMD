@@ -38,8 +38,8 @@ class Mc1Test(unittest.TestCase):
         status = experiment.monitor()
         results = experiment.get_results()
 
-        self.assertAlmostEqual(results['good'], 0, 5)
-        self.assertIsNone(results.get('bad'))
+        self.assertAlmostEqual(results.loc['good', 'delta_e'], 0, 5)
+        self.assertIsNone(results.loc['bad', 'result'])
 
     @unittest.skipUnless(CAMD_DFT_TESTS, SKIP_MSG)
     def test_structure_suite(self):
