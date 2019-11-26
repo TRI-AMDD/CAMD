@@ -43,23 +43,22 @@ class Mc1Test(unittest.TestCase):
 
     @unittest.skipUnless(CAMD_DFT_TESTS, SKIP_MSG)
     def test_structure_suite(self):
-        # TODO: fix the formation energy calculation
         mp_ids = ["mp-702",
                   "mp-1953",
                   "mp-1132",
                   "mp-8409",
                   "mp-872"]
+        import nose; nose.tools.set_trace()
         with MPRester() as mpr:
             structure_dict = {mp_id: mpr.get_structure_by_material_id(mp_id)
                               for mp_id in mp_ids}
-        params = {"structure_dict": structure_dict,
-                  "poll_time": 25}
+        data = pd.DataFrame({"structure": structure_dict})
 
-        experiment = OqmdDFTonMC1(params)
-        experiment.submit()
+        experiment = OqmdDFTonMC1(poll_time=25)
+        experiment.submit(data)
         status = experiment.monitor()
-        results = experiment.get_results(mp_ids)
-        self.assertTrue(all([run['status'] == "SUCCEEDED" for run in status]))
+        results = experiment.get_results()
+        self.assertTrue(all(results['status'] == "SUCCEEDED"))
 
 
 if __name__ == '__main__':
