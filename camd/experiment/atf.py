@@ -8,15 +8,16 @@ from camd.loop import Loop
 
 class LocalAgentSimulation(Experiment):
     def __init__(self, atf_dataframe, iterations, analyzer, n_seed,
-                 current_data=None, job_status="unstarted"):
+                 current_data=None, job_status=None):
         """
         Args:
-            atf_dataframe:
-            iterations:
-            analyzer:
-            n_seed:
-            current_data:
-            job_status:
+            atf_dataframe (DataFrame):
+            iterations (int): number of iterations to execute
+                in the loop
+            analyzer (Analyzer): Analyzer to use in the loop
+            n_seed (int): number of points to use in the seed data
+            current_data (dataframe): current data (for restarting)
+            job_status (str): job status (for restarting)
         """
         self.atf_dataframe = atf_dataframe
         self.iterations = iterations
@@ -34,17 +35,35 @@ class LocalAgentSimulation(Experiment):
             None
 
         """
-        self.current_data = data
-        agent = data['agent']
-        loop = Loop(
-            candidate_data=self.atf_dataframe,
-            agent=agent,
-            analyzer=self.analyzer,
-            experiment=ATFSampler(dataframe=self.atf_dataframe),
-            create_seed=self.n_seed,
-        )
-        loop.auto_loop(n_iterations=self.iterations, initialize=True)
-        self.job_status = "completed"
+        self.update_current_data(data)
+        self.job_status = 'PENDING'
 
     def monitor(self):
+        agents = self.current_data['agent']
+        for agent in agents:
+            loop = Loop(
+                candidate_data=self.atf_dataframe,
+                agent=agent,
+                analyzer=self.analyzer,
+                experiment=ATFSampler(
+                    dataframe=self.atf_dataframe
+                ),
+                create_seed=self.n_seed,
+            )
+            loop.auto_loop(n_iterations=self.iterations, initialize=True)
+        self.job_status = "COMPLETED"
+
+    def test_agent(self, agent):
+        loop = Loop(
+                candidate_data=self.atf_dataframe,
+                agent=agent,
+                analyzer=self.analyzer,
+                experiment=ATFSampler(
+                    dataframe=self.atf_dataframe
+                ),
+                create_seed=self.n_seed,
+            )
+        loop.auto_loop(n_iterations=self.iterations, initialize=True)
+
+    def get_results(self):
         pass

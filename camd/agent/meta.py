@@ -1,13 +1,13 @@
 #  Copyright (c) 2019 Toyota Research Institute
 """
-This module is intended to create a parameter table associated
-with agent testing, e. g. to categorize Agents via numerical
-vectors
+This module implements agent-tools for meta-analysis of
+other agents
 """
 
 
 import numpy as np
 from taburu.table import ParameterTable
+from camd.agent.base import HypothesisAgent
 
 
 REGRESSOR_PARAMS = [
@@ -56,9 +56,41 @@ AGENT_PARAMS = [
     },
 ]
 
-# Some things to test
-# Whether prior iteration always has same first row set
-# Synchronicity of order and value for parameter lists/tables
+
+class RandomMetaAgent(HypothesisAgent):
+    def __init__(self, agent_pool, candidate_data=None,
+                 seed_data=None, n_query=1):
+        """
+        Args:
+            agent_pool (ParameterTable): parameter table corresponding
+                to serialized agents in order to serialize on the fly
+            candidate_data (DataFrame): candidate data dataframe
+            seed_data (DataFrame): seed data data frame
+            n_query (int): number of hypotheses to generate
+        """
+        self.agent_pool = agent_pool
+        self.candidate_data = candidate_data
+        self.seed_data = seed_data
+        self.n_query = n_query
+        super(RandomMetaAgent, self).__init__()
+
+    def get_hypotheses(self, candidate_data=None, seed_data=None):
+        """
+        Acquires random agents and deserializes the results
+
+        Args:
+            candidate_data (DataFrame): candidate data dataframe
+            seed_data (DataFrame): seed data data frame
+
+        Returns:
+            (DataFrame): dataframe of hypotheses with the "agent"
+                field populated
+
+        """
+        hypotheses = self.candidate_data.sample(self.n_query)
+        hypotheses['agent'] = [self.agent_pool.hydrate(ind)
+                               for ind in hypotheses.index]
+        return hypotheses
 
 
 if __name__ == "__main__":

@@ -108,7 +108,6 @@ class RandomAgent(HypothesisAgent):
         self.candidate_data = candidate_data
         self.seed_data = seed_data
         self.n_query = n_query
-        self.cv_score = np.nan
         super(RandomAgent, self).__init__()
 
     def get_hypotheses(self, candidate_data, seed_data=None):

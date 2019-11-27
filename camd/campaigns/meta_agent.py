@@ -4,7 +4,7 @@ This module provides resources for agent optimization campaigns
 """
 from taburu.table import ParameterTable
 from camd import CAMD_S3_BUCKET
-from camd.agent.table import AGENT_PARAMS
+from camd.agent.meta import AGENT_PARAMS, RandomMetaAgent
 import pickle
 import boto3
 import botocore
@@ -100,3 +100,7 @@ def load_agent_pool(name, bucket=CAMD_S3_BUCKET):
         )
     agent_pool = pickle.loads(raw_agent_pool.read())
     return agent_pool
+
+
+def run_meta_agent_campaign(name, meta_agent=None):
+    meta_agent = meta_agent or RandomMetaAgent(n_query=1)
