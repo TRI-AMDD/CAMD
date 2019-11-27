@@ -5,6 +5,8 @@ This module provides resources for agent optimization campaigns
 from taburu.table import ParameterTable
 from camd import CAMD_S3_BUCKET
 from camd.agent.meta import AGENT_PARAMS, RandomMetaAgent
+from camd.experiment.atf import LocalAgentSimulation
+from camd.loop import Loop
 import pickle
 import boto3
 import botocore
@@ -102,5 +104,58 @@ def load_agent_pool(name, bucket=CAMD_S3_BUCKET):
     return agent_pool
 
 
-def run_meta_agent_campaign(name, meta_agent=None):
-    meta_agent = meta_agent or RandomMetaAgent(n_query=1)
+def load_atf_data(name, bucket=CAMD_S3_BUCKET):
+    """
+    Loads an agent pool
+
+    Args:
+        name (str): name of campaign
+        bucket (str): name of bucket
+
+    Returns:
+        (ParameterTable): parameter table of agents
+
+    """
+    client = boto3.client("s3")
+    prefix = "agent_testing/{}".format(name)
+    try:
+        raw_agent_pool = client.get_object(
+            Bucket=bucket,
+            Key="{}/atf_data.pickle".format(prefix),
+        )['Body']
+    except botocore.exceptions.ClientError as e:
+        raise ValueError(
+            "{} does not exist in s3, cannot load atf_data".format(name)
+        )
+    agent_pool = pickle.loads(raw_agent_pool.read())
+    return agent_pool
+
+
+def run_meta_agent_campaign(name, meta_agent=None, bucket=CAMD_S3_BUCKET,
+                            n_iterations=5):
+    """
+    Run a meta-agent campaign to explore agent space
+    for a given dataset
+
+    Args:
+        name (str): name of campaign (as defined above)
+        meta_agent (HypothesisAgent): meta-agent for selecting
+            the next agents to test
+
+    Returns:
+        None
+
+    """
+    agent_pool = load_agent_pool(name, bucket)
+    atf_data = load_atf_data(name, bucket)
+    meta_agent = meta_agent or RandomMetaAgent(
+        agent_pool=agent_pool, n_query=1)
+    experiment = LocalAgentSimulation(
+        atf_dataframe=atf_data, analyzer=None,
+        iterations=50, n_seed=0)
+    loop = Loop(
+        candidate_data=agent_pool.to_dataframe(),
+        agent=meta_agent, experiment=experiment,
+        analyzer=None,
+    )
+    loop.auto_loop(n_iterations)
