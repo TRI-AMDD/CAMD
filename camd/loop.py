@@ -18,32 +18,36 @@ from pymatgen.util.plotting import pretty_plot
 @camd_traced
 class Loop(MSONable):
     def __init__(self, candidate_data, agent, experiment, analyzer,
-                 agent_params=None, experiment_params=None, analyzer_params=None, finalizer=None, finalizer_params=None,
-                 path=None, seed_data=None, create_seed=False, heuristic_stopper=False, s3_prefix=None,
+                 finalizer=None, path=None, seed_data=None,
+                 create_seed=False, heuristic_stopper=np.inf, s3_prefix=None,
                  s3_bucket=CAMD_S3_BUCKET):
         """
-        Loop provides a sequential, workflow-like capability where an Agent iterates over a candidate
-        space to choose and execute new Experiments, given a certain objective. The abstraction
-        follows closely the "scientific method". Agent is the entity that suggests new Experiments.
-        Supporting entities are Analyzers and Finalizers. Framework is flexible enough to implement
-        many sequential learning or optimization tasks, including active-learning, bayesian optimization
+        Loop provides a sequential, workflow-like capability where an
+        Agent iterates over a candidate space to choose and execute
+        new Experiments, given a certain objective. The abstraction
+        follows closely the "scientific method". Agent is the entity
+        that suggests new Experiments.
+
+        Supporting entities are Analyzers and Finalizers. Framework
+        is flexible enough to implement many sequential learning or
+        optimization tasks, including active-learning, bayesian optimization
         or black-box optimization with local or global optima search.
 
         Args:
-            candidate_data (pd.DataFrame): List of uids for candidate search space for active learning
+            candidate_data (pd.DataFrame): List of uids for candidate
+                search space for active learning
             agent (HypothesisAgent): a subclass of HypothesisAgent
             experiment (Experiment): a subclass of Experiment
             analyzer (Analyzer): a subclass of Analyzer
-            agent_params (dict): parameters of the agent
-            experiment_params (dict): parameters of the experiment
-            analyzer_params (dict): parameters of the analyzer
             finalizer (obj): needs to have a finalize method.
-            finalizer_params (dict): parameters of finalizer
-            path (str): path in which to execute the loop. Defaults to full path of current folder if not given.
-            seed_data (pandas.DataFrame): Seed Data for active learning, index is to be the assumed uid
+            path (str): path in which to execute the loop. Defaults to
+                full path of current folder if not given.
+            seed_data (pandas.DataFrame): Seed Data for active learning,
+                index is to be the assumed uid
             create_seed (int): an initial seed size to create from the data
-            heuristic_stopper (int or False): If int, the heuristic stopper will kick in to check if loop should be
-                terminated after this many iterations, if no discoveries in past #n loops.
+            heuristic_stopper (int): If int, the heuristic stopper will
+                kick in to check if loop should be terminated after this
+                many iterations, if no discoveries in past #n loops.
             s3_prefix (str): prefix which to prepend all s3 synced files with,
                 if None is specified, s3 syncing will not occur
             s3_bucket (str): bucket name for s3 sync.  If not specified,
@@ -59,17 +63,10 @@ class Loop(MSONable):
         self.candidate_data = candidate_data
         self.candidate_space = list(candidate_data.index)
 
-        self.agent = agent(**agent_params)
-        self.agent_params = agent_params
-
-        self.experiment = experiment(experiment_params)
-        self.experiment_params = experiment_params
-
-        self.analyzer = analyzer(**analyzer_params)
-        self.analyzer_params = analyzer_params
-
-        self.finalizer_params = finalizer_params if finalizer_params else {}
-        self.finalizer = finalizer(**self.finalizer_params) if finalizer else None
+        self.agent = agent
+        self.experiment = experiment
+        self.analyzer = analyzer
+        self.finalizer = finalizer
 
         self.seed_data = seed_data if seed_data is not None else pd.DataFrame()
         self.create_seed = create_seed
@@ -91,7 +88,7 @@ class Loop(MSONable):
         if self.initialized:
             self.create_seed = False
             self.load('job_status')
-            self.experiment = self.experiment.from_job_status(self.experiment_params, self.job_status)
+            self.experiment.job_status = self.job_status
             self.load('submitted_experiment_requests')
             self.load('seed_data', method='pickle')
             self.load('consumed_candidates')
@@ -106,7 +103,8 @@ class Loop(MSONable):
 
     def run(self, finalize=False):
         """
-        This method applies a single iteration of the loop, and keeps record of everything in place.
+        This method applies a single iteration of the loop, and
+        keeps record of everything in place.
 
         Each iteration consists of:
             1. Get results of requested experiments
@@ -117,12 +115,12 @@ class Loop(MSONable):
             6. Submit new experiments
         """
         if not self.initialized:
-            raise ValueError("Loop needs to be properly initialized.")
+            raise ValueError("Loop must be initialized.")
 
         # Get new results
         print("Loop {} state: Getting new results".format(self.iteration))
         self.load('submitted_experiment_requests')
-        new_experimental_results = self.experiment.get_results(self.submitted_experiment_requests)
+        new_experimental_results = self.experiment.get_results()
         os.chdir(self.path)
 
         # Load, expand, save seed_data
@@ -132,45 +130,58 @@ class Loop(MSONable):
 
         # Augment candidate space
         self.load("consumed_candidates")
-        self.candidate_space = self.candidate_data.index.difference(self.consumed_candidates, sort=False).tolist()
+        self.candidate_space = self.candidate_data.index.difference(
+            self.consumed_candidates, sort=False).tolist()
         self.candidate_data = self.candidate_data.loc[self.candidate_space]
 
         # Analyze results
         print("Loop {} state: Analyzing results".format(self.iteration))
-        self.results_new_uids, self.results_all_uids = self.analyzer.analyze(self.seed_data,
-                                                                             self.submitted_experiment_requests,
-                                                                             self.consumed_candidates)
+        self.results_new_uids, self.results_all_uids = \
+            self.analyzer.analyze(self.seed_data,
+                                  self.submitted_experiment_requests,
+                                  self.consumed_candidates)
         self.analyzer.present(
-            self.seed_data, self.submitted_experiment_requests, self.consumed_candidates,
-            filename="hull_{}.png".format(self.iteration))
+            self.seed_data, self.submitted_experiment_requests,
+            self.consumed_candidates, filename="hull_{}.png".format(self.iteration))
 
-        self._discovered = np.array(self.submitted_experiment_requests)[self.results_new_uids].tolist()
+        self._discovered = np.array(
+            self.submitted_experiment_requests)[self.results_new_uids].tolist()
         self.save('_discovered', custom_name='discovered_{}.json'.format(self.iteration))
 
         self.report()
 
         # Loop stopper if no discoveries in last few cycles.
-        if self.heuristic_stopper and self.iteration > self.heuristic_stopper and \
-                np.sum(pd.read_csv(os.path.join(self.path, 'report.log'), delimiter='\s+')['N_Discovery'][-3:].values) == 0:
-            self.finalize()
-            raise ValueError("Not enough new discoveries. Stopping the loop.")
+        if self.iteration > self.heuristic_stopper:
+            report = pd.read_csv(
+                os.path.join(self.path, 'report.log'), delimiter=r'\s+')
+            new_discoveries = report['N_Discovery'][-3:].values.sum()
+            if new_discoveries == 0:
+                self.finalize()
+                print("Not enough new discoveries. Stopping the loop.")
+                return True
 
-        # Loop stopper if finalization is desired but will be done outside of run (e.g. auto_loop)
+
+        # Loop stopper if finalization is desired but will be done
+        # outside of run (e.g. auto_loop)
         if finalize:
             return None
 
         # Agent suggests new experiments
-        print("Loop {} state: Agent {} hypothesizing".format(self.iteration, self.agent.__class__.__name__))
-        suggested_experiments = self.agent.get_hypotheses(self.candidate_data, self.seed_data)
+        print("Loop {} state: Agent {} hypothesizing".format(
+            self.iteration, self.agent.__class__.__name__))
+        suggested_experiments = self.agent.get_hypotheses(
+            self.candidate_data, self.seed_data)
 
         # Loop stopper if agent doesn't have anything to suggest.
         if len(suggested_experiments) == 0:
             self.finalize()
-            raise ValueError("No space left to explore. Stopping the loop.")
+            print("No space left to explore. Stopping the loop.")
+            return True
 
         # Experiments submitted
         print("Loop {} state: Running experiments".format(self.iteration))
-        self.job_status = self.experiment.submit(suggested_experiments)
+        experiment_data = self.candidate_data.loc[suggested_experiments]
+        self.job_status = self.experiment.submit(experiment_data)
         self.save("job_status")
 
         self.submitted_experiment_requests = suggested_experiments
@@ -185,14 +196,18 @@ class Loop(MSONable):
     def auto_loop(self, n_iterations=10, timeout=10, monitor=False,
                   initialize=False, with_icsd=False):
         """
-        Runs the loop repeatedly, and locally. Pretty light weight, but recommended method
-        is auto_loop_in_directories.
+        Runs the loop repeatedly, and locally. Pretty light weight,
+        but recommended method is auto_loop_in_directories.
         TODO: Stopping criterion from Analyzer
+
         Args:
             n_iterations (int): Number of iterations.
-            timeout (int): Time (in seconds) to wait on idle for submitted experiments to finish.
-            monitor (bool): Use Experiment's monitor method to keep track of requested experiments.
-            initialize (bool): whether to initialize the loop before starting
+            timeout (int): Time (in seconds) to wait on idle for
+                submitted experiments to finish.
+            monitor (bool): Use Experiment's monitor method to
+                keep track of requested experiments.
+            initialize (bool): whether to initialize the loop
+                before starting
             with_icsd (bool): whether to initialize from icsd
 
         """
@@ -212,17 +227,20 @@ class Loop(MSONable):
         self.run(finalize=True)
         self.finalize()
 
-    def auto_loop_in_directories(self, n_iterations=10, timeout=10, monitor=False,
-                                 initialize=False, with_icsd=False):
+    def auto_loop_in_directories(self, n_iterations=10, timeout=10,
+                                 monitor=False, initialize=False,
+                                 with_icsd=False):
         """
         Runs the loop repeatedly
         TODO: Stopping criterion from Analyzer
         Args:
             n_iterations (int): Number of iterations.
-            timeout (int): Time (in seconds) to wait on idle for submitted experiments to finish.
-            monitor (bool): Use Experiment's monitor method to keep track of requested experiments. Note, if this is set
-                            True, timeout also needs to be adjusted. If this is not set True, make sure timeout is
-                            sufficiently long.
+            timeout (int): Time (in seconds) to wait on idle for
+                submitted experiments to finish.
+            monitor (bool): Use Experiment's monitor method to keep
+                track of requested experiments. Note, if this is set
+                True, timeout also needs to be adjusted. If this is
+                not set True, make sure timeout is sufficiently long.
             initialize (bool): whether to initialize the loop
             with_icsd (bool): whether to initialize with icsd seed
 
@@ -280,20 +298,26 @@ class Loop(MSONable):
 
     def initialize(self, random_state=42):
         if self.initialized:
-            raise ValueError("Initialization may overwrite existing loop data. Exit.")
+            raise ValueError(
+                "Initialization may overwrite existing loop data. Exit.")
         if not self.seed_data.empty and not self.create_seed:
-            print("Loop {} state: Agent {} hypothesizing".format('initialization', self.agent.__class__.__name__))
-            suggested_experiments = self.agent.get_hypotheses(self.candidate_data, self.seed_data)
+            print("Loop {} state: Agent {} hypothesizing".format(
+                'initialization', self.agent.__class__.__name__))
+            suggested_experiments = self.agent.get_hypotheses(
+                self.candidate_data, self.seed_data)
         elif self.create_seed:
             np.random.seed(seed=random_state)
             _agent = RandomAgent(self.candidate_data, n_query=self.create_seed)
-            print("Loop {} state: Agent {} hypothesizing".format('initialization', _agent.__class__.__name__))
+            print("Loop {} state: Agent {} hypothesizing".format(
+                'initialization', _agent.__class__.__name__))
             suggested_experiments = _agent.get_hypotheses(self.candidate_data)
         else:
-            raise ValueError("No seed data available. Either supply or ask for creation.")
+            raise ValueError(
+                "No seed data available. Either supply or ask for creation.")
 
         print("Loop {} state: Running experiments".format(self.iteration))
-        self.job_status = self.experiment.submit(suggested_experiments)
+        experiment_data = self.candidate_data.loc[suggested_experiments]
+        self.job_status = self.experiment.submit(experiment_data)
 
         self.submitted_experiment_requests = suggested_experiments
         self.consumed_candidates = suggested_experiments
@@ -310,13 +334,17 @@ class Loop(MSONable):
 
     def initialize_with_icsd_seed(self, random_state=42):
         if self.initialized:
-            raise ValueError("Initialization may overwrite existing loop data. Exit.")
-        cache_s3_objs(["camd/shared-data/oqmd1.2_icsd_featurized_clean_v2.pickle"])
+            raise ValueError(
+                "Initialization may overwrite existing loop data. Exit.")
+        cache_s3_objs(
+            ["camd/shared-data/oqmd1.2_icsd_featurized_clean_v2.pickle"]
+        )
         self.seed_data = pd.read_pickle(
             os.path.join(S3_CACHE, "camd/shared-data/oqmd1.2_icsd_featurized_clean_v2.pickle"))
         self.initialize(random_state=random_state)
 
     def report(self):
+        # TODO: Can we use pandas here?
         with open(os.path.join(self.path, 'report.log'), 'a') as f:
             if self.iteration == 0:
                 f.write("Iteration N_Discovery Total_Discovery N_candidates model-CV\n")
@@ -354,8 +382,10 @@ class Loop(MSONable):
         data = pd.read_csv(report_filename, delim_whitespace=True)
         plt = pretty_plot(6, 4.5)
         ax = plt.gca()
-        ax = data.plot(kind='bar', x='Iteration', y='Total_Discovery',
-                       legend=False, ax=ax)
+        ax = data.plot(
+            kind='bar', x='Iteration', y='Total_Discovery',
+            legend=False, ax=ax
+        )
         ax.set_ylabel("Total materials discovered")
         fig = ax.get_figure()
         if filename:
@@ -416,9 +446,11 @@ class Loop(MSONable):
         s3_sync(self.s3_bucket, self.s3_prefix, self.path)
 
 
+# TODO: fix docstring
 def loop_backup(src, new_dir_name):
     """
     Helper method to backup finished loop iterations.
+
     Args:
         src:
         new_dir_name:

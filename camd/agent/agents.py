@@ -17,6 +17,7 @@ from camd.log import camd_traced
 
 from sklearn.gaussian_process.kernels import RBF, ConstantKernel
 from sklearn.gaussian_process import GaussianProcessRegressor
+from sklearn.linear_model import LinearRegression
 from sklearn.model_selection import cross_val_score, KFold, train_test_split
 from sklearn.ensemble.bagging import BaggingRegressor
 from sklearn.preprocessing import StandardScaler
@@ -173,7 +174,8 @@ class StabilityAgent(HypothesisAgent, metaclass=abc.ABCMeta):
             [phase.stability for phase in candidate_phases]
 
         if sort:
-            self.candidate_data = self.candidate_data.sort_values('pred_stability')
+            self.candidate_data = self.candidate_data.sort_values(
+                'pred_stability')
 
         return self.candidate_data
 
@@ -182,8 +184,7 @@ class StabilityAgent(HypothesisAgent, metaclass=abc.ABCMeta):
 class QBCStabilityAgent(StabilityAgent):
     def __init__(self, candidate_data=None, seed_data=None, n_query=1,
                  hull_distance=0.0, multiprocessing=True, alpha=0.5,
-                 training_fraction=0.5, ml_algorithm=None,
-                 ml_algorithm_params=None, n_members=10):
+                 training_fraction=0.5, model=None, n_members=10):
         """
         Args:
             candidate_data (DataFrame): data about the candidates
@@ -197,9 +198,7 @@ class QBCStabilityAgent(StabilityAgent):
                 training committee members
             alpha (float): weighting factor for the stdev in making
                 best-case predictions of the stability
-            ml_algorithm (sklearn-style regressor): Regression method
-            ml_algorithm_params (dict): parameters to pass to the regression
-                method
+            model (sklearn-style regressor): regressor
             n_members (int): number of committee members for the qbc
         """
 
@@ -210,10 +209,11 @@ class QBCStabilityAgent(StabilityAgent):
         )
 
         self.alpha = alpha
+        self.model = model
+        self.n_members = n_members
         self.qbc = QBC(
             n_members=n_members, training_fraction=training_fraction,
-            ml_algorithm=ml_algorithm,
-            ml_algorithm_params=ml_algorithm_params
+            model=model,
         )
 
     def get_hypotheses(self, candidate_data, seed_data=None,
@@ -234,7 +234,7 @@ class QBCStabilityAgent(StabilityAgent):
             expected, sort=True, floor=-6.0)
 
         # Find the most stable ones up to n_query within hull_distance
-        stability_filter = self.candidate_data['pred_stability'] < self.hull_distance
+        stability_filter = self.candidate_data['pred_stability'] <= self.hull_distance
         within_hull = self.candidate_data[stability_filter]
 
         self.indices_to_compute = within_hull.head(self.n_query).index.tolist()
@@ -250,8 +250,7 @@ class AgentStabilityML5(StabilityAgent):
     """
     def __init__(self, candidate_data=None, seed_data=None, n_query=1,
                  hull_distance=0.0, multiprocessing=True,
-                 ml_algorithm=None, ml_algorithm_params=None,
-                 exploit_fraction=0.5):
+                 model=None, exploit_fraction=0.5):
         """
         Args:
             candidate_data (DataFrame): data about the candidates
@@ -261,9 +260,7 @@ class AgentStabilityML5(StabilityAgent):
                 which to deem a given material as "stable"
             multiprocessing (bool): whether to use multiprocessing
                 for phase stability analysis
-            ml_algorithm (sklearn-style regressor): Regression method
-            ml_algorithm_params (dict): parameters to pass to the regression
-                method
+            model (sklearn-style Regressor): Regression method
             exploit_fraction (float): fraction of n_query to assign to
                 exploitation hypotheses
         """
@@ -273,13 +270,12 @@ class AgentStabilityML5(StabilityAgent):
             multiprocessing=multiprocessing
         )
 
-        self.ml_algorithm = ml_algorithm
-        self.ml_algorithm_params = ml_algorithm_params
+        self.model = model or LinearRegression()
         self.exploit_fraction = exploit_fraction
 
     def get_hypotheses(self, candidate_data, seed_data=None):
         X_cand, X_seed, y_seed = self.update_data(candidate_data, seed_data)
-        steps = [('scaler', StandardScaler()), ('ML', self.ml_algorithm(**self.ml_algorithm_params))]
+        steps = [('scaler', StandardScaler()), ('ML', self.model)]
         pipeline = Pipeline(steps)
 
         cv_score = cross_val_score(pipeline, X_seed, self.seed_data['delta_e'],
@@ -294,7 +290,7 @@ class AgentStabilityML5(StabilityAgent):
             expected, sort=True, floor=-6.0)
 
         # Filter by stability according to hull distance
-        stability_filter = self.candidate_data['pred_stability'] < self.hull_distance
+        stability_filter = self.candidate_data['pred_stability'] <= self.hull_distance
         within_hull = self.candidate_data[stability_filter]
 
         # Exploitation part:
@@ -364,7 +360,7 @@ class GaussianProcessStabilityAgent(StabilityAgent):
             expected, sort=True, floor=-6.0)
 
         # Find the most stable ones up to n_query within hull_distance
-        stability_filter = self.candidate_data['pred_stability'] < self.hull_distance
+        stability_filter = self.candidate_data['pred_stability'] <= self.hull_distance
         within_hull = self.candidate_data[stability_filter]
 
         self.indices_to_compute = within_hull.head(self.n_query).index.tolist()
@@ -493,7 +489,7 @@ class SVGProcessStabilityAgent(StabilityAgent):
             expected, sort=True, floor=-6.0)
 
         # Find the most stable ones up to n_query within hull_distance
-        stability_filter = self.candidate_data['pred_stability'] < self.hull_distance
+        stability_filter = self.candidate_data['pred_stability'] <= self.hull_distance
         within_hull = self.candidate_data[stability_filter]
 
         self.indices_to_compute = within_hull.head(self.n_query).index.tolist()
@@ -615,7 +611,7 @@ class BaggedGaussianProcessStabilityAgent(StabilityAgent):
             expected, sort=True, floor=-6.0)
 
         # Find the most stable ones up to n_query within hull_distance
-        stability_filter = self.candidate_data['pred_stability'] < self.hull_distance
+        stability_filter = self.candidate_data['pred_stability'] <= self.hull_distance
         within_hull = self.candidate_data[stability_filter]
 
         self.indices_to_compute = within_hull.head(self.n_query).index.tolist()
@@ -631,9 +627,9 @@ class AgentStabilityAdaBoost(StabilityAgent):
     """
     def __init__(self, candidate_data=None, seed_data=None, n_query=1,
                  hull_distance=0.0, multiprocessing=True,
-                 ml_algorithm=None, ml_algorithm_params=None,
-                 uncertainty=True, alpha=0.5, n_estimators=10,
-                 exploit_fraction=0.5, diversify=False, dynamic_alpha=False):
+                 model=None, uncertainty=True, alpha=0.5,
+                 n_estimators=10, exploit_fraction=0.5,
+                 diversify=False, dynamic_alpha=False):
         """
         Args:
             candidate_data (DataFrame): data about the candidates
@@ -643,9 +639,7 @@ class AgentStabilityAdaBoost(StabilityAgent):
                 which to deem a given material as "stable"
             multiprocessing (bool): whether to use multiprocessing
                 for phase stability analysis
-            ml_algorithm (sklearn-style regressor): Regression method
-            ml_algorithm_params (dict): parameters to pass to the regression
-                method
+            model (sklearn-style regressor): Regression method
             uncertainty (bool): whether uncertainty is included in
                 minimal predictions
             alpha (float): weighting factor for the stdev in making
@@ -667,9 +661,7 @@ class AgentStabilityAdaBoost(StabilityAgent):
             n_query=n_query, hull_distance=hull_distance,
             multiprocessing=multiprocessing
         )
-
-        self.ml_algorithm = ml_algorithm
-        self.ml_algorithm_params = ml_algorithm_params
+        self.model = model
         self.exploit_fraction = exploit_fraction
         self.uncertainty = uncertainty
         self.alpha = alpha
@@ -680,7 +672,7 @@ class AgentStabilityAdaBoost(StabilityAgent):
     def get_hypotheses(self, candidate_data, seed_data=None):
         X_cand, X_seed, y_seed = self.update_data(candidate_data, seed_data)
 
-        steps = [('scaler', StandardScaler()), ('ML', self.ml_algorithm(**self.ml_algorithm_params))]
+        steps = [('scaler', StandardScaler()), ('ML', self.model)]
         pipeline = Pipeline(steps)
 
         adaboost = AdaBoostRegressor(
@@ -697,7 +689,7 @@ class AgentStabilityAdaBoost(StabilityAgent):
         scaler = StandardScaler()
         X_scaled = scaler.fit_transform(X_seed)
         overall_adaboost = AdaBoostRegressor(
-            base_estimator=self.ml_algorithm(**self.ml_algorithm_params),
+            base_estimator=self.model,
             n_estimators=self.n_estimators
         )
         overall_adaboost.fit(X_scaled, self.seed_data['delta_e'])
@@ -719,7 +711,7 @@ class AgentStabilityAdaBoost(StabilityAgent):
             expected, sort=True, floor=-6.0)
 
         # Filter by stability according to hull distance
-        stability_filter = self.candidate_data['pred_stability'] < self.hull_distance
+        stability_filter = self.candidate_data['pred_stability'] <= self.hull_distance
         within_hull = self.candidate_data[stability_filter]
 
         # Exploitation part:
@@ -728,7 +720,7 @@ class AgentStabilityAdaBoost(StabilityAgent):
             to_compute = diverse_quant( within_hull.index.tolist(), n_exploitation, self.candidate_data)
         else:
             to_compute = within_hull.head(n_exploitation).index.tolist()
-        remaining = within_hull.tail(len(within_hull)- n_exploitation)
+        remaining = within_hull.tail(len(within_hull) - n_exploitation)
         remaining = remaining.append(self.candidate_data[~stability_filter])
 
         # Exploration part (pick randomly from remainder):
@@ -758,34 +750,50 @@ class AgentStabilityAdaBoost(StabilityAgent):
 
 def diverse_quant(points, target_length, df, quantiles=None):
     """
-    Diversify a sublist by eliminating entries based on comparisons with quantiles
-    threshold and Euclidean distance.
+    Diversify a sublist by eliminating entries based on comparisons
+    with quantiles threshold and Euclidean distance.
 
-    This method takes the points list (which would be the object within_hull in stability implementations),
-    and tries to select a diverse subset for the number of exploitation choices (target_length)
-    its allowed to make. It follows a simple algorithm: start from i = 0 of the points,
-    and go down the remainder of the list, removing entries that seem to be closer to i below a
-    certain distance threshold. It repeats this process for all i: i = 1, i = 2 ... i_max.
-    The method tries to adjust the distance threshold until it finds the shortest resulting
-    list that is longer than target_length. If it can't, it will simply
-    return points as it is. The threshold values are  decided by finding distances corresponding to
-    quantiles of the a sampled distribution of distances in the overall feature set.
+    This method takes the points list (which would be the object
+    within_hull in stability implementations), and tries to select
+    a diverse subset for the number of exploitation choices (
+    target_length) it's allowed to make.
+
+    It follows a simple algorithm: start from i = 0 of the points,
+    and go down the remainder of the list, removing entries that
+    seem to be closer to i below a certain distance threshold.
+
+    It repeats this process for all i: i = 1, i = 2 ... i_max.
+    The method tries to adjust the distance threshold until it
+    finds the shortest resulting list that is longer than
+    target_length. If it can't, it will simply return points
+    as it is. The threshold values are  decided by finding
+    distances corresponding to quantiles of the a sampled
+    distribution of distances in the overall feature set.
+
     The method does not alter the original ordering in the list points.
-    The algorithm is simple but I'm unaware of any other implementations of this in the literature,
-    and it seems to be working fine.
-    The intuition behind the algorithm is to make
-    risk-averse choices by avoiding the acquisition of too similar candidates,
-    in case one example among those entries is sufficient for the model to minimize its
-    uncertainty and/or make a decision to not acquire any other in that region.
-    So the resources would not be wasted and can be allocated to other promising choices in points.
+    The algorithm is simple but I'm unaware of any other implementations
+    of this in the literature, and it seems to be working fine.
+    The intuition behind the algorithm is to make risk-averse choices
+    by avoiding the acquisition of too similar candidates,
+    in case one example among those entries is sufficient for
+    the model to minimize its uncertainty and/or make a decision
+    to not acquire any other in that region.  So the resources
+    would not be wasted and can be allocated to other promising
+    choices in points.
 
     Args:
-        points (list): Initial set of points, needs to have the internal preferred order
-        target_length (int): length of desired sublist, that would diversify while trying to preserve order
-        df (DataFrame): feature vectors of points, where index labels contain elements of points
-        quantiles (list): quantilies to test for threshold. Defaults to [0.01, 0.02, 0.03, 0.04, 0.05]
+        points (list): Initial set of points, needs to have the
+            internal preferred order
+        target_length (int): length of desired sublist, that would
+            diversify while trying to preserve order
+        df (DataFrame): feature vectors of points, where index labels
+            contain elements of points
+        quantiles (list): quantilies to test for threshold. Defaults
+            to [0.01, 0.02, 0.03, 0.04, 0.05]
+
     Returns:
         A diversified sublist of points
+
     """
     quantiles = quantiles if quantiles else [0.01, 0.02, 0.03, 0.04, 0.05]
     if target_length >= len(points):
@@ -822,7 +830,7 @@ def diverse_quant(points, target_length, df, quantiles=None):
         return points
     else:
         d = OrderedDict()
-        for i in res[-1]: # fall back to the latest remove list before break
+        for i in res[-1]:  # fall back to the latest remove list before break
             d[i] = None
         final_remove_list = list(d.keys())
 

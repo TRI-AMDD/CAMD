@@ -28,12 +28,10 @@ class LoopTest(unittest.TestCase):
     def test_sync(self):
         with ScratchDir('.'):
             df = pd.read_csv(os.path.join(CAMD_TEST_FILES, 'test_df.csv'))
-            experiment_params = {"dataframe": df}
 
             # Construct and start loop
-            new_loop = Loop(df, AgentStabilityML5, ATFSampler,
-                            AnalyzeStability, agent_params={}, create_seed=10,
-                            analyzer_params={}, experiment_params=experiment_params,
+            new_loop = Loop(df, AgentStabilityML5(), ATFSampler(df),
+                            AnalyzeStability(), create_seed=10,
                             s3_prefix="test")
             new_loop.initialize()
         s3 = boto3.resource('s3')
@@ -44,13 +42,10 @@ class LoopTest(unittest.TestCase):
     def test_generate_final_report(self):
         with ScratchDir('.'):
             df = pd.read_csv(os.path.join(CAMD_TEST_FILES, 'test_df.csv'))
-            experiment_params = {"dataframe": df}
 
             # Construct and start loop
-            new_loop = Loop(df, AgentStabilityML5, ATFSampler,
-                            AnalyzeStability, agent_params={}, create_seed=True,
-                            analyzer_params={}, experiment_params=experiment_params,
-                            )
+            new_loop = Loop(df, AgentStabilityML5(), ATFSampler(df),
+                            AnalyzeStability(), create_seed=True)
             new_loop.generate_report_plot(
                 "report.png", os.path.join(CAMD_TEST_FILES, "report.log"))
             self.assertTrue(os.path.isfile("report.png"))

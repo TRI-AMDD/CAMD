@@ -92,6 +92,7 @@ class AnalyzeStructures(AnalyzerBase):
                 to structures. If given, the lowest energy instance of a
                 given structure will be return as the unique one. Otherwise,
                 there is no such guarantee. (optional)
+
         Returns:
             ([bool]) list of bools corresponding to the given list of
                 structures corresponding to uniqueness
@@ -199,37 +200,48 @@ class FinalizeQqmdCampaign:
 
 
 class AnalyzeStability(AnalyzerBase):
-    def __init__(self, df=None, new_result_ids=None, hull_distance=None,
+    def __init__(self, df=None, new_result_ids=None, hull_distance=0.05,
                  multiprocessing=True, entire_space=False):
         self.df = df
         self.new_result_ids = new_result_ids
-        self.hull_distance = hull_distance if hull_distance else 0.05
+        self.hull_distance = hull_distance
         self.multiprocessing = multiprocessing
         self.entire_space = entire_space
         self.space = None
         self.stabilities = None
         super(AnalyzeStability, self).__init__()
 
-    def filter_dataframe_by_composition(self, elements, df=None):
+    @staticmethod
+    def filter_dataframe_by_composition(df, elements):
         """
         Filters dataframe by composition
+
+        Args:
+            df (DataFrame): dataframe
+            elements ([str]): list of elements to filter by, i. e.
+
+        Returns:
+            (DataFrame): dataframe where every composition is sampled such
+                that its composition is a subset of the input element set
+
         """
-        df = df if df is not None else self.df
         elements = set(elements)
         ind_to_include = []
-        for ind in self.df.index:
+        for ind in df.index:
             if set(Composition(df.loc[ind]['Composition']).as_dict().keys()).issubset(elements):
                 ind_to_include.append(ind)
+
         return df.loc[ind_to_include]
 
-    def get_phase_space(self, df=None):
+    @staticmethod
+    def get_phase_space(dataframe):
         """
         Gets PhaseSpace object associated with dataframe
         """
-        _df = df if df is not None else self.df
         phases = []
-        for data in _df.iterrows():
-            phases.append(Phase(data[1]['Composition'], energy=data[1]['delta_e'], per_atom=True, description=data[0]))
+        for data in dataframe.iterrows():
+            phases.append(Phase(data[1]['Composition'], energy=data[1]['delta_e'],
+                                per_atom=True, description=data[0]))
         for el in ELEMENTS:
             phases.append(Phase(el, 0.0, per_atom=True))
 
@@ -274,7 +286,7 @@ class AnalyzeStability(AnalyzerBase):
             # later versions of pandas (i.e. b/c all_result_ids may contain
             # things not in df currently (b/c of failed experiments).
             # We should test comps = self.df.loc[self.df.index.intersection(all_result_ids)]
-            _df = self.filter_dataframe_by_composition(system_elements)
+            _df = self.filter_dataframe_by_composition(self.df, system_elements)
         else:
             _df = self.df
 
@@ -299,9 +311,9 @@ class AnalyzeStability(AnalyzerBase):
 
         # Get stabilities of new and all ids
         stabilities_of_new = np.array([stabilities_by_id.get(uid, np.nan)
-                                       for uid in self.new_result_ids])
+                                       for uid in self.new_result_ids], dtype=np.float)
         stabilities_of_all = np.array([stabilities_by_id.get(uid, np.nan)
-                                       for uid in self.all_result_ids])
+                                       for uid in self.all_result_ids], dtype=np.float)
 
         # Cast to boolean if specified
         if return_within_hull:
@@ -435,14 +447,13 @@ class PhaseSpaceAL(PhaseSpace):
     def compute_stabilities_mod(self, phases_to_evaluate=None):
         """
         Calculate the stability for every Phase.
-        Keyword Arguments:
-            phases:
+
+        Args:
+            phases_to_evaluate ([Phase] or None):
                 List of Phases. If None, uses every Phase in PhaseSpace.phases
-            save:
-                If True, save the value for stability to the database.
-            new_only:
-                If True, only compute the stability for Phases which did not
-                import a stability from the OQMD. False by default.
+
+        Returns:
+            (None)
         """
 
         if phases_to_evaluate is None:
@@ -472,14 +483,15 @@ class PhaseSpaceAL(PhaseSpace):
                                   ncpus=multiprocessing.cpu_count()):
         """
         Calculate the stability for every Phase.
-        Keyword Arguments:
-            phases:
-                List of Phases. If None, uses every Phase in PhaseSpace.phases
-            save:
-                If True, save the value for stability to the database.
-            new_only:
-                If True, only compute the stability for Phases which did not
-                import a stability from the OQMD. False by default.
+
+        Args:
+            phases_to_evaluate ([Phases] or None): list of Phases. If None,
+                uses every Phase in PhaseSpace.phases
+            ncpus (int): number of cpus to use, i. e. processes to use
+
+        Returns:
+            (None)
+
         """
 
         if phases_to_evaluate is None:
@@ -498,7 +510,6 @@ class PhaseSpaceAL(PhaseSpace):
             # we will use the uid_to_phase_ind create above to be able to map results of parmap to self.phases
             ind = self.uid_to_phase_ind[phases_to_evaluate[i].description]
             self.phases[ind].stability = _result_list2[i]
-
 
     def _multiproc_help1(self, p):
         if p.stability is None:  # for low e phases, we only need to eval stability if it doesn't exist

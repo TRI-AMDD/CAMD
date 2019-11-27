@@ -29,7 +29,6 @@ from camd.log import camd_traced
 from camd.campaigns.structure_discovery import run_proto_dft_campaign, run_atf_campaign
 
 
-# TODO: set up test bucket, instead of using complicated pathing
 @camd_traced
 class Worker(object):
     def __init__(self, campaign="proto-dft"):

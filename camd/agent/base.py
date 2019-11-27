@@ -4,6 +4,7 @@ import numpy as np
 from sklearn.linear_model import LinearRegression
 from sklearn.preprocessing import StandardScaler
 from sklearn.model_selection import KFold, cross_val_score
+from sklearn.base import clone
 from camd import tqdm
 
 import abc
@@ -26,20 +27,24 @@ class HypothesisAgent(metaclass=abc.ABCMeta):
 
 class QBC:
     """
-    Uncertainty quantification for non-supporting regressors with Query-By-Committee
+    Uncertainty quantification for non-supporting regressors
+    with Query-By-Committee
     """
-    def __init__(self, n_members, training_fraction, ml_algorithm=None,
-                 ml_algorithm_params=None, test_full_model=True):
+    def __init__(self, n_members, training_fraction, model=None,
+                 test_full_model=True):
         """
-        :param n_members: Number of committee members (i.e. models to train)
-        :param training_fraction: fraction of data to use in training committee members
-        :param ml_algorithm: sklearn-style regressor
-        :param ml_algorithm_params: (dict) parameters to pass to the algorithm
+
+        Args:
+            n_members (int): Number of committee members or models to train
+            training_fraction (float): fraction of data to use in training
+                committee members
+            model (sklearn.RegressorMixin): sklearn-style regressor
+            test_full_model (bool): whether or not to test the full
+                model
         """
         self.n_members = n_members
         self.training_fraction = training_fraction
-        self.ml_algorithm = ml_algorithm if ml_algorithm else LinearRegression
-        self.ml_algorithm_params = ml_algorithm_params if ml_algorithm_params else {}
+        self.model = model if model else LinearRegression()
         self.committee_models = []
         self.trained = False
         self.test_full_model = test_full_model
@@ -65,28 +70,28 @@ class QBC:
             scaler = StandardScaler()
             X = scaler.fit_transform(split_X[i])
             y = split_y[i]
-            model = self.ml_algorithm(**self.ml_algorithm_params)
+            model = clone(self.model)
             model.fit(X, y)
-            self.committee_models.append([scaler, model])  # Note we're saving the scaler to use in predictions
+            # Saving the scaler and model to make predictions
+            self.committee_models.append([scaler, model])
 
         self.trained = True
 
         if self.test_full_model:
             # Get a CV score for an overall model with present dataset
-            overall_model = self.ml_algorithm(**self.ml_algorithm_params)
-            overall_scaler = StandardScaler()
-            _X = overall_scaler.fit_transform(self._X, self._y)
-            overall_model.fit(_X, self._y)
-            cv_score = cross_val_score(overall_model, _X, self._y,
-                                       cv=KFold(5, shuffle=True), scoring='neg_mean_absolute_error')
+            full_scaler = StandardScaler()
+            _X = full_scaler.fit_transform(self._X, self._y)
+            full_model = clone(self.model)
+            full_model.fit(_X, self._y)
+            cv_score = cross_val_score(
+                full_model, _X, self._y, cv=KFold(5, shuffle=True),
+                scoring='neg_mean_absolute_error')
             self.cv_score = np.mean(cv_score) * -1
 
     def predict(self, X):
         # Apply the committee of models to candidate space
         committee_predictions = []
-        for i in tqdm(list(range(self.n_members))):
-            scaler = self.committee_models[i][0]
-            model = self.committee_models[i][1]
+        for scaler, model in tqdm(self.committee_models):
             _X = scaler.transform(X)
             committee_predictions.append(model.predict(_X))
         stds = np.std(np.array(committee_predictions), axis=0)
@@ -111,7 +116,9 @@ class RandomAgent(HypothesisAgent):
 
         Args:
             candidate_data (DataFrame): candidate data
-            seed_data (DataFrame): seed data
+            seed_data (DataFrame): seed data, there's none in this
+                case, but keep the kwarg for adherence to the
+                superclass signature
 
         Returns:
             (List) of indices
