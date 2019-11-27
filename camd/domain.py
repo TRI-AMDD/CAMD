@@ -97,11 +97,15 @@ class StructureDomain(DomainBase):
         from defined chemical boundaries.
 
         Args:
-            bounds:
-            charge_balanced:
-            frequency_threshold:
-            create_subsystems:
-            kwargs: arguments to pass to formula creator
+            bounds ([str]): list of element strings corresponding to bounds of
+                the composition space, e. g. ['Fe', 'O', 'N']
+            n_max_atoms (int): maximum number of atoms in the generated
+                formulae
+            charge_balanced (bool): whether to filter generated formulae by
+                charge balancing the respective elements according to allowed
+                oxidation states
+            create_subsystems (bool): TODO - what is this?
+            **kwargs: arguments to pass to formula creator
         """
         formulas = create_formulas(bounds, charge_balanced=charge_balanced,
                                    create_subsystems=create_subsystems, **kwargs)
@@ -117,7 +121,7 @@ class StructureDomain(DomainBase):
 
     def get_structures(self):
         """
-        Method to call the external structure generator.
+        Method to call protosearch structure generation
         """
         if self.formulas:
             print("Generating hypothetical structures...")
@@ -165,7 +169,7 @@ class StructureDomain(DomainBase):
 
     @property
     def formulas_with_valid_structures(self):
-        if self.valid_structures is not None: # Note the redundancy here is for pandas to work
+        if self.valid_structures is not None:  # Note the redundancy here is for pandas to work
             return [s.composition.formula for s in self.valid_structures["pmg_structures"]]
         else:
             warnings.warn("No structures available yet.")
@@ -173,14 +177,20 @@ class StructureDomain(DomainBase):
 
     def featurize_structures(self, featurizer=None, **kwargs):
         """
-        Featurizes the hypothetical structures available from hypo_structures method. Hypothetical structures for
-            which featurization fails is removed and valid structures are made available as valid_structures
+        Featurizes the hypothetical structures available from
+        hypo_structures method. Hypothetical structures for which
+        featurization fails are removed and valid structures are made
+        available as valid_structures
+
         Args:
-            featurizer (Featurizer): A MatMiner Featurizer. Defaults to MultipleFeaturizer with
-                PRB Ward Voronoi descriptors.
-            **kwargs (dict): kwargs passed to featurize_many method of featurizer.
+            featurizer (Featurizer): A MatMiner Featurizer. Defaults to
+                MultipleFeaturizer with PRB Ward Voronoi descriptors.
+            **kwargs (dict): kwargs passed to featurize_many method of
+                featurizer.
+
         Returns:
-            pandas.DataFrame: features
+            (pandas.DataFrame): features
+
         """
         if self.hypo_structures is None: # Note the redundancy here is for pandas to work
             warnings.warn("No structures available. Generating structures.")
@@ -199,14 +209,16 @@ class StructureDomain(DomainBase):
             StructureComposition(IonProperty(fast=True))
         ])
 
-        features = featurizer.featurize_many(self.hypo_structures['pmg_structures'], ignore_errors=True, **kwargs)
+        features = featurizer.featurize_many(
+            self.hypo_structures['pmg_structures'], ignore_errors=True, **kwargs)
 
         n_species, formula = [], []
         for s in self.hypo_structures['pmg_structures']:
             n_species.append(len(s.composition.elements))
             formula.append(s.composition.formula)
 
-        self._features_df = pd.DataFrame.from_records(features, columns=featurizer.feature_labels())
+        self._features_df = pd.DataFrame.from_records(
+            features, columns=featurizer.feature_labels())
         self._features_df.index = self.hypo_structures.index
         self._features_df['N_species'] = n_species
         self._features_df['Composition'] = formula
@@ -306,13 +318,29 @@ def get_stoichiometric_formulas(n_components, grid=None):
     return stoics[indices]
 
 
-def create_formulas(bounds, charge_balanced=True, oxi_states_extend=None, oxi_states_override=None,
-                    all_oxi_states=False, create_subsystems=False, grid=None):
+def create_formulas(bounds, charge_balanced=True, oxi_states_extend=None,
+                    oxi_states_override=None, all_oxi_states=False,
+                    grid=None, create_subsystems=False):
     """
     Creates a list of formulas given the bounds of a chemical space.
+
     TODO:
         - implement create_subsystems
+
+    Args:
+        bounds:
+        charge_balanced:
+        oxi_states_extend:
+        oxi_states_override:
+        all_oxi_states:
+        grid:
+
+    Returns:
+
     """
+    if create_subsystems:
+        raise NotImplementedError("Create subsystems not yet implemented.")
+
     stoichs = get_stoichiometric_formulas(len(bounds), grid=grid)
 
     formulas = []

@@ -447,14 +447,13 @@ class PhaseSpaceAL(PhaseSpace):
     def compute_stabilities_mod(self, phases_to_evaluate=None):
         """
         Calculate the stability for every Phase.
-        Keyword Arguments:
-            phases:
+
+        Args:
+            phases_to_evaluate ([Phase] or None):
                 List of Phases. If None, uses every Phase in PhaseSpace.phases
-            save:
-                If True, save the value for stability to the database.
-            new_only:
-                If True, only compute the stability for Phases which did not
-                import a stability from the OQMD. False by default.
+
+        Returns:
+            (None)
         """
 
         if phases_to_evaluate is None:
@@ -484,14 +483,15 @@ class PhaseSpaceAL(PhaseSpace):
                                   ncpus=multiprocessing.cpu_count()):
         """
         Calculate the stability for every Phase.
-        Keyword Arguments:
-            phases:
-                List of Phases. If None, uses every Phase in PhaseSpace.phases
-            save:
-                If True, save the value for stability to the database.
-            new_only:
-                If True, only compute the stability for Phases which did not
-                import a stability from the OQMD. False by default.
+
+        Args:
+            phases_to_evaluate ([Phases] or None): list of Phases. If None,
+                uses every Phase in PhaseSpace.phases
+            ncpus (int): number of cpus to use, i. e. processes to use
+
+        Returns:
+            (None)
+
         """
 
         if phases_to_evaluate is None:
@@ -510,7 +510,6 @@ class PhaseSpaceAL(PhaseSpace):
             # we will use the uid_to_phase_ind create above to be able to map results of parmap to self.phases
             ind = self.uid_to_phase_ind[phases_to_evaluate[i].description]
             self.phases[ind].stability = _result_list2[i]
-
 
     def _multiproc_help1(self, p):
         if p.stability is None:  # for low e phases, we only need to eval stability if it doesn't exist
