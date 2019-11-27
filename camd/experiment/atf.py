@@ -39,21 +39,31 @@ class LocalAgentSimulation(Experiment):
         self.job_status = 'PENDING'
 
     def monitor(self):
+        """
+        The monitor method in the case just runs the necessary
+        agent simulation for all specified agents
+
+        Returns:
+            None
+
+        """
         agents = self.current_data['agent']
         for agent in agents:
-            loop = Loop(
-                candidate_data=self.atf_dataframe,
-                agent=agent,
-                analyzer=self.analyzer,
-                experiment=ATFSampler(
-                    dataframe=self.atf_dataframe
-                ),
-                create_seed=self.n_seed,
-            )
-            loop.auto_loop(n_iterations=self.iterations, initialize=True)
+            self.test_agent(agent)
         self.job_status = "COMPLETED"
 
     def test_agent(self, agent):
+        """
+        Runs a simulation of a given agent according to the
+        class attributes
+
+        Args:
+            agent (HypothesisAgent):
+
+        Returns:
+            None
+
+        """
         loop = Loop(
                 candidate_data=self.atf_dataframe,
                 agent=agent,
