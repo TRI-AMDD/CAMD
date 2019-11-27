@@ -228,8 +228,8 @@ class StructureDomain(DomainBase):
         self._valid_structure_labels = list(self.features.index)
         self.valid_structures = self.hypo_structures.loc[self._valid_structure_labels]
 
-        print("{} out of {} structures were successfully featurized.".format(self.features.shape[0],
-                                                                             self._features_df.shape[0]))
+        print("{} out of {} structures were successfully featurized.".format(
+            self.features.shape[0], self._features_df.shape[0]))
         return self.features
 
     def candidates(self, include_composition=True):
@@ -257,15 +257,20 @@ class StructureDomain(DomainBase):
 def get_structures_from_protosearch(formulas, source='icsd', db_interface=None):
     """
     Calls protosearch to get the hypothetical structures.
+
     Args:
-        formulas ([str]): list of chemical formulas from which to generate candidate structures
+        formulas ([str]): list of chemical formulas from which to generate
+            candidate structures
         source (str): project name in OQMD to be used as source. defaults to ICSD.
-        db_interface (DbInterface): interface to OQMD database by default uses the one stored in s3
+        db_interface (DbInterface): interface to OQMD database by default uses the
+            one stored in s3
+
     Returns:
-        pandas.DataFrame of hypothetical pymatgen structures generated and their unique ids from protosearch
+        pandas.DataFrame of hypothetical pymatgen structures generated and
+            their unique ids from protosearch
 
     TODO:
-        - For efficiency, n_max_atoms can be handled within OqmdInterface
+        - Handle n_max_atoms within OqmdInterface
     """
 
     if db_interface is None:
@@ -290,29 +295,37 @@ def get_structures_from_protosearch(formulas, source='icsd', db_interface=None):
     _structures['pmg_structures'] = pmg_structures
 
     # The uuid below is probably an overkill. But want the strings are unique
-    # Sometimes in spaces with similar stoichiometries they may clash e.g. IrSb2O2 and Ir2SbO2 may
-    # End up producing the same string, despite differnet substitutions on same structure.
-    # We just need to figure out a way to get the right order from protosearch.
-    structure_uids = [_structures.iloc[i]['proto_name'].replace('_','-') +
-                           '-' + '-'.join(pmg_structures[i].symbol_set) + '-'+
-                            str(uuid.uuid4()).replace('-', '')[:6]
-                      for i in range(len(_structures))]
+    # Sometimes in spaces with similar stoichiometries they may clash e.g.
+    # IrSb2O2 and Ir2SbO2 may end up producing the same string, despite
+    # different substitutions on same structure.  We just need to figure
+    # out a way to get the right order from protosearch.
+    structure_uids = [
+        _structures.iloc[i]['proto_name'].replace('_', '-') +
+        '-' + '-'.join(pmg_structures[i].symbol_set) + '-' +
+        str(uuid.uuid4()).replace('-', '')[:6]
+        for i in range(len(_structures))
+    ]
     _structures.index = structure_uids
     return _structures
 
 
 def get_stoichiometric_formulas(n_components, grid=None):
     """
+    Generates anonymous stoichiometric formulas for a set
+    of n_components with specified coefficients
+
     Args:
         n_components (int): number of components (dimensions)
         grid (list): a range of integers
+
     Returns:
-        list: unique stoichiometric formula from an allowed grid of integers.
+        list: unique stoichiometric formula from an allowed grid
+            of integers.
     """
     grid = grid if grid else list(range(1, 8))
     args = [grid for _ in range(n_components)]
     stoics = np.array(list(itertools.product(*args)))
-    fracs = stoics.astype(float)/np.sum(stoics, axis=1)[:, None]
+    fracs = stoics.astype(float) / np.sum(stoics, axis=1)[:, None]
     _, indices, counts = np.unique(fracs, axis=0, return_index=True,
                                    return_counts=True)
     return stoics[indices]
@@ -328,14 +341,23 @@ def create_formulas(bounds, charge_balanced=True, oxi_states_extend=None,
         - implement create_subsystems
 
     Args:
-        bounds:
-        charge_balanced:
-        oxi_states_extend:
-        oxi_states_override:
-        all_oxi_states:
-        grid:
+        bounds ([str]): list of elements to bound the space
+        charge_balanced (bool): whether to balance oxidations
+            states in the generated formulae
+        oxi_states_extend ({}): dictionary of {element: [int]}
+            where the value is the added oxidation state to be
+            included
+        oxi_states_override ({str: int}): override for oxidation
+            states, see Composition.oxi_state_guesses
+        all_oxi_states ({str: int): global config for oxidation
+            states, see Composition.oxi_state_guesses
+        grid ([]): list of integers to use for coefficients
+        create_subsystems (bool): whether to create formulas
+            for sub-chemical systems, e. g. for Sr-Ti-O,
+            whether to create Ti-O and Sr-O
 
     Returns:
+        ([str]): list of chemical formulas
 
     """
     if create_subsystems:
@@ -351,22 +373,22 @@ def create_formulas(bounds, charge_balanced=True, oxi_states_extend=None,
         formulas.append(f_)
 
     if charge_balanced:
-
         charge_balanced_formulas = []
 
         if oxi_states_extend:
             oxi_states_override = oxi_states_override if oxi_states_override else {}
-            for k, v in oxi_states_extend.items():
-                v = v if type(v) == list else [v]
-                _states = v + list(Element[k].common_oxidation_states)
-                if k in oxi_states_override:
-                    oxi_states_override[k] += v
+            for element, states in oxi_states_extend.items():
+                states = states if isinstance(states, list) else [states]
+                _states = states + list(Element[element].common_oxidation_states)
+                if element in oxi_states_override:
+                    oxi_states_override[element] += states
                 else:
-                    oxi_states_override[k] = _states
+                    oxi_states_override[element] = _states
 
         for formula in formulas:
             c = Composition(formula)
-            if c.oxi_state_guesses(oxi_states_override=oxi_states_override, all_oxi_states=all_oxi_states):
+            if c.oxi_state_guesses(oxi_states_override=oxi_states_override,
+                                   all_oxi_states=all_oxi_states):
                 charge_balanced_formulas.append(formula)
         return charge_balanced_formulas
     else:
@@ -376,25 +398,39 @@ def create_formulas(bounds, charge_balanced=True, oxi_states_extend=None,
 def heuristic_setup(elements):
     """
     Helper function to setup a default structure_domain
+
+    Args:
+        elements (str): list of elements to use to
+            generate formulae
+
+    Returns:
+        (int): maximum coefficient for element set
+        (bool): whether or not charge balancing should be used
+
     """
-    grid_defaults = {2:5, 3:5}
-    Ncomp = len(elements)
-    _g = grid_defaults.get(Ncomp, 4)
+    grid_defaults = {2: 5, 3: 5}
+    n_comp = len(elements)
+    _g = grid_defaults.get(n_comp, 4)
+
+    # Charge balance ionic compounds
     if {"O", "Cl", "F", "S", "N", "Br", "I"}.intersection(set(elements)):
         charge_balanced = True
     else:
         charge_balanced = False
+
     if not charge_balanced:
-        return (_g, charge_balanced)
+        return _g, charge_balanced
     else:
         g_max_max = 8
         while True:
-            sd = StructureDomain.from_bounds(elements, charge_balanced=True, **{'grid':range(1,_g)})
-            N = len(sd.formulas)
-            if N>=20:
-                return (_g, charge_balanced)
+            sd = StructureDomain.from_bounds(
+                elements, charge_balanced=True,
+                grid=range(1, _g))
+            n = len(sd.formulas)
+            if n >= 20:
+                return _g, charge_balanced
             else:
                 if _g < g_max_max:
-                    _g+=1
+                    _g += 1
                 else:
-                    return (_g, charge_balanced)
+                    return _g, charge_balanced

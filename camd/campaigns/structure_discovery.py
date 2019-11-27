@@ -44,10 +44,10 @@ def run_proto_dft_campaign(chemsys):
     try:
         # Get structure domain
         element_list = chemsys.split('-')
-        g_max, charge_balanced = heuristic_setup(element_list)
+        max_coeff, charge_balanced = heuristic_setup(element_list)
         domain = StructureDomain.from_bounds(
             element_list, charge_balanced=charge_balanced,
-            n_max_atoms=20, **{'grid': range(1, g_max)})
+            n_max_atoms=20, **{'grid': range(1, max_coeff)})
         candidate_data = domain.candidates()
         structure_dict = domain.hypo_structures_dict
 
