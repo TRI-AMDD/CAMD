@@ -7,10 +7,9 @@ import os
 os.environ['CAMD_S3_BUCKET'] = 'camd-test'
 from taburu.table import ParameterTable
 from camd import CAMD_S3_BUCKET
-import numpy as np
 from camd.utils.data import load_default_atf_data
 from camd.campaigns.meta_agent import initialize_agent_campaign, \
-    update_agent_pool, load_agent_pool
+    update_agent_pool, load_agent_pool, run_meta_agent_campaign
 
 
 def teardown_s3():
@@ -79,6 +78,16 @@ class MetaAgentTest(unittest.TestCase):
         )
         second = load_agent_pool("test_meta_agent")
         self.assertEqual(len(first), len(second))
+
+    def test_run(self):
+        agent_pool = ParameterTable(TEST_AGENT_PARAMS)
+        dataframe = load_default_atf_data()
+        initialize_agent_campaign(
+            name="test_meta_agent", dataframe=dataframe,
+            agent_pool=agent_pool
+        )
+        run_meta_agent_campaign("test_meta_agent")
+        self.assertTrue(True)
 
 
 if __name__ == '__main__':

@@ -141,6 +141,9 @@ def run_meta_agent_campaign(name, meta_agent=None, bucket=CAMD_S3_BUCKET,
         name (str): name of campaign (as defined above)
         meta_agent (HypothesisAgent): meta-agent for selecting
             the next agents to test
+        bucket (str): s3 bucket name for syncing and pulling data
+        n_iterations (int): number of iterations for which to
+            run the loop
 
     Returns:
         None
@@ -156,6 +159,6 @@ def run_meta_agent_campaign(name, meta_agent=None, bucket=CAMD_S3_BUCKET,
     loop = Loop(
         candidate_data=agent_pool.to_dataframe(),
         agent=meta_agent, experiment=experiment,
-        analyzer=None,
+        analyzer=None, s3_prefix=name, s3_bucket=bucket
     )
     loop.auto_loop(n_iterations)
