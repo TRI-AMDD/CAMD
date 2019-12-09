@@ -49,7 +49,7 @@ class LocalAgentSimulation(Experiment):
         """
         agents = self.current_data['agent']
         for agent in agents:
-            self.test_agent(agent)
+            loop = self.test_agent(agent)
         self.job_status = "COMPLETED"
 
     def test_agent(self, agent):
@@ -74,6 +74,7 @@ class LocalAgentSimulation(Experiment):
                 create_seed=self.n_seed,
             )
         loop.auto_loop(n_iterations=self.iterations, initialize=True)
+        return loop
 
     def get_results(self):
-        pass
+        return self.current_data

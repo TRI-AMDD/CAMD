@@ -18,8 +18,8 @@ from pymatgen.util.plotting import pretty_plot
 @camd_traced
 class Loop(MSONable):
     def __init__(self, candidate_data, agent, experiment, analyzer,
-                 finalizer=None, path=None, seed_data=None,
-                 create_seed=False, heuristic_stopper=np.inf, s3_prefix=None,
+                 finalizer=None, seed_data=None, create_seed=False,
+                 heuristic_stopper=np.inf, s3_prefix=None,
                  s3_bucket=CAMD_S3_BUCKET):
         """
         Loop provides a sequential, workflow-like capability where an
@@ -40,8 +40,6 @@ class Loop(MSONable):
             experiment (Experiment): a subclass of Experiment
             analyzer (Analyzer): a subclass of Analyzer
             finalizer (obj): needs to have a finalize method.
-            path (str): path in which to execute the loop. Defaults to
-                full path of current folder if not given.
             seed_data (pandas.DataFrame): Seed Data for active learning,
                 index is to be the assumed uid
             create_seed (int): an initial seed size to create from the data
@@ -53,28 +51,28 @@ class Loop(MSONable):
             s3_bucket (str): bucket name for s3 sync.  If not specified,
                 CAMD will sync to the specified environment variable.
         """
-        self.path = path if path else '.'
-        self.path = os.path.abspath(self.path)
-        os.chdir(self.path)
-
+        # Cloud parameters
         self.s3_prefix = s3_prefix
         self.s3_bucket = s3_bucket
 
+        # Data parameters
         self.candidate_data = candidate_data
+        self.seed_data = seed_data if seed_data is not None else pd.DataFrame()
+        self.create_seed = create_seed
+        self.history = pd.DataFrame()
 
+        # Object parameters
         self.agent = agent
         self.experiment = experiment
         self.analyzer = analyzer
         self.finalizer = finalizer
 
-        self.seed_data = seed_data if seed_data is not None else pd.DataFrame()
-        self.create_seed = create_seed
-
+        # Other parameters
+        # TODO: think about how to abstract this away from the loop
         self.heuristic_stopper = heuristic_stopper
+
+        # Internal data
         self._exp_raw_results = None
-        self._discovered = None
-        self.results_all_uids = None
-        self.results_new_uids = None
 
         # Check if there exists earlier iterations
         if os.path.exists(os.path.join(self.path, 'iteration.json')):
@@ -125,11 +123,16 @@ class Loop(MSONable):
         # Load seed_data
         self.load('seed_data', method='pickle')
 
-        # Analyze results
+        # Analyze new results
         print("Loop {} state: Analyzing results".format(self.iteration))
-        self.seed_data = self.analyzer.analyze(
+        summary, new_seed_data = self.analyzer.analyze(
             self.seed_data, new_experimental_results
         )
+
+        # Augment summary and seed
+        self.history.append(summary)
+        self.save("history", method="pickle")
+        self.seed_data = new_seed_data
         self.save('seed_data', method='pickle')
 
         # Remove candidates from candidate space
@@ -137,19 +140,9 @@ class Loop(MSONable):
             new_experimental_results.index, sort=False).tolist()
         self.candidate_data = self.candidate_data.loc[candidate_space]
 
-
-        # TODO: put this in stability analyzer
-        self._discovered = np.array(
-            self.submitted_experiment_requests)[self.results_new_uids].tolist()
-        self.save('_discovered', custom_name='discovered_{}.json'.format(self.iteration))
-
-        self.report()
-
         # Loop stopper if no discoveries in last few cycles.
         if self.iteration > self.heuristic_stopper:
-            report = pd.read_csv(
-                os.path.join(self.path, 'report.log'), delimiter=r'\s+')
-            new_discoveries = report['N_Discovery'][-3:].values.sum()
+            new_discoveries = self.history['N_Discovery'][-3:].values.sum()
             if new_discoveries == 0:
                 self.finalize()
                 print("Not enough new discoveries. Stopping the loop.")

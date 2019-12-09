@@ -10,6 +10,7 @@ from camd import CAMD_S3_BUCKET
 from camd.utils.data import load_default_atf_data
 from camd.campaigns.meta_agent import initialize_agent_campaign, \
     update_agent_pool, load_agent_pool, run_meta_agent_campaign
+from monty.tempfile import ScratchDir
 
 
 def teardown_s3():
@@ -86,7 +87,8 @@ class MetaAgentTest(unittest.TestCase):
             name="test_meta_agent", dataframe=dataframe,
             agent_pool=agent_pool
         )
-        run_meta_agent_campaign("test_meta_agent")
+        with ScratchDir('.'):
+            run_meta_agent_campaign("test_meta_agent")
         self.assertTrue(True)
 
 

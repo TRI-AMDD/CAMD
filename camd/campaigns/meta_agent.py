@@ -156,7 +156,7 @@ def run_meta_agent_campaign(name, meta_agent=None, bucket=CAMD_S3_BUCKET,
         agent_pool=agent_pool, n_query=1)
     experiment = LocalAgentSimulation(
         atf_dataframe=atf_data, analyzer=None,
-        iterations=50, n_seed=0)
+        iterations=50, n_seed=1)
     candidate_data = convert_parameter_table_to_dataframe(agent_pool)
     loop = Loop(
         candidate_data=candidate_data,
@@ -164,4 +164,5 @@ def run_meta_agent_campaign(name, meta_agent=None, bucket=CAMD_S3_BUCKET,
         analyzer=None, s3_prefix=name, s3_bucket=bucket,
         create_seed=1
     )
+    import nose; nose.tools.set_trace()
     loop.auto_loop(n_iterations, initialize=True)
