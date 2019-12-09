@@ -10,7 +10,7 @@ from camd.domain import StructureDomain, heuristic_setup
 from camd.agent.agents import AgentStabilityAdaBoost
 from camd.agent.base import RandomAgent
 from camd.experiment import ATFSampler
-from camd.loop import Loop
+from camd.loop import Campaign
 from camd import CAMD_TEST_FILES, CAMD_S3_BUCKET
 from camd.utils.s3 import s3_sync
 
@@ -74,7 +74,7 @@ def run_proto_dft_campaign(chemsys):
         n_max_iter = n_max_iter_heuristics(len(candidate_data), 10)
 
         # Construct and start loop
-        new_loop = Loop(
+        new_loop = Campaign(
             candidate_data, agent, experiment, analyzer,
             finalizer=finalizer, heuristic_stopper=5,
             s3_prefix="proto-dft/runs/{}".format(chemsys))
@@ -108,8 +108,8 @@ def run_atf_campaign(chemsys):
     analyzer = AnalyzeStability(hull_distance=0.05)
     experiment = ATFSampler(dataframe=df)
     candidate_data = df
-    new_loop = Loop(candidate_data, agent, experiment, analyzer,
-                    create_seed=n_seed, s3_prefix=s3_prefix)
+    new_loop = Campaign(candidate_data, agent, experiment, analyzer,
+                        create_seed=n_seed, s3_prefix=s3_prefix)
     new_loop.initialize()
     for _ in range(3):
         new_loop.run()

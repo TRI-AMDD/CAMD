@@ -16,13 +16,13 @@ from pymatgen.util.plotting import pretty_plot
 
 
 @camd_traced
-class Loop(MSONable):
+class Campaign(MSONable):
     def __init__(self, candidate_data, agent, experiment, analyzer,
                  finalizer=None, seed_data=None, create_seed=False,
                  heuristic_stopper=np.inf, s3_prefix=None,
                  s3_bucket=CAMD_S3_BUCKET):
         """
-        Loop provides a sequential, workflow-like capability where an
+        Campaign provides a sequential, workflow-like capability where an
         Agent iterates over a candidate space to choose and execute
         new Experiments, given a certain objective. The abstraction
         follows closely the "scientific method". Agent is the entity
@@ -112,10 +112,10 @@ class Loop(MSONable):
             6. Submit new experiments
         """
         if not self.initialized:
-            raise ValueError("Loop must be initialized.")
+            raise ValueError("Campaign must be initialized.")
 
         # Get new results
-        print("Loop {} state: Getting new results".format(self.iteration))
+        print("Campaign {} state: Getting new results".format(self.iteration))
         self.load('submitted_experiment_requests')
         new_experimental_results = self.experiment.get_results()
         os.chdir(self.path)
@@ -124,7 +124,7 @@ class Loop(MSONable):
         self.load('seed_data', method='pickle')
 
         # Analyze new results
-        print("Loop {} state: Analyzing results".format(self.iteration))
+        print("Campaign {} state: Analyzing results".format(self.iteration))
         summary, new_seed_data = self.analyzer.analyze(
             self.seed_data, new_experimental_results
         )
@@ -140,7 +140,7 @@ class Loop(MSONable):
             new_experimental_results.index, sort=False).tolist()
         self.candidate_data = self.candidate_data.loc[candidate_space]
 
-        # Loop stopper if no discoveries in last few cycles.
+        # Campaign stopper if no discoveries in last few cycles.
         if self.iteration > self.heuristic_stopper:
             new_discoveries = self.history['N_Discovery'][-3:].values.sum()
             if new_discoveries == 0:
@@ -148,25 +148,25 @@ class Loop(MSONable):
                 print("Not enough new discoveries. Stopping the loop.")
                 return True
 
-        # Loop stopper if finalization is desired but will be done
+        # Campaign stopper if finalization is desired but will be done
         # outside of run (e.g. auto_loop)
         if finalize:
             return None
 
         # Agent suggests new experiments
-        print("Loop {} state: Agent {} hypothesizing".format(
+        print("Campaign {} state: Agent {} hypothesizing".format(
             self.iteration, self.agent.__class__.__name__))
         suggested_experiments = self.agent.get_hypotheses(
             self.candidate_data, self.seed_data)
 
-        # Loop stopper if agent doesn't have anything to suggest.
+        # Campaign stopper if agent doesn't have anything to suggest.
         if len(suggested_experiments) == 0:
             self.finalize()
             print("No space left to explore. Stopping the loop.")
             return True
 
         # Experiments submitted
-        print("Loop {} state: Running experiments".format(self.iteration))
+        print("Campaign {} state: Running experiments".format(self.iteration))
         experiment_data = self.candidate_data.loc[suggested_experiments]
         self.job_status = self.experiment.submit(experiment_data)
         self.save("job_status")
@@ -288,21 +288,21 @@ class Loop(MSONable):
             raise ValueError(
                 "Initialization may overwrite existing loop data. Exit.")
         if not self.seed_data.empty and not self.create_seed:
-            print("Loop {} state: Agent {} hypothesizing".format(
+            print("Campaign {} state: Agent {} hypothesizing".format(
                 'initialization', self.agent.__class__.__name__))
             suggested_experiments = self.agent.get_hypotheses(
                 self.candidate_data, self.seed_data)
         elif self.create_seed:
             np.random.seed(seed=random_state)
             _agent = RandomAgent(self.candidate_data, n_query=self.create_seed)
-            print("Loop {} state: Agent {} hypothesizing".format(
+            print("Campaign {} state: Agent {} hypothesizing".format(
                 'initialization', _agent.__class__.__name__))
             suggested_experiments = _agent.get_hypotheses(self.candidate_data)
         else:
             raise ValueError(
                 "No seed data available. Either supply or ask for creation.")
 
-        print("Loop {} state: Running experiments".format(self.iteration))
+        print("Campaign {} state: Running experiments".format(self.iteration))
         experiment_data = self.candidate_data.loc[suggested_experiments]
         self.job_status = self.experiment.submit(experiment_data)
 

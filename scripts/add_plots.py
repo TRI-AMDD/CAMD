@@ -7,7 +7,7 @@ existing runs prior to version
 import os
 import pickle
 from camd import CAMD_S3_BUCKET
-from camd.loop import Loop
+from camd.loop import Campaign
 from camd.analysis import AnalyzeStability
 from monty.os import cd, makedirs_p
 from monty.serialization import loadfn, dumpfn
@@ -68,7 +68,7 @@ def update_run(folder):
                     finalize=False
                 )
 
-            Loop.generate_report_plot()
+            Campaign.generate_report_plot()
 
 
 def update_s3(s3_folder, bucket=CAMD_S3_BUCKET,

@@ -3,7 +3,7 @@
 This module provides resources for agent optimization campaigns
 """
 from camd.experiment.base import Experiment, ATFSampler
-from camd.loop import Loop
+from camd.loop import Campaign
 
 
 class LocalAgentSimulation(Experiment):
@@ -64,7 +64,7 @@ class LocalAgentSimulation(Experiment):
             None
 
         """
-        loop = Loop(
+        loop = Campaign(
                 candidate_data=self.atf_dataframe,
                 agent=agent,
                 analyzer=self.analyzer,

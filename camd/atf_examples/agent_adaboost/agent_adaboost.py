@@ -1,5 +1,5 @@
 # Copyright Toyota Research Institute 2019
-from camd.loop import Loop
+from camd.loop import Campaign
 
 from sklearn.neural_network import MLPRegressor
 from camd.agent.agents import AgentStabilityAdaBoost
@@ -30,7 +30,7 @@ experiment = ATFSampler(dataframe=df)
 candidate_data = df
 
 ##########################################################
-new_loop = Loop(
+new_loop = Campaign(
     candidate_data, agent, experiment, analyzer,
     create_seed=n_seed
 )

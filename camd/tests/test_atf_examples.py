@@ -10,7 +10,7 @@ from camd.agent.agents import QBCStabilityAgent, GaussianProcessStabilityAgent, 
 from camd.agent.base import RandomAgent
 from camd.analysis import AnalyzeStability as AnalyzeStability
 from camd.experiment import ATFSampler
-from camd.loop import Loop
+from camd.loop import Campaign
 from camd.utils.s3 import cache_s3_objs
 from camd import CAMD_TEST_FILES
 from camd.utils.data import load_default_atf_data
@@ -42,8 +42,8 @@ class AftLoopTestLong(unittest.TestCase):
         experiment = ATFSampler(dataframe=df)
         candidate_data = df
 
-        new_loop = Loop(candidate_data, agent, experiment, analyzer,
-                        create_seed=n_seed)
+        new_loop = Campaign(candidate_data, agent, experiment, analyzer,
+                            create_seed=n_seed)
 
         new_loop.initialize()
         self.assertFalse(new_loop.create_seed)
@@ -73,8 +73,8 @@ class AtfLoopTest(unittest.TestCase):
         analyzer = AnalyzeStability(hull_distance=0.05)
         experiment = ATFSampler(dataframe=df)
         candidate_data = df
-        new_loop = Loop(candidate_data, agent, experiment, analyzer,
-                        create_seed=n_seed)
+        new_loop = Campaign(candidate_data, agent, experiment, analyzer,
+                            create_seed=n_seed)
 
         new_loop.initialize()
         self.assertFalse(new_loop.create_seed)
@@ -84,8 +84,8 @@ class AtfLoopTest(unittest.TestCase):
             self.assertTrue(True)
 
         # Testing the continuation
-        new_loop = Loop(candidate_data, agent, experiment, analyzer,
-                        create_seed=n_seed)
+        new_loop = Campaign(candidate_data, agent, experiment, analyzer,
+                            create_seed=n_seed)
         self.assertTrue(new_loop.initialized)
         self.assertEqual(new_loop.iteration, 6)
         self.assertEqual(new_loop.loop_state, None)
@@ -104,8 +104,8 @@ class AtfLoopTest(unittest.TestCase):
         experiment = ATFSampler(dataframe=df_sub)
         candidate_data = df_sub
 
-        new_loop = Loop(candidate_data, agent, experiment, analyzer,
-                        create_seed=n_seed)
+        new_loop = Campaign(candidate_data, agent, experiment, analyzer,
+                            create_seed=n_seed)
         new_loop.initialize()
         self.assertTrue(new_loop.initialized)
 
@@ -122,8 +122,8 @@ class AtfLoopTest(unittest.TestCase):
         experiment = ATFSampler(dataframe=df_sub)
         candidate_data = df_sub
 
-        new_loop = Loop(candidate_data, agent, experiment, analyzer,
-                        create_seed=n_seed)
+        new_loop = Campaign(candidate_data, agent, experiment, analyzer,
+                            create_seed=n_seed)
         new_loop.initialize()
         self.assertTrue(new_loop.initialized)
 
@@ -145,8 +145,8 @@ class AtfLoopTest(unittest.TestCase):
         experiment = ATFSampler(df_sub)
         candidate_data = df_sub
 
-        new_loop = Loop(candidate_data, agent, experiment, analyzer,
-                        create_seed=n_seed)
+        new_loop = Campaign(candidate_data, agent, experiment, analyzer,
+                            create_seed=n_seed)
         new_loop.initialize()
         self.assertTrue(new_loop.initialized)
 
@@ -164,8 +164,8 @@ class AtfLoopTest(unittest.TestCase):
         experiment = ATFSampler(df_sub)
         candidate_data = df_sub
 
-        new_loop = Loop(candidate_data, agent, experiment, analyzer,
-                        create_seed=n_seed)
+        new_loop = Campaign(candidate_data, agent, experiment, analyzer,
+                            create_seed=n_seed)
         new_loop.initialize()
         self.assertTrue(new_loop.initialized)
 
@@ -187,8 +187,8 @@ class AtfLoopTest(unittest.TestCase):
         analyzer = AnalyzeStability(hull_distance=0.05)
         experiment = ATFSampler(dataframe=df)
         # candidate_data = df
-        new_loop = Loop(candidate_data, agent, experiment, analyzer,
-                        seed_data=seed_data)
+        new_loop = Campaign(candidate_data, agent, experiment, analyzer,
+                            seed_data=seed_data)
 
         new_loop.initialize()
         self.assertFalse(new_loop.create_seed)
@@ -202,7 +202,7 @@ class AtfLoopTest(unittest.TestCase):
                     os.path.isfile("report.png"))
 
         # Testing the continuation
-        new_loop = Loop(candidate_data, agent, experiment, analyzer)
+        new_loop = Campaign(candidate_data, agent, experiment, analyzer)
         self.assertTrue(new_loop.initialized)
         self.assertEqual(new_loop.iteration, 6)
         self.assertEqual(new_loop.loop_state, None)
@@ -232,8 +232,8 @@ class AtfSVGPLoopTest(unittest.TestCase):
         experiment = ATFSampler(df_sub)
         candidate_data = df_sub
 
-        new_loop = Loop(candidate_data, agent, experiment, analyzer,
-                        create_seed=n_seed)
+        new_loop = Campaign(candidate_data, agent, experiment, analyzer,
+                            create_seed=n_seed)
         new_loop.initialize()
         self.assertTrue(new_loop.initialized)
 

@@ -7,7 +7,7 @@ from camd import CAMD_S3_BUCKET
 from camd.agent.meta import AGENT_PARAMS, RandomMetaAgent, \
     convert_parameter_table_to_dataframe
 from camd.experiment.atf import LocalAgentSimulation
-from camd.loop import Loop
+from camd.loop import Campaign
 import pickle
 import boto3
 import botocore
@@ -158,7 +158,7 @@ def run_meta_agent_campaign(name, meta_agent=None, bucket=CAMD_S3_BUCKET,
         atf_dataframe=atf_data, analyzer=None,
         iterations=50, n_seed=1)
     candidate_data = convert_parameter_table_to_dataframe(agent_pool)
-    loop = Loop(
+    loop = Campaign(
         candidate_data=candidate_data,
         agent=meta_agent, experiment=experiment,
         analyzer=None, s3_prefix=name, s3_bucket=bucket,
