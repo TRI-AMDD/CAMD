@@ -4,7 +4,8 @@ This module provides resources for agent optimization campaigns
 """
 from taburu.table import ParameterTable
 from camd import CAMD_S3_BUCKET
-from camd.agent.meta import AGENT_PARAMS, RandomMetaAgent
+from camd.agent.meta import AGENT_PARAMS, RandomMetaAgent, \
+    convert_parameter_table_to_dataframe
 from camd.experiment.atf import LocalAgentSimulation
 from camd.loop import Loop
 import pickle
@@ -156,9 +157,11 @@ def run_meta_agent_campaign(name, meta_agent=None, bucket=CAMD_S3_BUCKET,
     experiment = LocalAgentSimulation(
         atf_dataframe=atf_data, analyzer=None,
         iterations=50, n_seed=0)
+    candidate_data = convert_parameter_table_to_dataframe(agent_pool)
     loop = Loop(
-        candidate_data=agent_pool.to_dataframe(),
+        candidate_data=candidate_data,
         agent=meta_agent, experiment=experiment,
-        analyzer=None, s3_prefix=name, s3_bucket=bucket
+        analyzer=None, s3_prefix=name, s3_bucket=bucket,
+        create_seed=1
     )
-    loop.auto_loop(n_iterations)
+    loop.auto_loop(n_iterations, initialize=True)

@@ -61,7 +61,6 @@ class Loop(MSONable):
         self.s3_bucket = s3_bucket
 
         self.candidate_data = candidate_data
-        self.candidate_space = list(candidate_data.index)
 
         self.agent = agent
         self.experiment = experiment
@@ -123,27 +122,23 @@ class Loop(MSONable):
         new_experimental_results = self.experiment.get_results()
         os.chdir(self.path)
 
-        # Load, expand, save seed_data
+        # Load seed_data
         self.load('seed_data', method='pickle')
-        self.seed_data = self.seed_data.append(new_experimental_results)
-        self.save('seed_data', method='pickle')
-
-        # Augment candidate space
-        self.load("consumed_candidates")
-        self.candidate_space = self.candidate_data.index.difference(
-            self.consumed_candidates, sort=False).tolist()
-        self.candidate_data = self.candidate_data.loc[self.candidate_space]
 
         # Analyze results
         print("Loop {} state: Analyzing results".format(self.iteration))
-        self.results_new_uids, self.results_all_uids = \
-            self.analyzer.analyze(self.seed_data,
-                                  self.submitted_experiment_requests,
-                                  self.consumed_candidates)
-        self.analyzer.present(
-            self.seed_data, self.submitted_experiment_requests,
-            self.consumed_candidates, filename="hull_{}.png".format(self.iteration))
+        self.seed_data = self.analyzer.analyze(
+            self.seed_data, new_experimental_results
+        )
+        self.save('seed_data', method='pickle')
 
+        # Remove candidates from candidate space
+        candidate_space = self.candidate_data.index.difference(
+            new_experimental_results.index, sort=False).tolist()
+        self.candidate_data = self.candidate_data.loc[candidate_space]
+
+
+        # TODO: put this in stability analyzer
         self._discovered = np.array(
             self.submitted_experiment_requests)[self.results_new_uids].tolist()
         self.save('_discovered', custom_name='discovered_{}.json'.format(self.iteration))
@@ -159,7 +154,6 @@ class Loop(MSONable):
                 self.finalize()
                 print("Not enough new discoveries. Stopping the loop.")
                 return True
-
 
         # Loop stopper if finalization is desired but will be done
         # outside of run (e.g. auto_loop)

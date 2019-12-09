@@ -8,6 +8,7 @@ other agents
 import numpy as np
 from taburu.table import ParameterTable
 from camd.agent.base import HypothesisAgent
+import pandas as pd
 
 
 REGRESSOR_PARAMS = [
@@ -91,6 +92,24 @@ class RandomMetaAgent(HypothesisAgent):
         hypotheses['agent'] = [self.agent_pool.hydrate(ind)
                                for ind in hypotheses.index]
         return hypotheses
+
+
+def convert_parameter_table_to_dataframe(parameter_table):
+    """
+    Converts parameter table in its current state to dataframe
+
+    Args:
+        parameter_table (ParameterTable): parameter table to
+            convert to array
+        fillna (int): some fill value
+
+    Returns:
+        (DataFrame): dataframe corresponding to parameter table
+            data
+
+    """
+    df = pd.DataFrame(parameter_table, dtype="int64")
+    return df
 
 
 if __name__ == "__main__":
