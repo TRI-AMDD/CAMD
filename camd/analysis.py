@@ -37,15 +37,23 @@ ELEMENTS = ['Ru', 'Re', 'Rb', 'Rh', 'Be', 'Ba', 'Bi', 'Br', 'H', 'P',
 # TODO: Eval Performance = start / stop?
 class AnalyzerBase(abc.ABC):
     @abc.abstractmethod
-    def analyze(self):
+    def analyze(self, seed_data, new_experimental_results):
         """
-        Performs the analysis procedure associated with the analyzer
+        Analyze method, performs some operation on new
+        experimental results in order to place them
+        in the context of the seed data
 
-        # TODO: I'm not yet sure what we might want to do here
-        #       in terms of enforcing a result contract
+        Args:
+            seed_data (DataFrame): current seed data from
+                campaign
+            new_experimental_results (DataFrame): new data
+                to be added to the seed
+
         Returns:
-            Some arbitrary result
-
+            (DataFrame): dataframe corresponding to the summary
+                of the previous set of experiments
+            (DataFrame): dataframe corresponding to the new
+                seed data
         """
 
     @abc.abstractmethod
