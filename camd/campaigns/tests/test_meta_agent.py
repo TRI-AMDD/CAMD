@@ -11,6 +11,7 @@ from camd.utils.data import load_default_atf_data
 from camd.campaigns.meta_agent import initialize_agent_campaign, \
     update_agent_pool, load_agent_pool, run_meta_agent_campaign
 from monty.tempfile import ScratchDir
+from camd.analysis import AnalyzeStability
 
 
 def teardown_s3():
@@ -45,14 +46,14 @@ TEST_AGENT_PARAMS = [
         "n_members": list(range(2, 5)),
         "hull_distance": [0.05],
         "training_fraction": [0.4],
-        "regressor": TEST_REGRESSOR_PARAMS
+        "model": TEST_REGRESSOR_PARAMS
     },
     {
         "@class": ["camd.agent.agents.AgentStabilityML5"],
         "n_query": [4, 6],
         "hull_distance": [0.05],
         "exploit_fraction": [0.4, 0.5],
-        "regressor": TEST_REGRESSOR_PARAMS
+        "model": TEST_REGRESSOR_PARAMS
     },
 ]
 
@@ -85,7 +86,7 @@ class MetaAgentTest(unittest.TestCase):
         dataframe = load_default_atf_data()
         initialize_agent_campaign(
             name="test_meta_agent", dataframe=dataframe,
-            agent_pool=agent_pool
+            agent_pool=agent_pool,
         )
         with ScratchDir('.'):
             run_meta_agent_campaign("test_meta_agent")

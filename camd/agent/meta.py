@@ -46,52 +46,53 @@ AGENT_PARAMS = [
         "n_members": list(range(2, 5)),
         "hull_distance": list(np.arange(0.05, 0.21, 0.05)),
         "training_fraction": [0.4, 0.5, 0.6],
-        "regressor": REGRESSOR_PARAMS
+        "model": REGRESSOR_PARAMS
     },
     {
         "@class": ["camd.agent.agents.AgentStabilityML5"],
         "n_query": [4, 6, 8],
         "hull_distance": [0.05, 0.1, 0.15, 0.2],
         "exploit_fraction": [0.4, 0.5, 0.6],
-        "regressor": REGRESSOR_PARAMS
+        "model": REGRESSOR_PARAMS
     },
 ]
 
 
-class RandomMetaAgent(HypothesisAgent):
-    def __init__(self, agent_pool, candidate_data=None,
-                 seed_data=None, n_query=1):
-        """
-        Args:
-            agent_pool (ParameterTable): parameter table corresponding
-                to serialized agents in order to serialize on the fly
-            candidate_data (DataFrame): candidate data dataframe
-            seed_data (DataFrame): seed data data frame
-            n_query (int): number of hypotheses to generate
-        """
-        self.agent_pool = agent_pool
-        self.candidate_data = candidate_data
-        self.seed_data = seed_data
-        self.n_query = n_query
-        super(RandomMetaAgent, self).__init__()
-
-    def get_hypotheses(self, candidate_data=None, seed_data=None):
-        """
-        Acquires random agents and deserializes the results
-
-        Args:
-            candidate_data (DataFrame): candidate data dataframe
-            seed_data (DataFrame): seed data data frame
-
-        Returns:
-            (DataFrame): dataframe of hypotheses with the "agent"
-                field populated
-
-        """
-        hypotheses = self.candidate_data.sample(self.n_query)
-        hypotheses['agent'] = [self.agent_pool.hydrate(ind)
-                               for ind in hypotheses.index]
-        return hypotheses
+# class RandomMetaAgent(HypothesisAgent):
+#     def __init__(self, agent_pool, candidate_data=None,
+#                  seed_data=None, n_query=1):
+#         """
+#         Args:
+#             agent_pool (ParameterTable): parameter table corresponding
+#                 to serialized agents in order to serialize on the fly
+#             candidate_data (DataFrame): candidate data dataframe
+#             seed_data (DataFrame): seed data data frame
+#             n_query (int): number of hypotheses to generate
+#         """
+#         self.agent_pool = agent_pool
+#         self.candidate_data = candidate_data
+#         self.seed_data = seed_data
+#         self.n_query = n_query
+#         super(RandomMetaAgent, self).__init__()
+#
+#     def get_hypotheses(self, candidate_data=None, seed_data=None):
+#         """
+#         Acquires random agents and deserializes the results
+#
+#         Args:
+#             candidate_data (DataFrame): candidate data dataframe
+#             seed_data (DataFrame): seed data data frame
+#
+#         Returns:
+#             (DataFrame): dataframe of hypotheses with the "agent"
+#                 field populated
+#
+#         """
+#         hypotheses = self.candidate_data.sample(self.n_query)
+#         hypotheses['agent'] = [self.agent_pool.hydrate(ind)
+#                                for ind in hypotheses.index]
+#         import nose; nose.tools.set_trace()
+#         return hypotheses
 
 
 def convert_parameter_table_to_dataframe(parameter_table):
@@ -109,6 +110,8 @@ def convert_parameter_table_to_dataframe(parameter_table):
 
     """
     df = pd.DataFrame(parameter_table, dtype="int64")
+    df['agent'] = [parameter_table.hydrate_index(i, construct_object=True)
+                   for i in range(len(parameter_table))]
     return df
 
 

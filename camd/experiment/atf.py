@@ -4,6 +4,8 @@ This module provides resources for agent optimization campaigns
 """
 from camd.experiment.base import Experiment, ATFSampler
 from camd.loop import Campaign
+from monty.os import cd
+import os
 
 
 class LocalAgentSimulation(Experiment):
@@ -11,7 +13,8 @@ class LocalAgentSimulation(Experiment):
                  current_data=None, job_status=None):
         """
         Args:
-            atf_dataframe (DataFrame):
+            atf_dataframe (DataFrame): dataframe corresponding to after
+                the fact data to sample
             iterations (int): number of iterations to execute
                 in the loop
             analyzer (Analyzer): Analyzer to use in the loop
@@ -47,9 +50,14 @@ class LocalAgentSimulation(Experiment):
             None
 
         """
-        agents = self.current_data['agent']
-        for agent in agents:
-            loop = self.test_agent(agent)
+        campaigns = []
+        for index, row in self.current_data.iterrows():
+            agent = row.pop('agent')
+            path = str(index)
+            os.mkdir(path)
+            with cd(path):
+                campaigns.append(self.test_agent(agent))
+        self.current_data['campaigns'] = campaigns
         self.job_status = "COMPLETED"
 
     def test_agent(self, agent):
@@ -64,7 +72,7 @@ class LocalAgentSimulation(Experiment):
             None
 
         """
-        loop = Campaign(
+        campaign = Campaign(
                 candidate_data=self.atf_dataframe,
                 agent=agent,
                 analyzer=self.analyzer,
@@ -73,8 +81,9 @@ class LocalAgentSimulation(Experiment):
                 ),
                 create_seed=self.n_seed,
             )
-        loop.auto_loop(n_iterations=self.iterations, initialize=True)
-        return loop
+        campaign.auto_loop(n_iterations=self.iterations, initialize=True)
+        return campaign
 
     def get_results(self):
+        import nose; nose.tools.set_trace()
         return self.current_data

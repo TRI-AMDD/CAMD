@@ -20,7 +20,7 @@ class Campaign(MSONable):
     def __init__(self, candidate_data, agent, experiment, analyzer,
                  finalizer=None, seed_data=None, create_seed=False,
                  heuristic_stopper=np.inf, s3_prefix=None,
-                 s3_bucket=CAMD_S3_BUCKET):
+                 s3_bucket=CAMD_S3_BUCKET, path=None):
         """
         Campaign provides a sequential, workflow-like capability where an
         Agent iterates over a candidate space to choose and execute
@@ -50,6 +50,8 @@ class Campaign(MSONable):
                 if None is specified, s3 syncing will not occur
             s3_bucket (str): bucket name for s3 sync.  If not specified,
                 CAMD will sync to the specified environment variable.
+            path (str): local path in which to execute the loop, defaults
+                to current folder if path is not provided
         """
         # Cloud parameters
         self.s3_prefix = s3_prefix
@@ -70,6 +72,8 @@ class Campaign(MSONable):
         # Other parameters
         # TODO: think about how to abstract this away from the loop
         self.heuristic_stopper = heuristic_stopper
+        self.path = path if path else os.getcwd()
+        os.chdir(self.path)
 
         # Internal data
         self._exp_raw_results = None
@@ -117,6 +121,7 @@ class Campaign(MSONable):
         # Get new results
         print("Campaign {} state: Getting new results".format(self.iteration))
         self.load('submitted_experiment_requests')
+        self.experiment.monitor()
         new_experimental_results = self.experiment.get_results()
         os.chdir(self.path)
 

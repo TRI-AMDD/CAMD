@@ -56,16 +56,16 @@ class AnalyzerBase(abc.ABC):
                 seed data
         """
 
-    @abc.abstractmethod
-    def present(self):
-        """
-        Formats the analysis into a some presentation-oriented
-        document
+    # @abc.abstractmethod
+    # def present(self):
+    #     """
+    #     Formats the analysis into a some presentation-oriented
+    #     document
 
-        Returns:
-            json document for presentation, e. g. on a web frontend
+    #     Returns:
+    #         json document for presentation, e. g. on a web frontend
 
-        """
+    #     """
 
 
 @camd_traced
