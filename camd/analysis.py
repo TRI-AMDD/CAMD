@@ -258,63 +258,47 @@ class AnalyzeStability(AnalyzerBase):
         space = PhaseSpaceAL(bounds=ELEMENTS, data=pd)
         return space
 
-    def analyze(self, df=None, new_result_ids=None, all_result_ids=None,
-                return_within_hull=True):
+    def analyze(self, new_experimental_results, seed_data):
         """
         Args:
-            df (DataFrame): data frame with structure-data for formation
-                energy, composition, etc.
-            new_result_ids (list): list of ids from the dataframe index
-                corresponding to new results
-            all_result_ids (list): list of ids from the dataframe index
-                corresponding to all desired analyzed results
-            return_within_hull (bool): whether to return boolean array
-                corresponding to whether stabilities are within hull
-                or raw results
+            new_experimental_results (DataFrame): new experimental
+                results to be added to the seed
+            seed_data (DataFrame): seed to be augmented via
+                the new_experimental_results
 
         Returns:
+            (DataFrame): summary of the process, i. e. of
+                the increment or experimental results
+            (DataFrame): augmented seed data, i. e. "new"
+                seed data according to the experimental results
 
         """
+        # Aggregate seed_data and new experimental results
+        new_seed = seed_data.append(new_experimental_results)
         include_columns = ['Composition', 'delta_e']
-        self.df = df[include_columns].drop_duplicates(keep='last').dropna()
-        # Note some of id's in all_result_ids may not have corresponding
-        # experiment, if those exps. failed.
-        self.all_result_ids = all_result_ids
-        self.new_result_ids = new_result_ids
+        agg = agg[include_columns].drop_duplicates(keep='last').dropna()
 
         if not self.entire_space:
             # Constrains the phase space to that of the target compounds.
             # More efficient when searching in a specified chemistry,
             # less efficient if larger spaces are without specified chemistry.
-            comps = self.df.loc[all_result_ids]['Composition'].dropna()
+            comps = new_experimental_results['Composition'].dropna()
             system_elements = []
             for comp in comps:
                 system_elements += list(Composition(comp).as_dict().keys())
-            # TODO: Fix this line to be compatible with
-            # later versions of pandas (i.e. b/c all_result_ids may contain
-            # things not in df currently (b/c of failed experiments).
-            # We should test comps = self.df.loc[self.df.index.intersection(all_result_ids)]
-            _df = self.filter_dataframe_by_composition(self.df, system_elements)
-        else:
-            _df = self.df
+            agg = self.filter_dataframe_by_composition(agg, system_elements)
 
-        space = self.get_phase_space(_df)
-
-        if all_result_ids is not None:
-            all_new_phases = [p for p in space.phases if p.description in all_result_ids]
-        else:
-            all_new_phases = None
+        space = self.get_phase_space(agg)
+        new_phases = [p for p in space.phases if p.description in agg.index]
 
         if self.multiprocessing:
-            space.compute_stabilities_multi(phases_to_evaluate=all_new_phases)
+            space.compute_stabilities_multi(phases_to_evaluate=new_phases)
         else:
-            space.compute_stabilities_mod(phases_to_evaluate=all_new_phases)
-
-        self.space = space
+            space.compute_stabilities_mod(phases_to_evaluate=new_phases)
 
         # Key stabilities by ID
         stabilities_by_id = {phase.description: phase.stability
-                             for phase in all_new_phases}
+                             for phase in new_phases}
         self.stabilities = stabilities_by_id
 
         # Get stabilities of new and all ids

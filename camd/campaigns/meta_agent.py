@@ -14,6 +14,8 @@ import boto3
 import botocore
 
 
+# TODO: rethink analyzer-campaign ties, whether or not these can
+#       be functionally separated
 class MetaAgentCampaign(Campaign):
     @staticmethod
     def reserve(name, dataframe, analyzer,
@@ -108,7 +110,7 @@ class MetaAgentCampaign(Campaign):
         return all_objs
 
     @classmethod
-    def from_name(cls, name, meta_agent=None, bucket=CAMD_S3_BUCKET):
+    def from_reserved_name(cls, name, meta_agent=None, bucket=CAMD_S3_BUCKET):
         """
         Invokes a MetaAgent Campaign from a reserved name
 
@@ -126,20 +128,46 @@ class MetaAgentCampaign(Campaign):
 
         """
         agent_pool, atf_data, analyzer = cls.load_pickled_objects(name, bucket)
+        s3_prefix = "agent_testing/{}".format(name)
+        return cls.from_data_and_pool(
+            dataframe=atf_data, analyzer=analyzer, agent_pool=agent_pool,
+            meta_agent=meta_agent, s3_prefix=name, bucket=bucket)
+
+    @classmethod
+    def from_data_and_pool(cls, dataframe, analyzer, agent_pool=None,
+                           meta_agent=None, s3_prefix=None, bucket=None):
+        """
+
+        Args:
+            dataframe (DataFrame): ATF Dataset to run campaign on
+            analyzer (Analyzer): Analyzer for which to run ATF
+                experiments
+            agent_pool (ParameterTable): parameter table for agents
+            meta_agent (HypothesisAgent): agent used to select
+                subsequent runs of agent parameters
+            s3_prefix (str): s3 prefix for syncing
+            bucket (str): name of s3 sync bucket if desired
+
+        Returns:
+            (MetaAgentCampaign) associated with the above objects
+
+        """
         meta_agent = meta_agent or RandomAgent(n_query=1)
         experiment = LocalAgentSimulation(
-            atf_dataframe=atf_data, analyzer=analyzer,
+            atf_dataframe=dataframe, analyzer=analyzer,
             iterations=50, n_seed=1)
         candidate_data = convert_parameter_table_to_dataframe(agent_pool)
         return cls(
             candidate_data=candidate_data,
             agent=meta_agent, experiment=experiment,
-            analyzer=analyzer, s3_prefix=name, s3_bucket=bucket,
+            analyzer=analyzer, s3_prefix=s3_prefix, s3_bucket=bucket,
             create_seed=1
         )
 
     def autorun(self):
-        self.auto_loop(n_iterations=5)
+        # if not self.initialized:
+        #     self.initialize()
+        self.auto_loop(n_iterations=5, initialize=True)
 
 
 from camd.analysis import AnalyzerBase

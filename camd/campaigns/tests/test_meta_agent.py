@@ -8,8 +8,7 @@ os.environ['CAMD_S3_BUCKET'] = 'camd-test'
 from taburu.table import ParameterTable
 from camd import CAMD_S3_BUCKET
 from camd.utils.data import load_default_atf_data
-from camd.campaigns.meta_agent import initialize_agent_campaign, \
-    update_agent_pool, load_agent_pool, run_meta_agent_campaign
+from camd.campaigns.meta_agent import MetaAgentCampaign
 from monty.tempfile import ScratchDir
 from camd.analysis import AnalyzeStability
 
@@ -58,38 +57,48 @@ TEST_AGENT_PARAMS = [
 ]
 
 
-class MetaAgentTest(unittest.TestCase):
+class MetaAgentCampaignTest(unittest.TestCase):
     def tearDown(self):
         teardown_s3()
 
     def test_initialize_and_update(self):
         agent_pool = ParameterTable(TEST_AGENT_PARAMS)
         dataframe = load_default_atf_data()
-        initialize_agent_campaign(
+        analyzer = AnalyzeStability()
+
+        MetaAgentCampaign.reserve(
             name="test_meta_agent", dataframe=dataframe,
-            agent_pool=agent_pool
+            agent_pool=agent_pool, analyzer=analyzer
         )
-        self.assertRaises(ValueError, initialize_agent_campaign,
-                          "test_meta_agent", dataframe)
+        self.assertRaises(ValueError, MetaAgentCampaign.reserve,
+                          "test_meta_agent", dataframe, agent_pool, None)
 
-        first = load_agent_pool("test_meta_agent")
+        agent_pool, data, analyzer = MetaAgentCampaign.load_pickled_objects(
+            "test_meta_agent"
+        )
+        self.assertEqual(len(agent_pool), 35)
 
-        update_agent_pool(
+        MetaAgentCampaign.update_agent_pool(
             "test_meta_agent",
             TEST_AGENT_PARAMS
         )
-        second = load_agent_pool("test_meta_agent")
-        self.assertEqual(len(first), len(second))
+        agent_pool, _, _ = MetaAgentCampaign.load_pickled_objects(
+            "test_meta_agent"
+        )
+        self.assertEqual(len(agent_pool), 35)
 
     def test_run(self):
         agent_pool = ParameterTable(TEST_AGENT_PARAMS)
         dataframe = load_default_atf_data()
-        initialize_agent_campaign(
+        analyzer = AnalyzeStability()
+        MetaAgentCampaign.reserve(
             name="test_meta_agent", dataframe=dataframe,
-            agent_pool=agent_pool,
+            agent_pool=agent_pool, analyzer=analyzer
         )
         with ScratchDir('.'):
-            run_meta_agent_campaign("test_meta_agent")
+            campaign = MetaAgentCampaign.from_reserved_name(
+                "test_meta_agent")
+            campaign.autorun()
         self.assertTrue(True)
 
 
