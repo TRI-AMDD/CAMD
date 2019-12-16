@@ -57,7 +57,7 @@ class LocalAgentSimulation(Experiment):
             os.mkdir(path)
             with cd(path):
                 campaigns.append(self.test_agent(agent))
-        self.current_data['campaigns'] = campaigns
+        self.current_data['campaign'] = campaigns
         self.job_status = "COMPLETED"
 
     def test_agent(self, agent):
@@ -81,9 +81,9 @@ class LocalAgentSimulation(Experiment):
                 ),
                 create_seed=self.n_seed,
             )
-        campaign.auto_loop(n_iterations=self.iterations, initialize=True)
+        campaign.auto_loop(n_iterations=self.iterations, initialize=True,
+                           timeout=0.1)
         return campaign
 
     def get_results(self):
-        import nose; nose.tools.set_trace()
         return self.current_data

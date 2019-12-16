@@ -7,6 +7,7 @@ import pickle
 import os
 import numpy as np
 import itertools
+import pandas as pd
 from camd import tqdm
 from camd.log import camd_traced
 from qmpy.analysis.thermodynamics.phase import Phase, PhaseData
@@ -184,7 +185,7 @@ class AnalyzeStructures(AnalyzerBase):
             if r['status'] == 'SUCCEEDED':
                 self.structures.append( r['result']['output']['crystal'] )
                 self.structure_ids.append(j)
-                self.energies.append( r['result']['output']['final_energy_per_atom'] )
+                self.energies.append(r['result']['output']['final_energy_per_atom'])
         if use_energies:
             return self.analyze(self.structures, self.structure_ids, against_icsd, self.energies)
         else:
@@ -207,17 +208,30 @@ class FinalizeQqmdCampaign:
         update_run_w_structure(self.path, hull_distance=self.hull_distance)
 
 
-class AnalyzeStability(AnalyzerBase):
-    def __init__(self, df=None, new_result_ids=None, hull_distance=0.05,
-                 multiprocessing=True, entire_space=False):
-        self.df = df
-        self.new_result_ids = new_result_ids
+class StabilityAnalyzer(AnalyzerBase):
+    def __init__(self, hull_distance=0.05, multiprocessing=True,
+                 entire_space=False):
+        """
+        The Stability Analyzer is intended to analyze DFT-result
+        data in the context of a global compositional seed in
+        order to determine phase stability.
+
+        Args:
+            hull_distance (float): distance above hull below
+                which to deem a material "stable"
+            multiprocessing (bool): flag for whether or not
+                multiprocessing is to be used
+            # TODO: is there ever a case where you would
+            #       would want to do the entire space?
+            entire_space (bool): flag for whether to analyze
+                entire space of results or just new chemical
+                space
+        """
         self.hull_distance = hull_distance
         self.multiprocessing = multiprocessing
         self.entire_space = entire_space
         self.space = None
-        self.stabilities = None
-        super(AnalyzeStability, self).__init__()
+        super(StabilityAnalyzer, self).__init__()
 
     @staticmethod
     def filter_dataframe_by_composition(df, elements):
@@ -245,6 +259,11 @@ class AnalyzeStability(AnalyzerBase):
     def get_phase_space(dataframe):
         """
         Gets PhaseSpace object associated with dataframe
+
+        Args:
+            dataframe (DataFrame): dataframe with columns "Composition"
+                containing formula and "delta_e" containing
+                formation energy per atom
         """
         phases = []
         for data in dataframe.iterrows():
@@ -276,7 +295,7 @@ class AnalyzeStability(AnalyzerBase):
         # Aggregate seed_data and new experimental results
         new_seed = seed_data.append(new_experimental_results)
         include_columns = ['Composition', 'delta_e']
-        agg = agg[include_columns].drop_duplicates(keep='last').dropna()
+        filtered = new_seed[include_columns].drop_duplicates(keep='last').dropna()
 
         if not self.entire_space:
             # Constrains the phase space to that of the target compounds.
@@ -286,33 +305,67 @@ class AnalyzeStability(AnalyzerBase):
             system_elements = []
             for comp in comps:
                 system_elements += list(Composition(comp).as_dict().keys())
-            agg = self.filter_dataframe_by_composition(agg, system_elements)
+            filtered = self.filter_dataframe_by_composition(
+                filtered, system_elements)
 
-        space = self.get_phase_space(agg)
-        new_phases = [p for p in space.phases if p.description in agg.index]
+        space = self.get_phase_space(filtered)
+        new_phases = [p for p in space.phases
+                      if p.description in filtered.index]
 
         if self.multiprocessing:
             space.compute_stabilities_multi(phases_to_evaluate=new_phases)
         else:
             space.compute_stabilities_mod(phases_to_evaluate=new_phases)
 
-        # Key stabilities by ID
-        stabilities_by_id = {phase.description: phase.stability
-                             for phase in new_phases}
-        self.stabilities = stabilities_by_id
+        # Compute new stabilities and update new seed
+        new_data = pd.DataFrame(
+            {"stability": {phase.description: phase.stability
+                           for phase in new_phases}})
+        new_data['is_stable'] = new_data['stability'] <= self.hull_distance
 
-        # Get stabilities of new and all ids
-        stabilities_of_new = np.array([stabilities_by_id.get(uid, np.nan)
-                                       for uid in self.new_result_ids], dtype=np.float)
-        stabilities_of_all = np.array([stabilities_by_id.get(uid, np.nan)
-                                       for uid in self.all_result_ids], dtype=np.float)
+        # TODO: This is implicitly adding "stability", and "is_stable" columns
+        #       but could be handled more gracefully
+        if 'stability' not in new_seed.columns:
+            new_seed = pd.concat([new_seed, new_data], axis=1)
+        else:
+            new_seed.update(new_data)
 
-        # Cast to boolean if specified
-        if return_within_hull:
-            stabilities_of_new = stabilities_of_new <= self.hull_distance
-            stabilities_of_all = stabilities_of_all <= self.hull_distance
+        # Compute summary metrics
+        summary = self.get_summary(new_seed, new_experimental_results.index)
+        return summary, new_seed
 
-        return stabilities_of_new, stabilities_of_all
+    @staticmethod
+    def get_summary(new_seed, new_ids):
+        """
+        Gets summary row for given experimental results after
+        preliminary stability analysis.  This is not meant
+        to provide the basis for a generic summary method
+        and is particular to the StabilityAnalyzer.
+
+        Args:
+            new_seed (DataFrame): dataframe corresponding to
+                new processed seed
+            new_ids ([]): list of index values for those
+                experiments that are "new"
+
+
+        Returns:
+            (DataFrame): dataframe summarizing processed
+                experimental data including values for
+                how many materials were discovered
+
+        """
+        # TODO: Right now analyzers don't know anything about the history
+        #       of experiments, so can be difficult to determine marginal
+        #       value of a given experimental run
+        processed_new = new_seed.loc[new_ids]
+        return pd.DataFrame(
+            {
+                "new_candidates": [len(processed_new)],
+                "new_stable": [processed_new.is_stable.sum()],
+                "total_stable": [new_seed.is_stable.sum()]
+             }
+        )
 
     def present(self, df=None, new_result_ids=None, all_result_ids=None,
                 filename=None, save_hull_distance=False, finalize=False):
@@ -578,7 +631,7 @@ def update_run_w_structure(folder, hull_distance=0.2):
                 df = pickle.load(f)
 
             all_ids = loadfn("consumed_candidates.json")
-            st_a = AnalyzeStability(df=df, hull_distance=hull_distance)
+            st_a = StabilityAnalyzer(df=df, hull_distance=hull_distance)
             _, stablities_of_discovered = st_a.analyze(df, all_ids, all_ids)
 
             # Having calculated stabilities again, we plot the overall hull.

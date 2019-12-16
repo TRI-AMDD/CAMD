@@ -131,11 +131,12 @@ class Campaign(MSONable):
         # Analyze new results
         print("Campaign {} state: Analyzing results".format(self.iteration))
         summary, new_seed_data = self.analyzer.analyze(
-            self.seed_data, new_experimental_results
+            new_experimental_results, self.seed_data
         )
 
         # Augment summary and seed
-        self.history.append(summary)
+        self.history = self.history.append(summary)
+        self.history = self.history.reset_index(drop=True)
         self.save("history", method="pickle")
         self.seed_data = new_seed_data
         self.save('seed_data', method='pickle')
@@ -194,7 +195,7 @@ class Campaign(MSONable):
 
         Args:
             n_iterations (int): Number of iterations.
-            timeout (int): Time (in seconds) to wait on idle for
+            timeout (float): Time (in seconds) to wait on idle for
                 submitted experiments to finish.
             monitor (bool): Use Experiment's monitor method to
                 keep track of requested experiments.

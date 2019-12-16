@@ -2,7 +2,7 @@
 from camd.loop import Campaign
 
 from camd.agent.agents import BaggedGaussianProcessStabilityAgent
-from camd.analysis import AnalyzeStability
+from camd.analysis import StabilityAnalyzer
 from camd.experiment.base import ATFSampler
 from camd.utils.data import load_default_atf_data
 
@@ -25,7 +25,7 @@ agent_params = {
     'max_samples': 1000
     }
 
-analyzer = AnalyzeStability
+analyzer = StabilityAnalyzer
 analyzer_params = {'hull_distance': 0.05}
 experiment = ATFSampler
 experiment_params = {'dataframe': df}

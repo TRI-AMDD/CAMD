@@ -14,7 +14,7 @@ from camd.loop import Campaign
 from camd import CAMD_TEST_FILES, CAMD_S3_BUCKET
 from camd.utils.s3 import s3_sync
 
-from camd.analysis import AnalyzeStability, FinalizeQqmdCampaign
+from camd.analysis import StabilityAnalyzer, FinalizeQqmdCampaign
 from camd.experiment.dft import OqmdDFTonMC1
 from sklearn.neural_network import MLPRegressor
 import pickle
@@ -77,7 +77,7 @@ class ProtoDFTCampaign(Campaign):
             diversify=True,
             n_estimators=20
         )
-        analyzer = AnalyzeStability(hull_distance=0.2)
+        analyzer = StabilityAnalyzer(hull_distance=0.2)
         experiment = OqmdDFTonMC1(timeout=30000)
         finalizer = FinalizeQqmdCampaign(hull_distance=0.2)
 
@@ -115,7 +115,7 @@ class CloudATFCampaign(Campaign):
         n_seed = 200  # Starting sample size
         n_query = 10  # This many new candidates are "calculated with DFT" (i.e. requested from Oracle -- DFT)
         agent = RandomAgent(n_query=n_query)
-        analyzer = AnalyzeStability(hull_distance=0.05)
+        analyzer = StabilityAnalyzer(hull_distance=0.05)
         experiment = ATFSampler(dataframe=df)
         candidate_data = df
         return cls(candidate_data, agent, experiment, analyzer,

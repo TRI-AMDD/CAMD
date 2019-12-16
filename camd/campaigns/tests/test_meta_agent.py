@@ -10,7 +10,7 @@ from camd import CAMD_S3_BUCKET
 from camd.utils.data import load_default_atf_data
 from camd.campaigns.meta_agent import MetaAgentCampaign
 from monty.tempfile import ScratchDir
-from camd.analysis import AnalyzeStability
+from camd.analysis import StabilityAnalyzer
 
 
 def teardown_s3():
@@ -64,7 +64,7 @@ class MetaAgentCampaignTest(unittest.TestCase):
     def test_initialize_and_update(self):
         agent_pool = ParameterTable(TEST_AGENT_PARAMS)
         dataframe = load_default_atf_data()
-        analyzer = AnalyzeStability()
+        analyzer = StabilityAnalyzer()
 
         MetaAgentCampaign.reserve(
             name="test_meta_agent", dataframe=dataframe,
@@ -90,7 +90,7 @@ class MetaAgentCampaignTest(unittest.TestCase):
     def test_run(self):
         agent_pool = ParameterTable(TEST_AGENT_PARAMS)
         dataframe = load_default_atf_data()
-        analyzer = AnalyzeStability()
+        analyzer = StabilityAnalyzer()
         MetaAgentCampaign.reserve(
             name="test_meta_agent", dataframe=dataframe,
             agent_pool=agent_pool, analyzer=analyzer

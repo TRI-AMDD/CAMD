@@ -8,7 +8,7 @@ from sklearn.neural_network import MLPRegressor
 from camd.agent.agents import QBCStabilityAgent, GaussianProcessStabilityAgent, SVGProcessStabilityAgent, \
     BaggedGaussianProcessStabilityAgent, AgentStabilityAdaBoost
 from camd.agent.base import RandomAgent
-from camd.analysis import AnalyzeStability as AnalyzeStability
+from camd.analysis import StabilityAnalyzer as AnalyzeStability
 from camd.experiment import ATFSampler
 from camd.loop import Campaign
 from camd.utils.s3 import cache_s3_objs
@@ -38,7 +38,7 @@ class AftLoopTestLong(unittest.TestCase):
         df = load_default_atf_data()
         n_seed = 5000
         agent = RandomAgent(n_query=200)
-        analyzer = AnalyzeStability(hull_distance=0.05)
+        analyzer = StabilityAnalyzer(hull_distance=0.05)
         experiment = ATFSampler(dataframe=df)
         candidate_data = df
 
@@ -70,7 +70,7 @@ class AtfLoopTest(unittest.TestCase):
         df = load_default_atf_data()
         n_seed = 200  # Starting sample size
         agent = RandomAgent(n_query=10)
-        analyzer = AnalyzeStability(hull_distance=0.05)
+        analyzer = StabilityAnalyzer(hull_distance=0.05)
         experiment = ATFSampler(dataframe=df)
         candidate_data = df
         new_loop = Campaign(candidate_data, agent, experiment, analyzer,
@@ -100,7 +100,7 @@ class AtfLoopTest(unittest.TestCase):
         n_seed = 200  # Starting sample size
         agent = QBCStabilityAgent(model=MLPRegressor(hidden_layer_sizes=(84, 50)),
                                   n_query=10, hull_distance=0.05, alpha=0.5)
-        analyzer = AnalyzeStability(hull_distance=0.05)
+        analyzer = StabilityAnalyzer(hull_distance=0.05)
         experiment = ATFSampler(dataframe=df_sub)
         candidate_data = df_sub
 
@@ -118,7 +118,7 @@ class AtfLoopTest(unittest.TestCase):
         n_seed = 200  # Starting sample size
         n_query = 10  # This many new candidates are "calculated with DFT" (i.e. requested from Oracle -- DFT)
         agent = GaussianProcessStabilityAgent(n_query=n_query, hull_distance=0.05, alpha=0.5)
-        analyzer = AnalyzeStability(hull_distance=0.05)
+        analyzer = StabilityAnalyzer(hull_distance=0.05)
         experiment = ATFSampler(dataframe=df_sub)
         candidate_data = df_sub
 
@@ -141,7 +141,7 @@ class AtfLoopTest(unittest.TestCase):
             n_estimators=2,
             max_samples=195
         )
-        analyzer = AnalyzeStability(hull_distance=0.05)
+        analyzer = StabilityAnalyzer(hull_distance=0.05)
         experiment = ATFSampler(df_sub)
         candidate_data = df_sub
 
@@ -160,7 +160,7 @@ class AtfLoopTest(unittest.TestCase):
         agent = AgentStabilityAdaBoost(model=MLPRegressor(hidden_layer_sizes=(84, 50)),
                                        n_query=10, exploit_fraction=1.0, alpha=0.5,
                                        n_estimators=10)
-        analyzer = AnalyzeStability(hull_distance=0.05)
+        analyzer = StabilityAnalyzer(hull_distance=0.05)
         experiment = ATFSampler(df_sub)
         candidate_data = df_sub
 
@@ -184,7 +184,7 @@ class AtfLoopTest(unittest.TestCase):
         candidate_data = df.iloc[38:209]
         n_query = 20  # This many new candidates are "calculated with DFT" (i.e. requested from Oracle -- DFT)
         agent = RandomAgent(n_query=20)
-        analyzer = AnalyzeStability(hull_distance=0.05)
+        analyzer = StabilityAnalyzer(hull_distance=0.05)
         experiment = ATFSampler(dataframe=df)
         # candidate_data = df
         new_loop = Campaign(candidate_data, agent, experiment, analyzer,
@@ -228,7 +228,7 @@ class AtfSVGPLoopTest(unittest.TestCase):
         df_sub = df[df['N_species'] <= 3]
         n_seed = 200  # Starting sample size
         agent = SVGProcessStabilityAgent(n_query=10, hull_distance=0.05, alpha=0.5, M=100)
-        analyzer = AnalyzeStability(hull_distance=0.05)
+        analyzer = StabilityAnalyzer(hull_distance=0.05)
         experiment = ATFSampler(df_sub)
         candidate_data = df_sub
 

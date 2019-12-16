@@ -8,7 +8,7 @@ import os
 import pickle
 from camd import CAMD_S3_BUCKET
 from camd.loop import Campaign
-from camd.analysis import AnalyzeStability
+from camd.analysis import StabilityAnalyzer
 from monty.os import cd, makedirs_p
 from monty.serialization import loadfn, dumpfn
 import boto3
@@ -47,7 +47,7 @@ def update_run(folder):
         if not all([os.path.isfile(fn) for fn in required_files]):
             print("{} ERROR: no seed data, no analysis to be done")
         else:
-            analyzer = AnalyzeStability(hull_distance=0.2)
+            analyzer = StabilityAnalyzer(hull_distance=0.2)
 
             # Generate report plots
             for iteration in range(0, 25):

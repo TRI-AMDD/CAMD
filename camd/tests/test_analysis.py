@@ -7,7 +7,7 @@ import json
 from pymatgen import Composition
 from monty.serialization import loadfn
 from camd import CAMD_TEST_FILES
-from camd.analysis import AnalyzeStability, AnalyzeStructures
+from camd.analysis import StabilityAnalyzer, AnalyzeStructures
 
 
 class AnalysisTest(unittest.TestCase):
@@ -16,7 +16,7 @@ class AnalysisTest(unittest.TestCase):
                          index_col="id")
         df['Composition'] = [Composition(f) for f in df['formula']]
         # Test 2D
-        analyzer = AnalyzeStability(df, hull_distance=0.1)
+        analyzer = StabilityAnalyzer(df, hull_distance=0.1)
         analyzer.present(
             df,
             all_result_ids=["mp-8057", "mp-882", "mp-753593", "mvc-4715"],

@@ -2,7 +2,7 @@
 from camd.loop import Campaign
 
 from camd.agent.base import RandomAgent
-from camd.analysis import AnalyzeStability
+from camd.analysis import StabilityAnalyzer
 from camd.experiment.base import ATFSampler
 from camd.utils.data import load_default_atf_data
 
@@ -18,7 +18,7 @@ n_seed = 5000  # Starting sample size
 n_query = 200  # This many new candidates are "calculated with DFT" (i.e. requested from Oracle -- DFT)
 agent = RandomAgent
 agent_params = {'n_query': n_query}
-analyzer = AnalyzeStability
+analyzer = StabilityAnalyzer
 analyzer_params = {'hull_distance': 0.05}
 experiment = ATFSampler
 experiment_params = {'dataframe': df}

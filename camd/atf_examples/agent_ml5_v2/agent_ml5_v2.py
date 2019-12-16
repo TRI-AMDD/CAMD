@@ -3,7 +3,7 @@ from camd.loop import Campaign
 
 from sklearn.neural_network import MLPRegressor
 from camd.agent.agents import AgentStabilityML5
-from camd.analysis import AnalyzeStability
+from camd.analysis import StabilityAnalyzer
 from camd.experiment.base import ATFSampler
 from camd.utils.data import load_default_atf_data
 
@@ -24,7 +24,7 @@ agent_params = {
     'hull_distance': 0.05,  # Distance to hull to consider a finding as discovery (eV/atom)
     'exploit_fraction': 0.5             # Fraction to exploit (rest will be explored -- randomly picked)
     }
-analyzer = AnalyzeStability
+analyzer = StabilityAnalyzer
 analyzer_params = {'hull_distance': 0.05}
 experiment = ATFSampler
 experiment_params = {'dataframe': df}

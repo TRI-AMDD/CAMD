@@ -10,7 +10,7 @@ from monty.tempfile import ScratchDir
 from camd import CAMD_TEST_FILES, CAMD_S3_BUCKET
 from camd.loop import Campaign
 from camd.agent.agents import AgentStabilityML5
-from camd.analysis import AnalyzeStability
+from camd.analysis import StabilityAnalyzer
 from camd.experiment.base import ATFSampler
 
 
@@ -31,7 +31,7 @@ class LoopTest(unittest.TestCase):
 
             # Construct and start loop
             new_loop = Campaign(df, AgentStabilityML5(), ATFSampler(df),
-                                AnalyzeStability(), create_seed=10,
+                                StabilityAnalyzer(), create_seed=10,
                                 s3_prefix="test")
             new_loop.initialize()
         s3 = boto3.resource('s3')
@@ -45,7 +45,7 @@ class LoopTest(unittest.TestCase):
 
             # Construct and start loop
             new_loop = Campaign(df, AgentStabilityML5(), ATFSampler(df),
-                                AnalyzeStability(), create_seed=True)
+                                StabilityAnalyzer(), create_seed=True)
             new_loop.generate_report_plot(
                 "report.png", os.path.join(CAMD_TEST_FILES, "report.log"))
             self.assertTrue(os.path.isfile("report.png"))
