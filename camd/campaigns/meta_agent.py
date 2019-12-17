@@ -131,7 +131,7 @@ class MetaAgentCampaign(Campaign):
         s3_prefix = "agent_testing/{}".format(name)
         return cls.from_data_and_pool(
             dataframe=atf_data, analyzer=analyzer, agent_pool=agent_pool,
-            meta_agent=meta_agent, s3_prefix=name, bucket=bucket)
+            meta_agent=meta_agent, s3_prefix=s3_prefix, bucket=bucket)
 
     @classmethod
     def from_data_and_pool(cls, dataframe, analyzer, agent_pool=None,
@@ -155,7 +155,7 @@ class MetaAgentCampaign(Campaign):
         meta_agent = meta_agent or RandomAgent(n_query=1)
         experiment = LocalAgentSimulation(
             atf_dataframe=dataframe, analyzer=analyzer,
-            iterations=50, n_seed=1)
+            iterations=50, n_seed=5)
         candidate_data = convert_parameter_table_to_dataframe(agent_pool)
         return cls(
             candidate_data=candidate_data,
@@ -165,8 +165,13 @@ class MetaAgentCampaign(Campaign):
         )
 
     def autorun(self):
-        # if not self.initialized:
-        #     self.initialize()
+        """
+        Convenience method for standard running procedure
+
+        Returns:
+            (None)
+
+        """
         self.auto_loop(n_iterations=5, initialize=True)
 
 

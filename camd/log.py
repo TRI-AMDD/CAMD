@@ -20,7 +20,9 @@ CAMD_KINESIS_STREAM_NAME (str): stream name for CAMD kinesis
     e. g. to camd-events for production runs
 
 """
-import logging, sys, os
+import logging
+import sys
+import os
 from autologging import TRACE, traced
 import boto3
 

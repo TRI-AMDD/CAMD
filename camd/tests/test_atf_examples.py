@@ -8,7 +8,7 @@ from sklearn.neural_network import MLPRegressor
 from camd.agent.agents import QBCStabilityAgent, GaussianProcessStabilityAgent, SVGProcessStabilityAgent, \
     BaggedGaussianProcessStabilityAgent, AgentStabilityAdaBoost
 from camd.agent.base import RandomAgent
-from camd.analysis import StabilityAnalyzer as AnalyzeStability
+from camd.analysis import StabilityAnalyzer
 from camd.experiment import ATFSampler
 from camd.loop import Campaign
 from camd.utils.s3 import cache_s3_objs
@@ -182,7 +182,6 @@ class AtfLoopTest(unittest.TestCase):
         # Just use the Ti-O-N chemsys
         seed_data = df.iloc[:38]
         candidate_data = df.iloc[38:209]
-        n_query = 20  # This many new candidates are "calculated with DFT" (i.e. requested from Oracle -- DFT)
         agent = RandomAgent(n_query=20)
         analyzer = StabilityAnalyzer(hull_distance=0.05)
         experiment = ATFSampler(dataframe=df)

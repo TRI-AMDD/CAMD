@@ -110,7 +110,8 @@ class StabilityAgent(HypothesisAgent, metaclass=abc.ABCMeta):
         #   brevity.  This is a little dangerous, because
         #   we might not drop everything we intend to
         drop_columns = ['Composition', 'N_species', 'delta_e',
-                        'pred_delta_e', 'pred_stability']
+                        'pred_delta_e', 'pred_stability',
+                        'stability', 'is_stable']
         if candidate_data is not None:
             self.candidate_data = candidate_data
             X_cand = candidate_data.drop(

@@ -26,34 +26,35 @@ TEST_REGRESSOR_PARAMS = [
         "fit_intercept": [True, False],
         "normalize": [True, False]
     },
-    {
-            "@class": ["sklearn.neural_network.MLPRegressor"],
-            "hidden_layer_sizes": [
-                # I think there's a better way to support this, but need to think
-                (84, 50)
-            ],
-            "activation": ["identity"],
-            "learning_rate": ["constant"]
-    },
+    # {
+    #         "@class": ["sklearn.neural_network.MLPRegressor"],
+    #         "hidden_layer_sizes": [
+    #             # I think there's a better way to support this,
+    #             # but will have to think about it
+    #             (84, 50)
+    #         ],
+    #         "activation": ["identity"],
+    #         "learning_rate": ["constant"]
+    # },
 ]
 
 
 TEST_AGENT_PARAMS = [
     {
         "@class": ["camd.agent.agents.QBCStabilityAgent"],
-        "n_query": [4],
+        "n_query": [10],
         "n_members": list(range(2, 5)),
         "hull_distance": [0.05],
         "training_fraction": [0.4],
         "model": TEST_REGRESSOR_PARAMS
     },
-    {
-        "@class": ["camd.agent.agents.AgentStabilityML5"],
-        "n_query": [4, 6],
-        "hull_distance": [0.05],
-        "exploit_fraction": [0.4, 0.5],
-        "model": TEST_REGRESSOR_PARAMS
-    },
+    # {
+    #     "@class": ["camd.agent.agents.AgentStabilityML5"],
+    #     "n_query": [6, 8, 10],
+    #     "hull_distance": [0.05],
+    #     "exploit_fraction": [0.4, 0.5],
+    #     "model": TEST_REGRESSOR_PARAMS
+    # },
 ]
 
 
@@ -76,7 +77,7 @@ class MetaAgentCampaignTest(unittest.TestCase):
         agent_pool, data, analyzer = MetaAgentCampaign.load_pickled_objects(
             "test_meta_agent"
         )
-        self.assertEqual(len(agent_pool), 35)
+        self.assertEqual(len(agent_pool), 45)
 
         MetaAgentCampaign.update_agent_pool(
             "test_meta_agent",
@@ -85,7 +86,7 @@ class MetaAgentCampaignTest(unittest.TestCase):
         agent_pool, _, _ = MetaAgentCampaign.load_pickled_objects(
             "test_meta_agent"
         )
-        self.assertEqual(len(agent_pool), 35)
+        self.assertEqual(len(agent_pool), 45)
 
     def test_run(self):
         agent_pool = ParameterTable(TEST_AGENT_PARAMS)
