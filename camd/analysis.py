@@ -478,26 +478,16 @@ class PhaseSpaceAL(PhaseSpace):
 
         if phases_to_evaluate is None:
             phases_to_evaluate = self.phases
-
-        for p in tqdm(list(self.phase_dict.values())):
-            if p.stability is None:  # for low e phases, we only need to eval stability if it doesn't exist
-                try:
-                    p.stability = p.energy - self.gclp(p.unit_comp)[0]
-                except:
-                    print(p)
-                    p.stability = np.nan
+        phase_dict_list = self.phase_dict.values()
 
         # will only do requested phases for things not in phase_dict
         for p in tqdm(phases_to_evaluate):
-            if p not in list(self.phase_dict.values()):
-                if p.name in self.phase_dict:
-                    p.stability = p.energy - self.phase_dict[p.name].energy + self.phase_dict[p.name].stability
-                else:
-                    try:
-                        p.stability = p.energy - self.gclp(p.unit_comp)[0]
-                    except:
-                        print(p)
-                        p.stability = np.nan
+            try:
+                p.stability = p.energy - self.gclp(p.unit_comp)[0]
+
+            except:
+                print(p)
+                p.stability = np.nan
 
     def compute_stabilities_multi(self, phases_to_evaluate=None,
                                   ncpus=multiprocessing.cpu_count()):
@@ -523,24 +513,29 @@ class PhaseSpaceAL(PhaseSpace):
                                  in enumerate(phases_to_evaluate)}
 
         phase_dict_list = list(self.phase_dict.values())
-        _result_list1 = parmap(
-            self._multiproc_help1, phase_dict_list, nprocs=ncpus)
-        for i in range(len(phase_dict_list)):
-            self.phase_dict[phase_dict_list[i].name].stability = _result_list1[i]
+        from multiprocessing import Pool
+        with Pool(ncpus) as pool:
+            stabilities_in_phase_dict = pool.map(
+                self._multiproc_help1, phase_dict_list)
+            for i in range(len(phase_dict_list)):
+                self.phase_dict[phase_dict_list[i].name].stability = \
+                    stabilities_in_phase_dict[i]
 
-        _result_list2 = parmap(self._multiproc_help2, phases_to_evaluate, nprocs=ncpus)
+            all_stabilities = pool.map(
+                self._multiproc_help2, phases_to_evaluate)
+
         for i in range(len(phases_to_evaluate)):
-            # we will use the uid_to_phase_ind create above to be able to map results of parmap to self.phases
+            # we will use the uid_to_phase_ind create above to be
+            # able to map results of parmap to self.phases
             ind = self.uid_to_phase_ind[phases_to_evaluate[i].description]
-            self.phases[ind].stability = _result_list2[i]
+            self.phases[ind].stability = all_stabilities[i]
 
     def _multiproc_help1(self, p):
-        if p.stability is None:  # for low e phases, we only need to eval stability if it doesn't exist
-            try:
-                p.stability = p.energy - self.gclp(p.unit_comp)[0]
-            except:
-                print(p)
-                p.stability = np.nan
+        try:
+            p.stability = p.energy - self.gclp(p.unit_comp)[0]
+        except:
+            print(p)
+            p.stability = np.nan
         return p.stability
 
     def _multiproc_help2(self, p):
@@ -553,34 +548,13 @@ class PhaseSpaceAL(PhaseSpace):
                 except:
                     print(p)
                     p.stability = np.nan
+        elif p.stability is None:
+            try:
+                p.stability = p.energy - self.gclp(p.unit_comp)[0]
+            except:
+                print(p)
+                p.stability = np.nan
         return p.stability
-
-
-def fun(f, q_in, q_out):
-    while True:
-        i, x = q_in.get()
-        if i is None:
-            break
-        q_out.put((i, f(x)))
-
-
-def parmap(f, X, nprocs=multiprocessing.cpu_count()):
-    q_in = multiprocessing.Queue(1)
-    q_out = multiprocessing.Queue()
-
-    proc = [multiprocessing.Process(target=fun, args=(f, q_in, q_out))
-            for _ in range(nprocs)]
-    for p in proc:
-        p.daemon = True
-        p.start()
-
-    sent = [q_in.put((i, x)) for i, x in enumerate(X)]
-    [q_in.put((None, None)) for _ in range(nprocs)]
-    res = [q_out.get() for _ in range(len(sent))]
-
-    [p.join() for p in proc]
-
-    return [x for i, x in sorted(res)]
 
 
 def update_run_w_structure(folder, hull_distance=0.2):

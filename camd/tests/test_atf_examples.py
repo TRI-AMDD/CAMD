@@ -184,7 +184,7 @@ class AtfLoopTest(unittest.TestCase):
         # seed_data = df.iloc[:38]
         # candidate_data = df.iloc[38:209]
         agent = RandomAgent(n_query=20)
-        analyzer = StabilityAnalyzer(hull_distance=0.05, parallel=False)
+        analyzer = StabilityAnalyzer(hull_distance=0.05, parallel=True)
         experiment = ATFSampler(dataframe=df)
         new_loop = Campaign(
             df, agent, experiment, analyzer,
