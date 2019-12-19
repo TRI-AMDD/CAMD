@@ -173,33 +173,30 @@ class AtfLoopTest(unittest.TestCase):
         self.assertTrue(True)
 
     def test_mp_loop(self):
-        df = pd.read_csv(os.path.join(CAMD_TEST_FILES, 'test_df_analysis.csv'),)
+        df = pd.read_csv(os.path.join(CAMD_TEST_FILES, 'test_df_analysis.csv'))
         df['id'] = [int(mp_id.replace("mp-", "").replace('mvc-', ''))
                     for mp_id in df['id']]
         df.set_index("id")
         df['Composition'] = df['formula']
 
         # Just use the Ti-O-N chemsys
-        df = df.iloc[:209]
-        # seed_data = df.iloc[:38]
-        # candidate_data = df.iloc[38:209]
+        seed = df.iloc[:38]
+        candidates = df.iloc[38:209]
         agent = RandomAgent(n_query=20)
         analyzer = StabilityAnalyzer(hull_distance=0.05, parallel=True)
         experiment = ATFSampler(dataframe=df)
         new_loop = Campaign(
-            df, agent, experiment, analyzer,
-            create_seed=38)
+            candidates, agent, experiment, analyzer, seed_data=seed
+        )
 
         new_loop.initialize()
-        self.assertFalse(new_loop.create_seed)
 
         for iteration in range(6):
             new_loop.run()
-            self.assertTrue(
-                os.path.isfile("hull.png".format(iteration)))
+            self.assertTrue(os.path.isfile("hull.png"))
             if iteration >= 1:
                 self.assertTrue(
-                    os.path.isfile("report.png"))
+                    os.path.isfile("history.pickle"))
 
         # Testing the continuation
         new_loop = Campaign(df, agent, experiment, analyzer)

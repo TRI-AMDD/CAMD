@@ -299,10 +299,9 @@ class StabilityAnalyzer(AnalyzerBase):
             new_seed = pd.concat([new_seed, new_data], axis=1)
         else:
             new_seed.update(new_data)
-        import nose; nose.tools.set_trace()
 
         # Write hull figure to disk
-        self.present(
+        self.plot_hull(
             new_seed, new_experimental_results.index,
             filename='hull.png', hull_distance=self.hull_distance
         )
@@ -345,8 +344,8 @@ class StabilityAnalyzer(AnalyzerBase):
         )
 
     @staticmethod
-    def present(df=None, new_result_ids=None, filename=None,
-                finalize=False, hull_distance=0.2):
+    def plot_hull(df, new_result_ids, filename=None,
+                  finalize=False, hull_distance=0.2):
         """
         Generate plots of convex hulls for each of the runs
 
@@ -382,6 +381,9 @@ class StabilityAnalyzer(AnalyzerBase):
             for index, row in filtered.iterrows()]
 
         ids_prior_to_run = list(set(filtered.index) - set(new_result_ids))
+        if not ids_prior_to_run:
+            warnings.warn("No prior data, prior phase diagram cannot be constructed")
+            return None
 
         # Create phase diagram based on everything prior to current run
         entries = filtered.loc[ids_prior_to_run]['entry'].dropna()
@@ -581,7 +583,7 @@ def update_run_w_structure(folder, hull_distance=0.2):
             _, stablities_of_discovered = st_a.analyze(df, all_ids, all_ids)
 
             # Having calculated stabilities again, we plot the overall hull.
-            st_a.present(df, all_ids, all_ids, filename="hull_finalized.png", finalize=True, save_hull_distance=True)
+            st_a.plot_hull(df, all_ids, all_ids, filename="hull_finalized.png", finalize=True, save_hull_distance=True)
 
             stable_discovered = list(itertools.compress(all_ids, stablities_of_discovered))
             s_a = AnalyzeStructures()

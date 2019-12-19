@@ -17,7 +17,7 @@ class AnalysisTest(unittest.TestCase):
         df['Composition'] = [Composition(f) for f in df['formula']]
         # Test 2D
         analyzer = StabilityAnalyzer(df, hull_distance=0.1)
-        analyzer.present(
+        analyzer.plot_hull(
             df,
             all_result_ids=["mp-8057", "mp-882", "mp-753593", "mvc-4715"],
             new_result_ids=["mp-685151", "mp-755875"]
@@ -26,7 +26,7 @@ class AnalysisTest(unittest.TestCase):
         # Test 3D
         analyzer.hull_distance = 0.05
 
-        analyzer.present(
+        analyzer.plot_hull(
             df,
             all_result_ids=["mp-754790", "mvc-4715"],
             new_result_ids=["mp-776280", "mp-30998"]

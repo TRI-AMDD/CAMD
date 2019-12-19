@@ -423,7 +423,7 @@ class Campaign(MSONable):
         with open(_path, mode) as f:
             m.dump(self.__getattribute__(data_holder), f)
 
-        # Do s3 sync if present
+        # Do s3 sync if plot_hull
         if self.s3_prefix:
             self.s3_sync()
 

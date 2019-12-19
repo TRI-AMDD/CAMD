@@ -78,7 +78,7 @@ class QBC:
         self.trained = True
 
         if self.test_full_model:
-            # Get a CV score for an overall model with present dataset
+            # Get a CV score for an overall model with plot_hull dataset
             full_scaler = StandardScaler()
             _X = full_scaler.fit_transform(self._X, self._y)
             full_model = clone(self.model)
