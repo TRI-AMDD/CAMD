@@ -34,7 +34,7 @@ def process_run():
     if not all([os.path.isfile(fn) for fn in required_files]):
         print("{} ERROR: no seed data, no analysis to be done")
     else:
-        analyzer = StabilityAnalyzer(hull_distance=0.2, multiprocessing=True)
+        analyzer = StabilityAnalyzer(hull_distance=0.2, parallel=True)
         with open(os.path.join("seed_data.pickle"), "rb") as f:
             result_df = pickle.load(f)
 

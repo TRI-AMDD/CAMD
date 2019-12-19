@@ -89,7 +89,8 @@ class ProtoDFTCampaign(Campaign):
         )
 
     def autorun(self):
-        n_max_iter = n_max_iter_heuristics(len(self.candidate_data), 10)
+        n_max_iter = n_max_iter_heuristics(
+            len(self.candidate_data), 10)
         self.auto_loop_in_directories(
             n_iterations=n_max_iter, timeout=10, monitor=True,
             initialize=True, with_icsd=True

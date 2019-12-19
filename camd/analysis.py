@@ -9,7 +9,6 @@ import numpy as np
 import itertools
 import pandas as pd
 from camd import tqdm
-from camd.log import camd_traced
 from qmpy.analysis.thermodynamics.phase import Phase, PhaseData
 from qmpy.analysis.thermodynamics.space import PhaseSpace
 import multiprocessing
@@ -57,19 +56,7 @@ class AnalyzerBase(abc.ABC):
                 seed data
         """
 
-    # @abc.abstractmethod
-    # def present(self):
-    #     """
-    #     Formats the analysis into a some presentation-oriented
-    #     document
 
-    #     Returns:
-    #         json document for presentation, e. g. on a web frontend
-
-    #     """
-
-
-@camd_traced
 class AnalyzeStructures(AnalyzerBase):
     """
     This class tests if a list of structures are unique. Typically
@@ -195,21 +182,8 @@ class AnalyzeStructures(AnalyzerBase):
         pass
 
 
-class FinalizeQqmdCampaign:
-    def __init__(self, hull_distance=None):
-        self.hull_distance = hull_distance if hull_distance else 0.2
-        self.path = None
-
-    def finalize(self, path=None):
-        """
-        post-processing for dft-campaigns
-        """
-        self.path = path if path else '.'
-        update_run_w_structure(self.path, hull_distance=self.hull_distance)
-
-
 class StabilityAnalyzer(AnalyzerBase):
-    def __init__(self, hull_distance=0.05, multiprocessing=True,
+    def __init__(self, hull_distance=0.05, parallel=True,
                  entire_space=False):
         """
         The Stability Analyzer is intended to analyze DFT-result
@@ -219,7 +193,7 @@ class StabilityAnalyzer(AnalyzerBase):
         Args:
             hull_distance (float): distance above hull below
                 which to deem a material "stable"
-            multiprocessing (bool): flag for whether or not
+            parallel (bool): flag for whether or not
                 multiprocessing is to be used
             # TODO: is there ever a case where you would
             #       would want to do the entire space?
@@ -228,7 +202,7 @@ class StabilityAnalyzer(AnalyzerBase):
                 space
         """
         self.hull_distance = hull_distance
-        self.multiprocessing = multiprocessing
+        self.parallel = parallel
         self.entire_space = entire_space
         self.space = None
         super(StabilityAnalyzer, self).__init__()
@@ -312,7 +286,7 @@ class StabilityAnalyzer(AnalyzerBase):
         new_phases = [p for p in space.phases
                       if p.description in filtered.index]
 
-        if self.multiprocessing:
+        if self.parallel:
             space.compute_stabilities_multi(phases_to_evaluate=new_phases)
         else:
             space.compute_stabilities_mod(phases_to_evaluate=new_phases)
@@ -329,6 +303,13 @@ class StabilityAnalyzer(AnalyzerBase):
             new_seed = pd.concat([new_seed, new_data], axis=1)
         else:
             new_seed.update(new_data)
+        import nose; nose.tools.set_trace()
+
+        # Write hull figure to disk
+        self.present(
+            new_seed, new_experimental_results.index,
+            filename='hull.png', hull_distance=self.hull_distance
+        )
 
         # Compute summary metrics
         summary = self.get_summary(new_seed, new_experimental_results.index)
@@ -367,59 +348,50 @@ class StabilityAnalyzer(AnalyzerBase):
              }
         )
 
-    def present(self, df=None, new_result_ids=None, all_result_ids=None,
-                filename=None, save_hull_distance=False, finalize=False):
+    @staticmethod
+    def present(df=None, new_result_ids=None, filename=None,
+                finalize=False, hull_distance=0.2):
         """
         Generate plots of convex hulls for each of the runs
 
         Args:
-            df (DataFrame): dataframe with formation energies, compositions, ids
+            df (DataFrame): dataframe with formation energies and formulas
             new_result_ids ([]): list of new result ids (i. e. indexes
                 in the updated dataframe)
-            all_result_ids ([]): list of all result ids associated
-                with the current run
             filename (str): filename to output, if None, no file output
                 is produced
+            finalize (bool): flag indicating whether to include all new results
+            hull_distance (float): hull distance above which to denote
+                a given material as unstable
 
         Returns:
             (pyplot): plotter instance
         """
-        df = df if df is not None else self.df
-        new_result_ids = new_result_ids if new_result_ids is not None else self.new_result_ids
-        all_result_ids = all_result_ids if all_result_ids is not None else self.all_result_ids
-
-        # TODO: remove duplicated code here
-        # TODO: good lord we need a database
         # Generate all entries
-        comps = df.loc[all_result_ids]['Composition'].dropna()
-        system_elements = []
-        for comp in comps:
-            system_elements += list(Composition(comp).as_dict().keys())
-        elems = set(system_elements)
-        if len(elems) > 4:
+        formulas = df.loc[new_result_ids]['Composition'].dropna()
+        system_elements = set()
+        for formula in formulas:
+            system_elements |= set(Composition(formula).keys())
+        if len(system_elements) > 4:
             warnings.warn("Number of elements too high for phase diagram plotting")
             return None
-        ind_to_include = []
-        for ind in df.index:
-            if set(Composition(df.loc[ind]['Composition']).as_dict().keys()).issubset(elems):
-                ind_to_include.append(ind)
-        _df = df.loc[ind_to_include]
+        filtered = StabilityAnalyzer.filter_dataframe_by_composition(
+            df, list(system_elements))
 
-        # Create computed entry column
-        _df['entry'] = [
+        # Create computed entry column with un-normalized energies
+        filtered['entry'] = [
             ComputedEntry(
                 Composition(row['Composition']),
-                row['delta_e'] * Composition(row['Composition']).num_atoms,  # un-normalize the energy
+                row['delta_e'] * Composition(row['Composition']).num_atoms,
                 entry_id=index
             )
-            for index, row in _df.iterrows()]
-        # Partition ids into sets of prior to CAMD run, from CAMD but prior to
-        # current iteration, and new ids
-        ids_prior_to_camd = list(set(_df.index) - set(all_result_ids))
-        ids_prior_to_run = list(set(all_result_ids) - set(new_result_ids))
+            for index, row in filtered.iterrows()]
+
+        ids_prior_to_run = list(set(filtered.index) - set(new_result_ids))
 
         # Create phase diagram based on everything prior to current run
-        entries = list(_df.loc[ids_prior_to_run + ids_prior_to_camd]['entry'])
+        entries = list(filtered.loc[ids_prior_to_run]['entry'])
+
         # Filter for nans by checking if it's a computed entry
         entries = [entry for entry in entries if isinstance(entry, ComputedEntry)]
         pd = PhaseDiagram(entries)
@@ -436,21 +408,22 @@ class StabilityAnalyzer(AnalyzerBase):
 
         getplotkwargs = {"label_stable": False} if finalize else {}
         plot = plotter.get_plot(**getplotkwargs)
+
         # Get valid results
         valid_results = [new_result_id for new_result_id in new_result_ids
-                         if new_result_id in _df.index]
+                         if new_result_id in filtered.index]
 
         if finalize:
-            # If finalize, we'll reset pd to all entries at this point to measure stabilities wrt.
-            # the ultimate hull.
-            pd = PhaseDiagram(_df['entry'].values)
+            # If finalize, we'll reset pd to all entries at this point to
+            # measure stabilities wrt. the ultimate hull.
+            pd = PhaseDiagram(filtered['entry'].values)
             plotter = PDPlotter(pd, **{"markersize": 0, "linestyle": "-", "linewidth": 2})
             plot = plotter.get_plot(plt=plot)
 
-        for entry in _df['entry'][valid_results]:
+        for entry in filtered['entry'][valid_results]:
             decomp, e_hull = pd.get_decomp_and_e_above_hull(
                     entry, allow_negative=True)
-            if e_hull < self.hull_distance:
+            if e_hull < hull_distance:
                 color = 'g'
                 marker = 'o'
                 markeredgewidth = 1
@@ -468,24 +441,25 @@ class StabilityAnalyzer(AnalyzerBase):
                 coords = triangular_coord(coords)
             elif pd.dim == 4:
                 coords = tet_coord(coords)
-            plot.plot(*coords, marker=marker, markeredgecolor=color, markerfacecolor="None", markersize=11,
+            plot.plot(*coords, marker=marker, markeredgecolor=color,
+                      markerfacecolor="None", markersize=11,
                       markeredgewidth=markeredgewidth)
 
         if filename is not None:
             plot.savefig(filename, dpi=70)
         plot.close()
 
-        if filename is not None and save_hull_distance:
-            if self.stabilities is None:
-                print("ERROR: No stability information in analyzer.")
-                return None
-            with open(filename.split(".")[0]+'.json', 'w') as f:
-                json.dump(self.stabilities, f)
+    def finalize(self, path=None):
+        """
+        Post-processing a dft campaign
+        """
+        self.path = path if path else '.'
+        update_run_w_structure(self.path, hull_distance=self.hull_distance)
 
 
 class PhaseSpaceAL(PhaseSpace):
     """
-    Modified qmpy.PhaseSpace for GCLP based stabiltiy computations
+    Modified qmpy.PhaseSpace for GCLP based stability computations
     TODO: basic multithread or Gurobi for gclp
     """
 
@@ -495,7 +469,8 @@ class PhaseSpaceAL(PhaseSpace):
 
         Args:
             phases_to_evaluate ([Phase] or None):
-                List of Phases. If None, uses every Phase in PhaseSpace.phases
+                List of Phases. If None, uses every Phase in
+                    PhaseSpace.phases
 
         Returns:
             (None)
@@ -542,11 +517,14 @@ class PhaseSpaceAL(PhaseSpace):
         if phases_to_evaluate is None:
             phases_to_evaluate = self.phases
 
-        # Creating a map from entry uid to index of entry in the current list of phases in space.
-        self.uid_to_phase_ind = dict([(self.phases[i].description, i) for i in range(len(self.phases))])
+        # Creating a map from entry uid to index of entry
+        # in the current list of phases in space.
+        self.uid_to_phase_ind = {phase.description: n for n, phase
+                                 in enumerate(phases_to_evaluate)}
 
         phase_dict_list = list(self.phase_dict.values())
-        _result_list1 = parmap(self._multiproc_help1,  phase_dict_list, nprocs=ncpus)
+        _result_list1 = parmap(
+            self._multiproc_help1, phase_dict_list, nprocs=ncpus)
         for i in range(len(phase_dict_list)):
             self.phase_dict[phase_dict_list[i].name].stability = _result_list1[i]
 
@@ -631,7 +609,7 @@ def update_run_w_structure(folder, hull_distance=0.2):
                 df = pickle.load(f)
 
             all_ids = loadfn("consumed_candidates.json")
-            st_a = StabilityAnalyzer(df=df, hull_distance=hull_distance)
+            st_a = StabilityAnalyzer(hull_distance=hull_distance)
             _, stablities_of_discovered = st_a.analyze(df, all_ids, all_ids)
 
             # Having calculated stabilities again, we plot the overall hull.

@@ -20,7 +20,8 @@ class AnalysisTest(unittest.TestCase):
         analyzer.present(
             df,
             all_result_ids=["mp-8057", "mp-882", "mp-753593", "mvc-4715"],
-            new_result_ids=["mp-685151", "mp-755875"])
+            new_result_ids=["mp-685151", "mp-755875"]
+        )
 
         # Test 3D
         analyzer.hull_distance = 0.05

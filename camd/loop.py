@@ -11,11 +11,9 @@ from monty.json import MSONable
 from camd.utils.s3 import cache_s3_objs, s3_sync
 from camd import S3_CACHE, CAMD_S3_BUCKET
 from camd.agent.base import RandomAgent
-from camd.log import camd_traced
 from pymatgen.util.plotting import pretty_plot
 
 
-@camd_traced
 class Campaign(MSONable):
     def __init__(self, candidate_data, agent, experiment, analyzer,
                  finalizer=None, seed_data=None, create_seed=False,

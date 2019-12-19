@@ -137,7 +137,7 @@ class AtfLoopTest(unittest.TestCase):
         agent = BaggedGaussianProcessStabilityAgent(
             n_query=10,
             hull_distance=0.05,
-            alpha=0.5, # Fraction of std to include in expected improvement
+            alpha=0.5,  # Fraction of std to include in expected improvement
             n_estimators=2,
             max_samples=195
         )
@@ -180,14 +180,15 @@ class AtfLoopTest(unittest.TestCase):
         df['Composition'] = df['formula']
 
         # Just use the Ti-O-N chemsys
-        seed_data = df.iloc[:38]
-        candidate_data = df.iloc[38:209]
+        df = df.iloc[:209]
+        # seed_data = df.iloc[:38]
+        # candidate_data = df.iloc[38:209]
         agent = RandomAgent(n_query=20)
-        analyzer = StabilityAnalyzer(hull_distance=0.05)
+        analyzer = StabilityAnalyzer(hull_distance=0.05, parallel=False)
         experiment = ATFSampler(dataframe=df)
-        # candidate_data = df
-        new_loop = Campaign(candidate_data, agent, experiment, analyzer,
-                            seed_data=seed_data)
+        new_loop = Campaign(
+            df, agent, experiment, analyzer,
+            create_seed=38)
 
         new_loop.initialize()
         self.assertFalse(new_loop.create_seed)
@@ -195,13 +196,13 @@ class AtfLoopTest(unittest.TestCase):
         for iteration in range(6):
             new_loop.run()
             self.assertTrue(
-                os.path.isfile("hull_{}.png".format(iteration)))
+                os.path.isfile("hull.png".format(iteration)))
             if iteration >= 1:
                 self.assertTrue(
                     os.path.isfile("report.png"))
 
         # Testing the continuation
-        new_loop = Campaign(candidate_data, agent, experiment, analyzer)
+        new_loop = Campaign(df, agent, experiment, analyzer)
         self.assertTrue(new_loop.initialized)
         self.assertEqual(new_loop.iteration, 6)
         self.assertEqual(new_loop.loop_state, None)
