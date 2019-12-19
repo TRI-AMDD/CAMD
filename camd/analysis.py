@@ -178,9 +178,6 @@ class AnalyzeStructures(AnalyzerBase):
         else:
             return self.analyze(self.structures, self.structure_ids, against_icsd)
 
-    def present(self):
-        pass
-
 
 class StabilityAnalyzer(AnalyzerBase):
     def __init__(self, hull_distance=0.05, parallel=True,
@@ -208,26 +205,28 @@ class StabilityAnalyzer(AnalyzerBase):
         super(StabilityAnalyzer, self).__init__()
 
     @staticmethod
-    def filter_dataframe_by_composition(df, elements):
+    def filter_dataframe_by_composition(df, composition):
         """
-        Filters dataframe by composition
+        Filters dataframe by composition, i. e. finds all
+        rows in dataframe where the Composition contains a
+        subset of input composition
 
         Args:
             df (DataFrame): dataframe
-            elements ([str]): list of elements to filter by, i. e.
+            composition (Composition or str): composition
+                or formula by which to filter
 
         Returns:
             (DataFrame): dataframe where every composition is sampled such
                 that its composition is a subset of the input element set
 
         """
-        elements = set(elements)
-        ind_to_include = []
-        for ind in df.index:
-            if set(Composition(df.loc[ind]['Composition']).as_dict().keys()).issubset(elements):
-                ind_to_include.append(ind)
-
-        return df.loc[ind_to_include]
+        # Get elements in formula, composition, then filter
+        chemsys = set(Composition(composition).keys())
+        all_comps = df['Composition'].apply(Composition)
+        indices_to_include = [ind for ind, comp in all_comps.items()
+                              if comp.keys() < chemsys]
+        return df.loc[indices_to_include]
 
     @staticmethod
     def get_phase_space(dataframe):
@@ -275,12 +274,9 @@ class StabilityAnalyzer(AnalyzerBase):
             # Constrains the phase space to that of the target compounds.
             # More efficient when searching in a specified chemistry,
             # less efficient if larger spaces are without specified chemistry.
-            comps = new_experimental_results['Composition'].dropna()
-            system_elements = []
-            for comp in comps:
-                system_elements += list(Composition(comp).as_dict().keys())
+            total_comp = new_experimental_results['Composition'].dropna().sum()
             filtered = self.filter_dataframe_by_composition(
-                filtered, system_elements)
+                filtered, total_comp)
 
         space = self.get_phase_space(filtered)
         new_phases = [p for p in space.phases
@@ -368,15 +364,13 @@ class StabilityAnalyzer(AnalyzerBase):
             (pyplot): plotter instance
         """
         # Generate all entries
-        formulas = df.loc[new_result_ids]['Composition'].dropna()
-        system_elements = set()
-        for formula in formulas:
-            system_elements |= set(Composition(formula).keys())
-        if len(system_elements) > 4:
+        total_comp = df.loc[new_result_ids]['Composition'].dropna().sum()
+        total_comp = Composition(total_comp)
+        if len(total_comp) > 4:
             warnings.warn("Number of elements too high for phase diagram plotting")
             return None
         filtered = StabilityAnalyzer.filter_dataframe_by_composition(
-            df, list(system_elements))
+            df, total_comp)
 
         # Create computed entry column with un-normalized energies
         filtered['entry'] = [
@@ -390,10 +384,10 @@ class StabilityAnalyzer(AnalyzerBase):
         ids_prior_to_run = list(set(filtered.index) - set(new_result_ids))
 
         # Create phase diagram based on everything prior to current run
-        entries = list(filtered.loc[ids_prior_to_run]['entry'])
+        entries = filtered.loc[ids_prior_to_run]['entry'].dropna()
 
         # Filter for nans by checking if it's a computed entry
-        entries = [entry for entry in entries if isinstance(entry, ComputedEntry)]
+        # entries = [entry for entry in entries if isinstance(entry, ComputedEntry)]
         pd = PhaseDiagram(entries)
         plotkwargs = {
             "markerfacecolor": "white",
