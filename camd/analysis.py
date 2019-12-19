@@ -11,7 +11,7 @@ import pandas as pd
 from camd import tqdm
 from qmpy.analysis.thermodynamics.phase import Phase, PhaseData
 from qmpy.analysis.thermodynamics.space import PhaseSpace
-import multiprocessing
+from multiprocessing import Pool, cpu_count
 from pymatgen import Composition
 from pymatgen.entries.computed_entries import ComputedEntry
 from pymatgen.analysis.phase_diagram import PhaseDiagram, PDPlotter, tet_coord,\
@@ -180,7 +180,7 @@ class AnalyzeStructures(AnalyzerBase):
 
 
 class StabilityAnalyzer(AnalyzerBase):
-    def __init__(self, hull_distance=0.05, parallel=True,
+    def __init__(self, hull_distance=0.05, parallel=cpu_count(),
                  entire_space=False):
         """
         The Stability Analyzer is intended to analyze DFT-result
@@ -282,10 +282,8 @@ class StabilityAnalyzer(AnalyzerBase):
         new_phases = [p for p in space.phases
                       if p.description in filtered.index]
 
-        if self.parallel:
-            space.compute_stabilities_multi(phases_to_evaluate=new_phases)
-        else:
-            space.compute_stabilities_mod(phases_to_evaluate=new_phases)
+        space.compute_stabilities(phases=new_phases,
+                                  ncpus=self.parallel)
 
         # Compute new stabilities and update new seed
         new_data = pd.DataFrame(
@@ -303,7 +301,7 @@ class StabilityAnalyzer(AnalyzerBase):
         # Write hull figure to disk
         self.plot_hull(
             new_seed, new_experimental_results.index,
-            filename='hull.png', hull_distance=self.hull_distance
+            filename='hull.png'
         )
 
         # Compute summary metrics
@@ -455,98 +453,98 @@ class PhaseSpaceAL(PhaseSpace):
     TODO: basic multithread or Gurobi for gclp
     """
 
-    def compute_stabilities_mod(self, phases_to_evaluate=None):
+    def compute_stabilities(self, phases, ncpus=cpu_count()):
         """
         Calculate the stability for every Phase.
 
         Args:
-            phases_to_evaluate ([Phase] or None):
-                List of Phases. If None, uses every Phase in
-                    PhaseSpace.phases
+            phases ([Phase]): list of Phases for which to compute
+                stability
+            ncpus (int): number of cpus to use, i. e. processes
+                to use
 
         Returns:
-            (None)
+            ([float]) stability values for all phases
         """
+        self.update_phase_dict(ncpus=ncpus)
+        if ncpus > 1:
+            with Pool(ncpus) as pool:
+                stabilities = pool.map(self.compute_stability, phases)
+        else:
+            stabilities = [self.compute_stability(phase)
+                           for phase in tqdm(phases)]
 
-        if phases_to_evaluate is None:
-            phases_to_evaluate = self.phases
-        phase_dict_list = self.phase_dict.values()
+        return stabilities
 
-        # will only do requested phases for things not in phase_dict
-        for p in tqdm(phases_to_evaluate):
-            try:
-                p.stability = p.energy - self.gclp(p.unit_comp)[0]
-
-            except:
-                print(p)
-                p.stability = np.nan
-
-    def compute_stabilities_multi(self, phases_to_evaluate=None,
-                                  ncpus=multiprocessing.cpu_count()):
+    def compute_stability(self, phase):
         """
-        Calculate the stability for every Phase.
+        Computes stability for a given phase in the phase
+        diagram
 
         Args:
-            phases_to_evaluate ([Phases] or None): list of Phases. If None,
-                uses every Phase in PhaseSpace.phases
-            ncpus (int): number of cpus to use, i. e. processes to use
+            phase (Phase): phase for which to compute
+                stability
 
         Returns:
-            (None)
+            (float): stability of given phase
 
         """
+        # If the phase name (formula) is in the set of minimal
+        # phases by formula, compute it relative to that minimal phase
+        if phase.name in self.phase_dict:
+            phase.stability = phase.energy - self.phase_dict[phase.name].energy \
+                              + self.phase_dict[phase.name].stability
+        else:
+            phase.stability = self._compute_stability_gclp(phase)
 
-        if phases_to_evaluate is None:
-            phases_to_evaluate = self.phases
+        return phase.stability
 
-        # Creating a map from entry uid to index of entry
-        # in the current list of phases in space.
-        self.uid_to_phase_ind = {phase.description: n for n, phase
-                                 in enumerate(phases_to_evaluate)}
+    def _compute_stability_gclp(self, phase):
+        """
+        Computes stability using gclp.  The function
+        is still a little unstable, so we use a blank
+        try-except to let it do what it can.
 
-        phase_dict_list = list(self.phase_dict.values())
-        from multiprocessing import Pool
-        with Pool(ncpus) as pool:
-            stabilities_in_phase_dict = pool.map(
-                self._multiproc_help1, phase_dict_list)
-            for i in range(len(phase_dict_list)):
-                self.phase_dict[phase_dict_list[i].name].stability = \
-                    stabilities_in_phase_dict[i]
+        Args:
+            phase (Phase): phase for which to compute
+                stability using gclp
 
-            all_stabilities = pool.map(
-                self._multiproc_help2, phases_to_evaluate)
+        Returns:
+            (float): stability
 
-        for i in range(len(phases_to_evaluate)):
-            # we will use the uid_to_phase_ind create above to be
-            # able to map results of parmap to self.phases
-            ind = self.uid_to_phase_ind[phases_to_evaluate[i].description]
-            self.phases[ind].stability = all_stabilities[i]
-
-    def _multiproc_help1(self, p):
+        """
         try:
-            p.stability = p.energy - self.gclp(p.unit_comp)[0]
+            phase.stability = phase.energy - self.gclp(phase.unit_comp)[0]
         except:
-            print(p)
-            p.stability = np.nan
-        return p.stability
+            print(phase)
+            phase.stability = np.nan
+        return phase.stability
 
-    def _multiproc_help2(self, p):
-        if p not in list(self.phase_dict.values()):
-            if p.name in self.phase_dict:
-                p.stability = p.energy - self.phase_dict[p.name].energy + self.phase_dict[p.name].stability
-            else:
-                try:
-                    p.stability = p.energy - self.gclp(p.unit_comp)[0]
-                except:
-                    print(p)
-                    p.stability = np.nan
-        elif p.stability is None:
-            try:
-                p.stability = p.energy - self.gclp(p.unit_comp)[0]
-            except:
-                print(p)
-                p.stability = np.nan
-        return p.stability
+    def update_phase_dict(self, ncpus=cpu_count()):
+        """
+        Function to update the phase dict associated with
+        the PhaseSpaceAL
+
+        Args:
+            ncpus (int): number of processes to use
+
+        Returns:
+            (None)
+
+        """
+        uncomputed_phases = [phase for phase in self.phase_dict.values()
+                             if phase.stability is None]
+        if ncpus > 1:
+            # Compute stabilities, then update, pool doesn't modify attribute
+            with Pool(ncpus) as pool:
+                stabilities = pool.map(self._compute_stability_gclp, uncomputed_phases)
+            for phase, stability in zip(uncomputed_phases, stabilities):
+                phase.stability = stability
+        else:
+            for phase in uncomputed_phases:
+                self._compute_stability_gclp(phase)
+        assert len([phase for phase in self.phase_dict.values()
+                    if phase.stability is None]) == 0
 
 
 def update_run_w_structure(folder, hull_distance=0.2):

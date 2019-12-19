@@ -10,6 +10,9 @@ from camd.analysis import StabilityAnalyzer, AnalyzeStructures
 
 
 class AnalysisTest(unittest.TestCase):
+    def test_stability_analyzer(self):
+        pass
+
     def test_plot_hull(self):
         df = pd.read_csv(os.path.join(CAMD_TEST_FILES, "test_df_analysis.csv"),
                          index_col="id")
