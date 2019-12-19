@@ -3,34 +3,31 @@
 import unittest
 import os
 import pandas as pd
-import json
-from pymatgen import Composition
 from monty.serialization import loadfn
+from monty.tempfile import ScratchDir
 from camd import CAMD_TEST_FILES
 from camd.analysis import StabilityAnalyzer, AnalyzeStructures
 
 
 class AnalysisTest(unittest.TestCase):
-    def test_present(self):
+    def test_plot_hull(self):
         df = pd.read_csv(os.path.join(CAMD_TEST_FILES, "test_df_analysis.csv"),
                          index_col="id")
-        df['Composition'] = [Composition(f) for f in df['formula']]
+        df['Composition'] = df['formula']
+
         # Test 2D
-        analyzer = StabilityAnalyzer(df, hull_distance=0.1)
-        analyzer.plot_hull(
-            df,
-            all_result_ids=["mp-8057", "mp-882", "mp-753593", "mvc-4715"],
-            new_result_ids=["mp-685151", "mp-755875"]
-        )
+        with ScratchDir('.'):
+            analyzer = StabilityAnalyzer(hull_distance=0.1)
+            analyzer.plot_hull(df, new_result_ids=["mp-685151", "mp-755875"],
+                               filename="hull.png")
+            self.assertTrue(os.path.isfile("hull.png"))
 
         # Test 3D
-        analyzer.hull_distance = 0.05
-
-        analyzer.plot_hull(
-            df,
-            all_result_ids=["mp-754790", "mvc-4715"],
-            new_result_ids=["mp-776280", "mp-30998"]
-        )
+        with ScratchDir('.'):
+            analyzer.hull_distance = 0.05
+            analyzer.plot_hull(df, new_result_ids=["mp-776280", "mp-30998"],
+                               filename="hull.png")
+            self.assertTrue(os.path.isfile("hull.png"))
 
     def test_structure_analyzer(self):
         jobs = loadfn(os.path.join(CAMD_TEST_FILES, "raw_results.json"))

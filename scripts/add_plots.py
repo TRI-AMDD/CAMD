@@ -60,7 +60,7 @@ def update_run(folder):
                     os.path.join(str(iteration-1), "consumed_candidates.json"))
                 new_result_ids = loadfn(
                     os.path.join(str(iteration-1), "submitted_experiment_requests.json"))
-                analyzer.present(
+                analyzer.plot_hull(
                     df=result_df,
                     new_result_ids=new_result_ids,
                     all_result_ids=all_result_ids,

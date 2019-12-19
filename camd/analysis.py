@@ -343,9 +343,8 @@ class StabilityAnalyzer(AnalyzerBase):
              }
         )
 
-    @staticmethod
-    def plot_hull(df, new_result_ids, filename=None,
-                  finalize=False, hull_distance=0.2):
+    def plot_hull(self, df, new_result_ids, filename=None,
+                  finalize=False):
         """
         Generate plots of convex hulls for each of the runs
 
@@ -356,8 +355,6 @@ class StabilityAnalyzer(AnalyzerBase):
             filename (str): filename to output, if None, no file output
                 is produced
             finalize (bool): flag indicating whether to include all new results
-            hull_distance (float): hull distance above which to denote
-                a given material as unstable
 
         Returns:
             (pyplot): plotter instance
@@ -419,7 +416,7 @@ class StabilityAnalyzer(AnalyzerBase):
         for entry in filtered['entry'][valid_results]:
             decomp, e_hull = pd.get_decomp_and_e_above_hull(
                     entry, allow_negative=True)
-            if e_hull < hull_distance:
+            if e_hull < self.hull_distance:
                 color = 'g'
                 marker = 'o'
                 markeredgewidth = 1
@@ -445,12 +442,11 @@ class StabilityAnalyzer(AnalyzerBase):
             plot.savefig(filename, dpi=70)
         plot.close()
 
-    def finalize(self, path=None):
+    def finalize(self, path='.'):
         """
         Post-processing a dft campaign
         """
-        self.path = path if path else '.'
-        update_run_w_structure(self.path, hull_distance=self.hull_distance)
+        update_run_w_structure(path, hull_distance=self.hull_distance)
 
 
 class PhaseSpaceAL(PhaseSpace):

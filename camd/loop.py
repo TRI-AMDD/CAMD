@@ -16,7 +16,7 @@ from pymatgen.util.plotting import pretty_plot
 
 class Campaign(MSONable):
     def __init__(self, candidate_data, agent, experiment, analyzer,
-                 finalizer=None, seed_data=None, create_seed=False,
+                 seed_data=None, create_seed=False,
                  heuristic_stopper=np.inf, s3_prefix=None,
                  s3_bucket=CAMD_S3_BUCKET, path=None):
         """
@@ -37,7 +37,6 @@ class Campaign(MSONable):
             agent (HypothesisAgent): a subclass of HypothesisAgent
             experiment (Experiment): a subclass of Experiment
             analyzer (Analyzer): a subclass of Analyzer
-            finalizer (obj): needs to have a finalize method.
             seed_data (pandas.DataFrame): Seed Data for active learning,
                 index is to be the assumed uid
             create_seed (int): an initial seed size to create from the data
@@ -65,7 +64,6 @@ class Campaign(MSONable):
         self.agent = agent
         self.experiment = experiment
         self.analyzer = analyzer
-        self.finalizer = finalizer
 
         # Other parameters
         # TODO: think about how to abstract this away from the loop
@@ -350,8 +348,8 @@ class Campaign(MSONable):
     def finalize(self):
         print("Finalizing campaign.")
         os.chdir(self.path)
-        if self.finalizer:
-            self.finalizer.finalize(self.path)
+        if hasattr(self.analyzer, "finalize"):
+            self.analyzer.finalize(self.path)
         if self.s3_prefix:
             self.s3_sync()
 
