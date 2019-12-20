@@ -2,7 +2,7 @@
 from camd.loop import Campaign
 
 from sklearn.neural_network import MLPRegressor
-from camd.agent.agents import AgentStabilityML5
+from camd.agent.stability import AgentStabilityML5
 from camd.analysis import StabilityAnalyzer
 from camd.experiment.base import ATFSampler
 from camd.utils.data import load_default_atf_data

@@ -5,7 +5,7 @@ import shutil
 import pandas as pd
 
 from sklearn.neural_network import MLPRegressor
-from camd.agent.agents import QBCStabilityAgent, GaussianProcessStabilityAgent, SVGProcessStabilityAgent, \
+from camd.agent.stability import QBCStabilityAgent, GaussianProcessStabilityAgent, SVGProcessStabilityAgent, \
     BaggedGaussianProcessStabilityAgent, AgentStabilityAdaBoost
 from camd.agent.base import RandomAgent
 from camd.analysis import StabilityAnalyzer

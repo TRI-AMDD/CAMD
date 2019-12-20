@@ -1,7 +1,7 @@
 # Copyright Toyota Research Institute 2019
 from camd.loop import Campaign
 
-from camd.agent.agents import BaggedGaussianProcessStabilityAgent
+from camd.agent.stability import BaggedGaussianProcessStabilityAgent
 from camd.analysis import StabilityAnalyzer
 from camd.experiment.base import ATFSampler
 from camd.utils.data import load_default_atf_data

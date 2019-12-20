@@ -2,7 +2,7 @@
 from camd.loop import Campaign
 import pandas as pd
 
-from camd.agent.agents import GaussianProcessStabilityAgent
+from camd.agent.stability import GaussianProcessStabilityAgent
 from camd.analysis import StabilityAnalyzer
 from camd.experiment.base import ATFSampler
 from camd.utils.data import load_default_atf_data

@@ -7,7 +7,7 @@ import os
 from datetime import datetime
 from monty.serialization import dumpfn
 from camd.domain import StructureDomain, heuristic_setup
-from camd.agent.agents import AgentStabilityAdaBoost
+from camd.agent.stability import AgentStabilityAdaBoost
 from camd.agent.base import RandomAgent
 from camd.experiment import ATFSampler
 from camd.loop import Campaign

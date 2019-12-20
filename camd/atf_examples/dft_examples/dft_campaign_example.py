@@ -1,6 +1,6 @@
 from camd.domain import StructureDomain
 from camd.loop import Campaign
-from camd.agent.agents import QBCStabilityAgent
+from camd.agent.stability import QBCStabilityAgent
 from camd.analysis import StabilityAnalyzer
 from camd.experiment.dft import OqmdDFTonMC1
 from sklearn.neural_network import MLPRegressor
