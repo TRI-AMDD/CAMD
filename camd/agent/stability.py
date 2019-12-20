@@ -166,7 +166,7 @@ class StabilityAgent(HypothesisAgent, metaclass=abc.ABCMeta):
 
 class QBCStabilityAgent(StabilityAgent):
     def __init__(self, candidate_data=None, seed_data=None, n_query=1,
-                 hull_distance=0.0, parallel=True, alpha=0.5,
+                 hull_distance=0.0, parallel=cpu_count(), alpha=0.5,
                  training_fraction=0.5, model=None, n_members=10):
         """
         Args:
@@ -230,7 +230,7 @@ class AgentStabilityML5(StabilityAgent):
     N_query options (frac), and explore the rest of its budget.
     """
     def __init__(self, candidate_data=None, seed_data=None, n_query=1,
-                 hull_distance=0.0, parallel=True,
+                 hull_distance=0.0, parallel=cpu_count(),
                  model=None, exploit_fraction=0.5):
         """
         Args:
@@ -294,7 +294,7 @@ class GaussianProcessStabilityAgent(StabilityAgent):
     Simple Gaussian Process Regressor based Stability Agent
     """
     def __init__(self, candidate_data=None, seed_data=None, n_query=1,
-                 hull_distance=0.0, parallel=True,
+                 hull_distance=0.0, parallel=cpu_count(),
                  alpha=0.5):
         """
         Args:
@@ -369,7 +369,7 @@ class SVGProcessStabilityAgent(StabilityAgent):
 
     """
     def __init__(self, candidate_data=None, seed_data=None, n_query=1,
-                 hull_distance=0.0, parallel=True,
+                 hull_distance=0.0, parallel=cpu_count(),
                  alpha=0.5, M=600):
         """
         Args:
@@ -524,7 +524,7 @@ class BaggedGaussianProcessStabilityAgent(StabilityAgent):
 
     """
     def __init__(self, candidate_data=None, seed_data=None, n_query=1,
-                 hull_distance=0.0, parallel=True,
+                 hull_distance=0.0, parallel=cpu_count(),
                  alpha=0.5, n_estimators=8, max_samples=5000,
                  bootstrap=False):
         """
@@ -612,7 +612,7 @@ class AgentStabilityAdaBoost(StabilityAgent):
     of N_query options (frac), and explore the rest of its budget.
     """
     def __init__(self, candidate_data=None, seed_data=None, n_query=1,
-                 hull_distance=0.0, parallel=True,
+                 hull_distance=0.0, parallel=cpu_count(),
                  model=None, uncertainty=True, alpha=0.5,
                  n_estimators=10, exploit_fraction=0.5,
                  diversify=False, dynamic_alpha=False):
