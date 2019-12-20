@@ -39,17 +39,6 @@ class LoopTest(unittest.TestCase):
         loaded = json.loads(obj.get()['Body'].read())
         self.assertEqual(loaded, 0)
 
-    def test_generate_final_report(self):
-        with ScratchDir('.'):
-            df = pd.read_csv(os.path.join(CAMD_TEST_FILES, 'test_df.csv'))
-
-            # Construct and start loop
-            new_loop = Campaign(df, AgentStabilityML5(), ATFSampler(df),
-                                StabilityAnalyzer(), create_seed=True)
-            new_loop.generate_report_plot(
-                "report.png", os.path.join(CAMD_TEST_FILES, "report.log"))
-            self.assertTrue(os.path.isfile("report.png"))
-
 
 if __name__ == '__main__':
     unittest.main()
