@@ -26,16 +26,6 @@ TEST_REGRESSOR_PARAMS = [
         "fit_intercept": [True, False],
         "normalize": [True, False]
     },
-    # {
-    #         "@class": ["sklearn.neural_network.MLPRegressor"],
-    #         "hidden_layer_sizes": [
-    #             # I think there's a better way to support this,
-    #             # but will have to think about it
-    #             (84, 50)
-    #         ],
-    #         "activation": ["identity"],
-    #         "learning_rate": ["constant"]
-    # },
 ]
 
 
@@ -48,13 +38,6 @@ TEST_AGENT_PARAMS = [
         "training_fraction": [0.4],
         "model": TEST_REGRESSOR_PARAMS
     },
-    # {
-    #     "@class": ["camd.agent.agents.AgentStabilityML5"],
-    #     "n_query": [6, 8, 10],
-    #     "hull_distance": [0.05],
-    #     "exploit_fraction": [0.4, 0.5],
-    #     "model": TEST_REGRESSOR_PARAMS
-    # },
 ]
 
 
