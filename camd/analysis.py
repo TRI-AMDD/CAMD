@@ -572,13 +572,16 @@ def update_run_w_structure(folder, hull_distance=0.2):
             with open("seed_data.pickle", "rb") as f:
                 df = pickle.load(f)
 
-            all_ids = loadfn("consumed_candidates.json")
+            with open("experiment.pickle", 'rb') as f:
+                experiment = pickle.load(f)
+            all_submitted, all_results = experiment.agg_history
             st_a = StabilityAnalyzer(hull_distance=hull_distance)
-            new_seed, summary = st_a.analyze(df, all_ids)
+            summary, new_seed = st_a.analyze(df, pd.DataFrame())
 
             # Having calculated stabilities again, we plot the overall hull.
             st_a.plot_hull(
-                new_seed, all_ids, filename="hull_finalized.png", finalize=True)
+                new_seed, all_submitted.index,
+                filename="hull_finalized.png", finalize=True)
 
             stable_discovered = new_seed[new_seed['is_stable']]
             s_a = AnalyzeStructures()
@@ -594,7 +597,7 @@ def update_run_w_structure(folder, hull_distance=0.2):
 
             with open('structure_report.log', "w") as f:
                 f.write("consumed discovery unique_discovery duplicate in_icsd \n")
-                f.write(str(len(all_ids)) + ' ' +
+                f.write(str(len(all_submitted)) + ' ' +
                         str(len(stable_discovered)) + ' ' +
                         str(len(unique_s_dict)) + ' '
                         + str(len(s_a.structures) - sum(s_a._not_duplicate)) + ' '

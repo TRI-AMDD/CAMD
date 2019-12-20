@@ -400,7 +400,7 @@ def heuristic_setup(elements):
     Helper function to setup a default structure_domain
 
     Args:
-        elements (str): list of elements to use to
+        elements ([str]): list of elements to use to
             generate formulae
 
     Returns:

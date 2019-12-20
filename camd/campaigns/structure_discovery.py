@@ -11,10 +11,10 @@ from camd.agent.agents import AgentStabilityAdaBoost
 from camd.agent.base import RandomAgent
 from camd.experiment import ATFSampler
 from camd.loop import Campaign
-from camd import CAMD_TEST_FILES, CAMD_S3_BUCKET
-from camd.utils.s3 import s3_sync
+from camd import CAMD_TEST_FILES, CAMD_S3_BUCKET, S3_CACHE
+from camd.utils.s3 import s3_sync, cache_s3_objs
 
-from camd.analysis import StabilityAnalyzer, FinalizeQqmdCampaign
+from camd.analysis import StabilityAnalyzer
 from camd.experiment.dft import OqmdDFTonMC1
 from sklearn.neural_network import MLPRegressor
 import pickle
@@ -79,14 +79,23 @@ class ProtoDFTCampaign(Campaign):
         )
         analyzer = StabilityAnalyzer(hull_distance=0.2)
         experiment = OqmdDFTonMC1(timeout=30000)
-        finalizer = FinalizeQqmdCampaign(hull_distance=0.2)
 
         # Construct and start loop
         return cls(
             candidate_data, agent, experiment, analyzer,
-            finalizer=finalizer, heuristic_stopper=5,
-            s3_prefix="proto-dft/runs/{}".format(chemsys)
+            heuristic_stopper=5, s3_prefix="proto-dft/runs/{}".format(chemsys)
         )
+
+    def initialize_with_icsd_seed(self, random_state=42):
+        if self.initialized:
+            raise ValueError(
+                "Initialization may overwrite existing loop data. Exit.")
+        cache_s3_objs(
+            ["camd/shared-data/oqmd1.2_icsd_featurized_clean_v2.pickle"]
+        )
+        self.seed_data = pd.read_pickle(
+            os.path.join(S3_CACHE, "camd/shared-data/oqmd1.2_icsd_featurized_clean_v2.pickle"))
+        self.initialize(random_state=random_state)
 
     def autorun(self):
         n_max_iter = n_max_iter_heuristics(

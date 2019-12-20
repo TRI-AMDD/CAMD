@@ -2,6 +2,7 @@
 
 import abc
 
+import pandas as pd
 from monty.json import MSONable
 
 
@@ -43,8 +44,6 @@ class Experiment(abc.ABC, MSONable):
     @abc.abstractmethod
     def get_results(self):
         """
-        Args:
-            indices (list): uids / indices of experiments to get the results for
         Returns:
             dict: a dictionary of results
 
@@ -67,6 +66,21 @@ class Experiment(abc.ABC, MSONable):
         Returns:
             None
         """
+
+    @property
+    def agg_history(self):
+        """
+        Aggregated history, i.e. in two single dataframes
+        corresponding to "current data" attributes and
+        results
+
+        Returns:
+            (DataFrame): history of current data
+            (DataFrame): history of results
+
+        """
+        cd_list, cr_list = zip(*self._history)
+        return pd.concat(cd_list), pd.concat(cr_list)
 
 
 class ATFSampler(Experiment):
@@ -95,7 +109,7 @@ class ATFSampler(Experiment):
 
     def submit(self, data):
         """This does nothing, since the "experiments" are already done"""
-        self.current_data = data
+        self.update_current_data(data)
         self.job_status = "COMPLETED"
         return None
 

@@ -109,7 +109,7 @@ class AtfLoopTest(unittest.TestCase):
         new_loop.initialize()
         self.assertTrue(new_loop.initialized)
 
-        new_loop.auto_loop(6)
+        new_loop.auto_loop(3)
         self.assertTrue(True)
 
     def test_simple_gp_loop(self):
@@ -127,7 +127,7 @@ class AtfLoopTest(unittest.TestCase):
         new_loop.initialize()
         self.assertTrue(new_loop.initialized)
 
-        new_loop.auto_loop(6)
+        new_loop.auto_loop(2)
         self.assertTrue(True)
 
     def test_gp_bagging(self):

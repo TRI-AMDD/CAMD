@@ -86,7 +86,7 @@ class Campaign(MSONable):
             self.create_seed = False
             self.load('job_status')
             self.experiment.job_status = self.job_status
-            self.load('submitted_experiment_requests')
+            self.load('experiment', method='pickle')
             self.load('seed_data', method='pickle')
             self.load('consumed_candidates')
             self.load('loop_state', no_exist_fail=False)
@@ -116,7 +116,6 @@ class Campaign(MSONable):
 
         # Get new results
         print("Campaign {} state: Getting new results".format(self.iteration))
-        self.load('submitted_experiment_requests')
         self.experiment.monitor()
         new_experimental_results = self.experiment.get_results()
         os.chdir(self.path)
@@ -169,14 +168,12 @@ class Campaign(MSONable):
 
         # Experiments submitted
         print("Campaign {} state: Running experiments".format(self.iteration))
-        experiment_data = self.candidate_data.loc[suggested_experiments]
-        self.job_status = self.experiment.submit(experiment_data)
+        self.job_status = self.experiment.submit(suggested_experiments)
         self.save("job_status")
 
-        self.submitted_experiment_requests = suggested_experiments
-        self.save('submitted_experiment_requests')
+        self.save('experiment', method='pickle')
 
-        self.consumed_candidates += suggested_experiments
+        self.consumed_candidates += suggested_experiments.index.values.tolist()
         self.save('consumed_candidates')
 
         self.iteration += 1
@@ -305,22 +302,20 @@ class Campaign(MSONable):
                 "No seed data available. Either supply or ask for creation.")
 
         print("Campaign {} state: Running experiments".format(self.iteration))
-        experiment_data = self.candidate_data.loc[suggested_experiments]
-        self.job_status = self.experiment.submit(experiment_data)
-
-        self.submitted_experiment_requests = suggested_experiments
-        self.consumed_candidates = suggested_experiments
+        self.job_status = self.experiment.submit(suggested_experiments)
+        self.consumed_candidates = suggested_experiments.index.values.tolist()
         self.create_seed = False
         self.initialized = True
 
         self.save("job_status")
         self.save("seed_data", method='pickle')
-        self.save('submitted_experiment_requests')
+        self.save("experiment", method='pickle')
         self.save("consumed_candidates")
         self.save("iteration")
         if self.s3_prefix:
             self.s3_sync()
 
+    # TODO: move this into ProtoDFTCampaign
     def initialize_with_icsd_seed(self, random_state=42):
         if self.initialized:
             raise ValueError(
@@ -332,19 +327,6 @@ class Campaign(MSONable):
             os.path.join(S3_CACHE, "camd/shared-data/oqmd1.2_icsd_featurized_clean_v2.pickle"))
         self.initialize(random_state=random_state)
 
-    def report(self):
-        # TODO: Can we use pandas here?
-        with open(os.path.join(self.path, 'report.log'), 'a') as f:
-            if self.iteration == 0:
-                f.write("Iteration N_Discovery Total_Discovery N_candidates model-CV\n")
-            report_string = "{:9} {:11} {:15} {:12} {:f}\n".format(
-                self.iteration, np.sum(self.results_new_uids),
-                np.sum(self.results_all_uids), len(self.candidate_data),
-                self.agent.cv_score)
-            f.write(report_string)
-
-        self.generate_report_plot()
-
     def finalize(self):
         print("Finalizing campaign.")
         os.chdir(self.path)
@@ -352,36 +334,6 @@ class Campaign(MSONable):
             self.analyzer.finalize(self.path)
         if self.s3_prefix:
             self.s3_sync()
-
-    @staticmethod
-    def generate_report_plot(filename="report.png",
-                             report_filename="report.log"):
-        """
-        Quick method for generating report plots
-
-        Args:
-            filename (str): output filename for plot to be saved
-            report_filename (str): filename for the report to be read in
-
-        Returns:
-            (AxesSubplot) pyplot object corresponding to bar plot
-
-        """
-        # Generate plot
-        data = pd.read_csv(report_filename, delim_whitespace=True)
-        plt = pretty_plot(6, 4.5)
-        ax = plt.gca()
-        ax = data.plot(
-            kind='bar', x='Iteration', y='Total_Discovery',
-            legend=False, ax=ax
-        )
-        ax.set_ylabel("Total materials discovered")
-        fig = ax.get_figure()
-        if filename:
-            fig.savefig(filename, dpi=70)
-
-        # Close to avoid matplotlib memory warning
-        plt.close()
 
     def load(self, data_holder, method='json', no_exist_fail=True):
         if method == 'pickle':
@@ -436,20 +388,21 @@ class Campaign(MSONable):
 
 
 # TODO: fix docstring
-def loop_backup(src, new_dir_name):
+def loop_backup(source_dir, target_dir):
     """
     Helper method to backup finished loop iterations.
 
     Args:
-        src:
-        new_dir_name:
+        source_dir (str, Path): directory to be backed up
+        target_dir (str, Path): directory to back up to
 
     Returns:
+        (None)
 
     """
-    os.mkdir(os.path.join(src, new_dir_name))
-    _files = os.listdir(src)
+    os.mkdir(os.path.join(source_dir, target_dir))
+    _files = os.listdir(source_dir)
     for file_name in _files:
-        full_file_name = os.path.join(src, file_name)
+        full_file_name = os.path.join(source_dir, file_name)
         if os.path.isfile(full_file_name):
-            shutil.copy(full_file_name, new_dir_name)
+            shutil.copy(full_file_name, target_dir)

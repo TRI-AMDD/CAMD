@@ -357,8 +357,7 @@ class GaussianProcessStabilityAgent(StabilityAgent):
         stability_filter = self.candidate_data['pred_stability'] <= self.hull_distance
         within_hull = self.candidate_data[stability_filter]
 
-        self.indices_to_compute = within_hull.head(self.n_query).index.tolist()
-        return self.indices_to_compute
+        return within_hull.head(self.n_query)
 
 
 class SVGProcessStabilityAgent(StabilityAgent):
