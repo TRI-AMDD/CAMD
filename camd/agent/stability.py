@@ -298,7 +298,7 @@ class AgentStabilityML5(StabilityAgent):
         if n_exploration > len(remaining):
             n_exploration = len(remaining)
         to_compute.extend(remaining.sample(n_exploration).index.tolist())
-        return candidate_data[to_compute]
+        return candidate_data.loc[to_compute]
 
 
 class GaussianProcessStabilityAgent(StabilityAgent):
@@ -717,7 +717,7 @@ class AgentStabilityAdaBoost(StabilityAgent):
             n_exploration = len(remaining)
         to_compute.extend(remaining.sample(n_exploration).index.tolist())
 
-        return candidate_data[to_compute]
+        return candidate_data.loc[to_compute]
 
     @staticmethod
     def _get_unc_ada(ada, X):
