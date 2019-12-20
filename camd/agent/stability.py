@@ -56,22 +56,10 @@ class StabilityAgent(HypothesisAgent, metaclass=abc.ABCMeta):
         self.n_query = n_query
         self.hull_distance = hull_distance
         self.pd = None
-
-        # TODO: Probably should just use a single parameter here
         self.parallel = parallel
-        if isinstance(self.parallel, bool):
-            if self.parallel:
-                self.n_jobs = cpu_count()
-            else:
-                self.n_jobs = 1
-        elif isinstance(self.parallel, int) and self.parallel > 0:
-            self.n_jobs = self.parallel
-        else:
-            self.n_jobs = 1
 
         # These might be able to go into the base class
         self.cv_score = np.nan
-        self.indices_to_compute = None
 
     def get_pd(self):
         """
