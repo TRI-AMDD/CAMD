@@ -7,7 +7,7 @@ from camd import CAMD_S3_BUCKET
 from camd.agent.meta import AGENT_PARAMS, \
     convert_parameter_table_to_dataframe
 from camd.agent.base import RandomAgent
-from camd.experiment.atf import LocalAgentSimulation
+from camd.experiment.agent_simulation import LocalAgentSimulation
 from camd.loop import Campaign
 import pickle
 import boto3

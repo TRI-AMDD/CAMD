@@ -5,7 +5,7 @@ import pandas as pd
 from monty.tempfile import ScratchDir
 from camd.utils.data import load_default_atf_data
 from camd.agent.base import RandomAgent
-from camd.experiment.atf import LocalAgentSimulation
+from camd.experiment.agent_simulation import LocalAgentSimulation
 from camd.analysis import StabilityAnalyzer
 
 
