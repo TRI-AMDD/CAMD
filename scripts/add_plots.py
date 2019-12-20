@@ -7,10 +7,10 @@ existing runs prior to version
 import os
 import pickle
 from camd import CAMD_S3_BUCKET
-from camd.loop import Campaign
+from camd.campaigns.loop import Campaign
 from camd.analysis import StabilityAnalyzer
 from monty.os import cd, makedirs_p
-from monty.serialization import loadfn, dumpfn
+from monty.serialization import loadfn
 import boto3
 
 

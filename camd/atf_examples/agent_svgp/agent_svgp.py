@@ -1,6 +1,5 @@
 # Copyright Toyota Research Institute 2019
-from camd.loop import Campaign
-import pandas as pd
+from camd.campaigns.loop import Campaign
 
 from camd.agent.stability import SVGProcessStabilityAgent
 from camd.analysis import StabilityAnalyzer

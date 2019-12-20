@@ -1,5 +1,5 @@
 # Copyright Toyota Research Institute 2019
-from camd.loop import Campaign
+from camd.campaigns.loop import Campaign
 
 from camd.agent.stability import BaggedGaussianProcessStabilityAgent
 from camd.analysis import StabilityAnalyzer

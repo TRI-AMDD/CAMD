@@ -1,6 +1,5 @@
 #  Copyright (c) 2019 Toyota Research Institute.  All rights reserved.
 
-import traceback
 import pandas as pd
 import os
 
@@ -10,7 +9,7 @@ from camd.domain import StructureDomain, heuristic_setup
 from camd.agent.stability import AgentStabilityAdaBoost
 from camd.agent.base import RandomAgent
 from camd.experiment import ATFSampler
-from camd.loop import Campaign
+from camd.campaigns.loop import Campaign
 from camd import CAMD_TEST_FILES, CAMD_S3_BUCKET, S3_CACHE
 from camd.utils.s3 import s3_sync, cache_s3_objs
 
