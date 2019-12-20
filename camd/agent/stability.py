@@ -232,8 +232,7 @@ class QBCStabilityAgent(StabilityAgent):
         stability_filter = self.candidate_data['pred_stability'] <= self.hull_distance
         within_hull = self.candidate_data[stability_filter]
 
-        self.indices_to_compute = within_hull.head(self.n_query).index.tolist()
-        return self.indices_to_compute
+        return within_hull.head(self.n_query)
 
 
 class AgentStabilityML5(StabilityAgent):
@@ -299,9 +298,7 @@ class AgentStabilityML5(StabilityAgent):
         if n_exploration > len(remaining):
             n_exploration = len(remaining)
         to_compute.extend(remaining.sample(n_exploration).index.tolist())
-
-        self.indices_to_compute = to_compute
-        return self.indices_to_compute
+        return candidate_data[to_compute]
 
 
 class GaussianProcessStabilityAgent(StabilityAgent):
@@ -485,8 +482,7 @@ class SVGProcessStabilityAgent(StabilityAgent):
         stability_filter = self.candidate_data['pred_stability'] <= self.hull_distance
         within_hull = self.candidate_data[stability_filter]
 
-        self.indices_to_compute = within_hull.head(self.n_query).index.tolist()
-        return self.indices_to_compute
+        return within_hull.head(self.n_query)
 
     def run_adam(self, model, iterations):
         """
@@ -607,8 +603,7 @@ class BaggedGaussianProcessStabilityAgent(StabilityAgent):
         stability_filter = self.candidate_data['pred_stability'] <= self.hull_distance
         within_hull = self.candidate_data[stability_filter]
 
-        self.indices_to_compute = within_hull.head(self.n_query).index.tolist()
-        return self.indices_to_compute
+        within_hull.head(self.n_query)
 
 
 class AgentStabilityAdaBoost(StabilityAgent):
@@ -722,8 +717,7 @@ class AgentStabilityAdaBoost(StabilityAgent):
             n_exploration = len(remaining)
         to_compute.extend(remaining.sample(n_exploration).index.tolist())
 
-        self.indices_to_compute = to_compute
-        return self.indices_to_compute
+        return candidate_data[to_compute]
 
     @staticmethod
     def _get_unc_ada(ada, X):
