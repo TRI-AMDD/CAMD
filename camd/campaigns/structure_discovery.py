@@ -9,7 +9,7 @@ from camd.domain import StructureDomain, heuristic_setup
 from camd.agent.stability import AgentStabilityAdaBoost
 from camd.agent.base import RandomAgent
 from camd.experiment import ATFSampler
-from camd.campaigns.loop import Campaign
+from camd.campaigns.base import Campaign
 from camd import CAMD_TEST_FILES, CAMD_S3_BUCKET, S3_CACHE
 from camd.utils.s3 import s3_sync, cache_s3_objs
 

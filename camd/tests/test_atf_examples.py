@@ -10,7 +10,7 @@ from camd.agent.stability import QBCStabilityAgent, GaussianProcessStabilityAgen
 from camd.agent.base import RandomAgent
 from camd.analysis import StabilityAnalyzer
 from camd.experiment import ATFSampler
-from camd.campaigns.loop import Campaign
+from camd.campaigns.base import Campaign
 from camd.utils.s3 import cache_s3_objs
 from camd import CAMD_TEST_FILES
 from camd.utils.data import load_default_atf_data

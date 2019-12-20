@@ -3,7 +3,7 @@
 This module provides resources for agent optimization campaigns
 """
 from camd.experiment.base import Experiment, ATFSampler
-from camd.campaigns.loop import Campaign
+from camd.campaigns.base import Campaign
 from monty.os import cd
 import os
 

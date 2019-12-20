@@ -1,5 +1,5 @@
 from camd.domain import StructureDomain
-from camd.campaigns.loop import Campaign
+from camd.campaigns.base import Campaign
 from camd.agent.stability import QBCStabilityAgent
 from camd.analysis import StabilityAnalyzer
 from camd.experiment.dft import OqmdDFTonMC1
