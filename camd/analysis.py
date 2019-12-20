@@ -17,7 +17,7 @@ from pymatgen.entries.computed_entries import ComputedEntry
 from pymatgen.analysis.phase_diagram import PhaseDiagram, PDPlotter, tet_coord,\
     triangular_coord
 from pymatgen.analysis.structure_matcher import StructureMatcher
-from pymatgen import Structure
+from pymatgen import Structure, Element
 from camd.utils.s3 import cache_s3_objs
 from camd import S3_CACHE
 from monty.os import cd
@@ -365,7 +365,8 @@ class AnalyzeStability(AnalyzerBase):
         entries = list(_df.loc[ids_prior_to_run + ids_prior_to_camd]['entry'])
         # Filter for nans by checking if it's a computed entry
         entries = [entry for entry in entries if isinstance(entry, ComputedEntry)]
-        pd = PhaseDiagram(entries)
+        pg_elements = [Element(el) for el in sorted(elems)]
+        pd = PhaseDiagram(entries, elements=pg_elements)
         plotkwargs = {
             "markerfacecolor": "white",
             "markersize": 7,
@@ -386,7 +387,7 @@ class AnalyzeStability(AnalyzerBase):
         if finalize:
             # If finalize, we'll reset pd to all entries at this point to measure stabilities wrt.
             # the ultimate hull.
-            pd = PhaseDiagram(_df['entry'].values)
+            pd = PhaseDiagram(_df['entry'].values, elements=pg_elements)
             plotter = PDPlotter(pd, **{"markersize": 0, "linestyle": "-", "linewidth": 2})
             plot = plotter.get_plot(plt=plot)
 
