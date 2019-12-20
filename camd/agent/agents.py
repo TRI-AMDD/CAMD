@@ -37,7 +37,7 @@ class StabilityAgent(HypothesisAgent, metaclass=abc.ABCMeta):
     which is responsible for making decisions about stability.
     """
     def __init__(self, candidate_data=None, seed_data=None, n_query=1,
-                 hull_distance=0.0, parallel=True):
+                 hull_distance=0.0, parallel=cpu_count()):
         """
         Args:
             candidate_data (DataFrame): data about the candidates
@@ -165,11 +165,7 @@ class StabilityAgent(HypothesisAgent, metaclass=abc.ABCMeta):
         space_ml = PhaseSpaceAL(bounds=ELEMENTS, data=pd_ml)
 
         # Compute and return stabilities
-        if self.parallel:
-            space_ml.compute_stabilities_multi(candidate_phases)
-        else:
-            space_ml.compute_stabilities_mod(candidate_phases)
-
+        space_ml.compute_stabilities(candidate_phases, self.parallel)
         self.candidate_data['pred_stability'] = \
             [phase.stability for phase in candidate_phases]
 
