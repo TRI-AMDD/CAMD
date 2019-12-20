@@ -574,12 +574,13 @@ def update_run_w_structure(folder, hull_distance=0.2):
 
             all_ids = loadfn("consumed_candidates.json")
             st_a = StabilityAnalyzer(hull_distance=hull_distance)
-            _, stablities_of_discovered = st_a.analyze(df, all_ids, all_ids)
+            new_seed, summary = st_a.analyze(df, all_ids)
 
             # Having calculated stabilities again, we plot the overall hull.
-            st_a.plot_hull(df, all_ids, all_ids, filename="hull_finalized.png", finalize=True, save_hull_distance=True)
+            st_a.plot_hull(
+                new_seed, all_ids, filename="hull_finalized.png", finalize=True)
 
-            stable_discovered = list(itertools.compress(all_ids, stablities_of_discovered))
+            stable_discovered = new_seed[new_seed['is_stable']]
             s_a = AnalyzeStructures()
             s_a.analyze_vaspqmpy_jobs(jobs, against_icsd=True, use_energies=True)
             unique_s_dict = {}
