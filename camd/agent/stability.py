@@ -581,18 +581,8 @@ class BaggedGaussianProcessStabilityAgent(StabilityAgent):
         )
         bag_reg.fit(X_seed, y_seed)
 
-        # TODO: make this a static method
-        def _get_unc(bagging_regressor, X_test):
-            stds = []
-            pres = []
-            for est in bagging_regressor.estimators_:
-                _p, _s = est.predict(X_test, return_std=True)
-                stds.append(_s)
-                pres.append(_p)
-            return np.mean(np.array(pres), axis=0), np.min(np.array(stds), axis=0)
-
         # GP makes predictions for Hf and uncertainty*alpha on candidate data
-        preds, stds = _get_unc(bag_reg, X_cand)
+        preds, stds = self._get_unc(bag_reg, X_cand)
         expected = preds - stds * self.alpha
 
         # Update candidate data dataframe with predictions
@@ -602,8 +592,29 @@ class BaggedGaussianProcessStabilityAgent(StabilityAgent):
         # Find the most stable ones up to n_query within hull_distance
         stability_filter = self.candidate_data['pred_stability'] <= self.hull_distance
         within_hull = self.candidate_data[stability_filter]
+        return within_hull.head(self.n_query)
 
-        within_hull.head(self.n_query)
+    @staticmethod
+    def _get_unc(bagging_regressor, X_test):
+        """
+
+        Args:
+            bagging_regressor (RegressorMixin): regressor for which
+                to get uncertainty
+            X_test (np.ndarray): test data on which to estimate
+                uncertainty
+
+        Returns:
+            (np.ndarray): array of uncertainty values
+
+        """
+        stds = []
+        pres = []
+        for est in bagging_regressor.estimators_:
+            _p, _s = est.predict(X_test, return_std=True)
+            stds.append(_s)
+            pres.append(_p)
+        return np.mean(np.array(pres), axis=0), np.min(np.array(stds), axis=0)
 
 
 class AgentStabilityAdaBoost(StabilityAgent):
