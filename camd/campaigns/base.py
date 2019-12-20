@@ -1,4 +1,4 @@
-# Copyright Toyota Research Institute 2019
+#  Copyright (c) 2019 Toyota Research Institute.  All rights reserved.
 import os
 import pickle
 import json
@@ -11,7 +11,6 @@ from monty.json import MSONable
 from camd.utils.s3 import cache_s3_objs, s3_sync
 from camd import S3_CACHE, CAMD_S3_BUCKET
 from camd.agent.base import RandomAgent
-from pymatgen.util.plotting import pretty_plot
 
 
 class Campaign(MSONable):
@@ -197,6 +196,7 @@ class Campaign(MSONable):
             with_icsd (bool): whether to initialize from icsd
 
         """
+        # TODO: icsd seed functionality in ProtoDFT Campaign
         if initialize:
             if with_icsd:
                 self.initialize_with_icsd_seed()
