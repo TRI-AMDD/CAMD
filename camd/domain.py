@@ -24,7 +24,7 @@ from matminer.featurizers.structure import (SiteStatsFingerprint, StructuralHete
 class DomainBase(abc.ABC):
     """
     Domains combine generation and featurization and prepare the
-    search space for CAMD Loop.
+    search space for CAMD Campaign.
     """
     @abc.abstractmethod
     def candidates(self):
@@ -400,7 +400,7 @@ def heuristic_setup(elements):
     Helper function to setup a default structure_domain
 
     Args:
-        elements (str): list of elements to use to
+        elements ([str]): list of elements to use to
             generate formulae
 
     Returns:

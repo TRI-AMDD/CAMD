@@ -1,7 +1,7 @@
 from camd.domain import StructureDomain
-from camd.loop import Loop
-from camd.agent.agents import QBCStabilityAgent
-from camd.analysis import AnalyzeStability
+from camd.campaigns.base import Campaign
+from camd.agent.stability import QBCStabilityAgent
+from camd.analysis import StabilityAnalyzer
 from camd.experiment.dft import OqmdDFTonMC1
 from sklearn.neural_network import MLPRegressor
 
@@ -22,15 +22,15 @@ agent_params = {                    # Parameters of the agent
     'hull_distance': 0.1,   # Distance to hull to consider a finding as discovery (eV/atom)
     'frac': 0.5
     }
-analyzer = AnalyzeStability     # Analyzer for stability
+analyzer = StabilityAnalyzer     # Analyzer for stability
 analyzer_params = {'hull_distance': 0.1}
 experiment = OqmdDFTonMC1           # This is the Experiment method to run OQMD compatible DFT on AWS-MC1
 experiment_params = {'structure_dict': structure_dict,  # Parameters of this experiment class include structures.
                      'candidate_data': candidate_data, 'timeout': 30000}
 
-# Loop class puts all the above pieces together.
-new_loop = Loop(candidate_data, agent, experiment, analyzer,
-                agent_params=agent_params, analyzer_params=analyzer_params, experiment_params=experiment_params)
+# Campaign class puts all the above pieces together.
+new_loop = Campaign(candidate_data, agent, experiment, analyzer,
+                    agent_params=agent_params, analyzer_params=analyzer_params, experiment_params=experiment_params)
 
 # Let's start the campaign!
 new_loop.auto_loop_in_directories(n_iterations=3, timeout=1, monitor=True, initialize=True, with_icsd=True)

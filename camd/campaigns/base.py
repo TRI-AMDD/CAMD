@@ -1,4 +1,4 @@
-# Copyright Toyota Research Institute 2019
+#  Copyright (c) 2019 Toyota Research Institute.  All rights reserved.
 import os
 import pickle
 import json
@@ -11,18 +11,15 @@ from monty.json import MSONable
 from camd.utils.s3 import cache_s3_objs, s3_sync
 from camd import S3_CACHE, CAMD_S3_BUCKET
 from camd.agent.base import RandomAgent
-from camd.log import camd_traced
-from pymatgen.util.plotting import pretty_plot
 
 
-@camd_traced
-class Loop(MSONable):
+class Campaign(MSONable):
     def __init__(self, candidate_data, agent, experiment, analyzer,
-                 finalizer=None, path=None, seed_data=None,
-                 create_seed=False, heuristic_stopper=np.inf, s3_prefix=None,
-                 s3_bucket=CAMD_S3_BUCKET):
+                 seed_data=None, create_seed=False,
+                 heuristic_stopper=np.inf, s3_prefix=None,
+                 s3_bucket=CAMD_S3_BUCKET, path=None):
         """
-        Loop provides a sequential, workflow-like capability where an
+        Campaign provides a sequential, workflow-like capability where an
         Agent iterates over a candidate space to choose and execute
         new Experiments, given a certain objective. The abstraction
         follows closely the "scientific method". Agent is the entity
@@ -39,9 +36,6 @@ class Loop(MSONable):
             agent (HypothesisAgent): a subclass of HypothesisAgent
             experiment (Experiment): a subclass of Experiment
             analyzer (Analyzer): a subclass of Analyzer
-            finalizer (obj): needs to have a finalize method.
-            path (str): path in which to execute the loop. Defaults to
-                full path of current folder if not given.
             seed_data (pandas.DataFrame): Seed Data for active learning,
                 index is to be the assumed uid
             create_seed (int): an initial seed size to create from the data
@@ -52,30 +46,32 @@ class Loop(MSONable):
                 if None is specified, s3 syncing will not occur
             s3_bucket (str): bucket name for s3 sync.  If not specified,
                 CAMD will sync to the specified environment variable.
+            path (str): local path in which to execute the loop, defaults
+                to current folder if path is not provided
         """
-        self.path = path if path else '.'
-        self.path = os.path.abspath(self.path)
-        os.chdir(self.path)
-
+        # Cloud parameters
         self.s3_prefix = s3_prefix
         self.s3_bucket = s3_bucket
 
+        # Data parameters
         self.candidate_data = candidate_data
-        self.candidate_space = list(candidate_data.index)
+        self.seed_data = seed_data if seed_data is not None else pd.DataFrame()
+        self.create_seed = create_seed
+        self.history = pd.DataFrame()
 
+        # Object parameters
         self.agent = agent
         self.experiment = experiment
         self.analyzer = analyzer
-        self.finalizer = finalizer
 
-        self.seed_data = seed_data if seed_data is not None else pd.DataFrame()
-        self.create_seed = create_seed
-
+        # Other parameters
+        # TODO: think about how to abstract this away from the loop
         self.heuristic_stopper = heuristic_stopper
+        self.path = path if path else os.getcwd()
+        os.chdir(self.path)
+
+        # Internal data
         self._exp_raw_results = None
-        self._discovered = None
-        self.results_all_uids = None
-        self.results_new_uids = None
 
         # Check if there exists earlier iterations
         if os.path.exists(os.path.join(self.path, 'iteration.json')):
@@ -89,7 +85,7 @@ class Loop(MSONable):
             self.create_seed = False
             self.load('job_status')
             self.experiment.job_status = self.job_status
-            self.load('submitted_experiment_requests')
+            self.load('experiment', method='pickle')
             self.load('seed_data', method='pickle')
             self.load('consumed_candidates')
             self.load('loop_state', no_exist_fail=False)
@@ -115,79 +111,68 @@ class Loop(MSONable):
             6. Submit new experiments
         """
         if not self.initialized:
-            raise ValueError("Loop must be initialized.")
+            raise ValueError("Campaign must be initialized.")
 
         # Get new results
-        print("Loop {} state: Getting new results".format(self.iteration))
-        self.load('submitted_experiment_requests')
+        print("Campaign {} state: Getting new results".format(self.iteration))
+        self.experiment.monitor()
         new_experimental_results = self.experiment.get_results()
         os.chdir(self.path)
 
-        # Load, expand, save seed_data
+        # Load seed_data
         self.load('seed_data', method='pickle')
-        self.seed_data = self.seed_data.append(new_experimental_results)
+
+        # Analyze new results
+        print("Campaign {} state: Analyzing results".format(self.iteration))
+        summary, new_seed_data = self.analyzer.analyze(
+            new_experimental_results, self.seed_data
+        )
+
+        # Augment summary and seed
+        self.history = self.history.append(summary)
+        self.history = self.history.reset_index(drop=True)
+        self.save("history", method="pickle")
+        self.seed_data = new_seed_data
         self.save('seed_data', method='pickle')
 
-        # Augment candidate space
-        self.load("consumed_candidates")
-        self.candidate_space = self.candidate_data.index.difference(
-            self.consumed_candidates, sort=False).tolist()
-        self.candidate_data = self.candidate_data.loc[self.candidate_space]
+        # Remove candidates from candidate space
+        candidate_space = self.candidate_data.index.difference(
+            new_experimental_results.index, sort=False).tolist()
+        self.candidate_data = self.candidate_data.loc[candidate_space]
 
-        # Analyze results
-        print("Loop {} state: Analyzing results".format(self.iteration))
-        self.results_new_uids, self.results_all_uids = \
-            self.analyzer.analyze(self.seed_data,
-                                  self.submitted_experiment_requests,
-                                  self.consumed_candidates)
-        self.analyzer.present(
-            self.seed_data, self.submitted_experiment_requests,
-            self.consumed_candidates, filename="hull_{}.png".format(self.iteration))
-
-        self._discovered = np.array(
-            self.submitted_experiment_requests)[self.results_new_uids].tolist()
-        self.save('_discovered', custom_name='discovered_{}.json'.format(self.iteration))
-
-        self.report()
-
-        # Loop stopper if no discoveries in last few cycles.
+        # Campaign stopper if no discoveries in last few cycles.
         if self.iteration > self.heuristic_stopper:
-            report = pd.read_csv(
-                os.path.join(self.path, 'report.log'), delimiter=r'\s+')
-            new_discoveries = report['N_Discovery'][-3:].values.sum()
+            new_discoveries = self.history['N_Discovery'][-3:].values.sum()
             if new_discoveries == 0:
                 self.finalize()
                 print("Not enough new discoveries. Stopping the loop.")
                 return True
 
-
-        # Loop stopper if finalization is desired but will be done
+        # Campaign stopper if finalization is desired but will be done
         # outside of run (e.g. auto_loop)
         if finalize:
             return None
 
         # Agent suggests new experiments
-        print("Loop {} state: Agent {} hypothesizing".format(
+        print("Campaign {} state: Agent {} hypothesizing".format(
             self.iteration, self.agent.__class__.__name__))
         suggested_experiments = self.agent.get_hypotheses(
             self.candidate_data, self.seed_data)
 
-        # Loop stopper if agent doesn't have anything to suggest.
+        # Campaign stopper if agent doesn't have anything to suggest.
         if len(suggested_experiments) == 0:
             self.finalize()
             print("No space left to explore. Stopping the loop.")
             return True
 
         # Experiments submitted
-        print("Loop {} state: Running experiments".format(self.iteration))
-        experiment_data = self.candidate_data.loc[suggested_experiments]
-        self.job_status = self.experiment.submit(experiment_data)
+        print("Campaign {} state: Running experiments".format(self.iteration))
+        self.job_status = self.experiment.submit(suggested_experiments)
         self.save("job_status")
 
-        self.submitted_experiment_requests = suggested_experiments
-        self.save('submitted_experiment_requests')
+        self.save('experiment', method='pickle')
 
-        self.consumed_candidates += suggested_experiments
+        self.consumed_candidates += suggested_experiments.index.values.tolist()
         self.save('consumed_candidates')
 
         self.iteration += 1
@@ -202,7 +187,7 @@ class Loop(MSONable):
 
         Args:
             n_iterations (int): Number of iterations.
-            timeout (int): Time (in seconds) to wait on idle for
+            timeout (float): Time (in seconds) to wait on idle for
                 submitted experiments to finish.
             monitor (bool): Use Experiment's monitor method to
                 keep track of requested experiments.
@@ -211,6 +196,7 @@ class Loop(MSONable):
             with_icsd (bool): whether to initialize from icsd
 
         """
+        # TODO: icsd seed functionality in ProtoDFT Campaign
         if initialize:
             if with_icsd:
                 self.initialize_with_icsd_seed()
@@ -301,37 +287,35 @@ class Loop(MSONable):
             raise ValueError(
                 "Initialization may overwrite existing loop data. Exit.")
         if not self.seed_data.empty and not self.create_seed:
-            print("Loop {} state: Agent {} hypothesizing".format(
+            print("Campaign {} state: Agent {} hypothesizing".format(
                 'initialization', self.agent.__class__.__name__))
             suggested_experiments = self.agent.get_hypotheses(
                 self.candidate_data, self.seed_data)
         elif self.create_seed:
             np.random.seed(seed=random_state)
             _agent = RandomAgent(self.candidate_data, n_query=self.create_seed)
-            print("Loop {} state: Agent {} hypothesizing".format(
+            print("Campaign {} state: Agent {} hypothesizing".format(
                 'initialization', _agent.__class__.__name__))
             suggested_experiments = _agent.get_hypotheses(self.candidate_data)
         else:
             raise ValueError(
                 "No seed data available. Either supply or ask for creation.")
 
-        print("Loop {} state: Running experiments".format(self.iteration))
-        experiment_data = self.candidate_data.loc[suggested_experiments]
-        self.job_status = self.experiment.submit(experiment_data)
-
-        self.submitted_experiment_requests = suggested_experiments
-        self.consumed_candidates = suggested_experiments
+        print("Campaign {} state: Running experiments".format(self.iteration))
+        self.job_status = self.experiment.submit(suggested_experiments)
+        self.consumed_candidates = suggested_experiments.index.values.tolist()
         self.create_seed = False
         self.initialized = True
 
         self.save("job_status")
         self.save("seed_data", method='pickle')
-        self.save('submitted_experiment_requests')
+        self.save("experiment", method='pickle')
         self.save("consumed_candidates")
         self.save("iteration")
         if self.s3_prefix:
             self.s3_sync()
 
+    # TODO: move this into ProtoDFTCampaign
     def initialize_with_icsd_seed(self, random_state=42):
         if self.initialized:
             raise ValueError(
@@ -343,56 +327,13 @@ class Loop(MSONable):
             os.path.join(S3_CACHE, "camd/shared-data/oqmd1.2_icsd_featurized_clean_v2.pickle"))
         self.initialize(random_state=random_state)
 
-    def report(self):
-        # TODO: Can we use pandas here?
-        with open(os.path.join(self.path, 'report.log'), 'a') as f:
-            if self.iteration == 0:
-                f.write("Iteration N_Discovery Total_Discovery N_candidates model-CV\n")
-            report_string = "{:9} {:11} {:15} {:12} {:f}\n".format(
-                self.iteration, np.sum(self.results_new_uids),
-                np.sum(self.results_all_uids), len(self.candidate_data),
-                self.agent.cv_score)
-            f.write(report_string)
-
-        self.generate_report_plot()
-
     def finalize(self):
         print("Finalizing campaign.")
         os.chdir(self.path)
-        if self.finalizer:
-            self.finalizer.finalize(self.path)
+        if hasattr(self.analyzer, "finalize"):
+            self.analyzer.finalize(self.path)
         if self.s3_prefix:
             self.s3_sync()
-
-    @staticmethod
-    def generate_report_plot(filename="report.png",
-                             report_filename="report.log"):
-        """
-        Quick method for generating report plots
-
-        Args:
-            filename (str): output filename for plot to be saved
-            report_filename (str): filename for the report to be read in
-
-        Returns:
-            (AxesSubplot) pyplot object corresponding to bar plot
-
-        """
-        # Generate plot
-        data = pd.read_csv(report_filename, delim_whitespace=True)
-        plt = pretty_plot(6, 4.5)
-        ax = plt.gca()
-        ax = data.plot(
-            kind='bar', x='Iteration', y='Total_Discovery',
-            legend=False, ax=ax
-        )
-        ax.set_ylabel("Total materials discovered")
-        fig = ax.get_figure()
-        if filename:
-            fig.savefig(filename, dpi=70)
-
-        # Close to avoid matplotlib memory warning
-        plt.close()
 
     def load(self, data_holder, method='json', no_exist_fail=True):
         if method == 'pickle':
@@ -432,7 +373,7 @@ class Loop(MSONable):
         with open(_path, mode) as f:
             m.dump(self.__getattribute__(data_holder), f)
 
-        # Do s3 sync if present
+        # Do s3 sync if plot_hull
         if self.s3_prefix:
             self.s3_sync()
 
@@ -447,20 +388,21 @@ class Loop(MSONable):
 
 
 # TODO: fix docstring
-def loop_backup(src, new_dir_name):
+def loop_backup(source_dir, target_dir):
     """
     Helper method to backup finished loop iterations.
 
     Args:
-        src:
-        new_dir_name:
+        source_dir (str, Path): directory to be backed up
+        target_dir (str, Path): directory to back up to
 
     Returns:
+        (None)
 
     """
-    os.mkdir(os.path.join(src, new_dir_name))
-    _files = os.listdir(src)
+    os.mkdir(os.path.join(source_dir, target_dir))
+    _files = os.listdir(source_dir)
     for file_name in _files:
-        full_file_name = os.path.join(src, file_name)
+        full_file_name = os.path.join(source_dir, file_name)
         if os.path.isfile(full_file_name):
-            shutil.copy(full_file_name, new_dir_name)
+            shutil.copy(full_file_name, target_dir)

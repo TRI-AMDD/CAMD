@@ -7,10 +7,10 @@ existing runs prior to version
 import os
 import pickle
 from camd import CAMD_S3_BUCKET
-from camd.loop import Loop
-from camd.analysis import AnalyzeStability
+from camd.campaigns.base import Campaign
+from camd.analysis import StabilityAnalyzer
 from monty.os import cd, makedirs_p
-from monty.serialization import loadfn, dumpfn
+from monty.serialization import loadfn
 import boto3
 
 
@@ -47,7 +47,7 @@ def update_run(folder):
         if not all([os.path.isfile(fn) for fn in required_files]):
             print("{} ERROR: no seed data, no analysis to be done")
         else:
-            analyzer = AnalyzeStability(hull_distance=0.2)
+            analyzer = StabilityAnalyzer(hull_distance=0.2)
 
             # Generate report plots
             for iteration in range(0, 25):
@@ -60,7 +60,7 @@ def update_run(folder):
                     os.path.join(str(iteration-1), "consumed_candidates.json"))
                 new_result_ids = loadfn(
                     os.path.join(str(iteration-1), "submitted_experiment_requests.json"))
-                analyzer.present(
+                analyzer.plot_hull(
                     df=result_df,
                     new_result_ids=new_result_ids,
                     all_result_ids=all_result_ids,
@@ -68,7 +68,7 @@ def update_run(folder):
                     finalize=False
                 )
 
-            Loop.generate_report_plot()
+            Campaign.generate_report_plot()
 
 
 def update_s3(s3_folder, bucket=CAMD_S3_BUCKET,

@@ -13,7 +13,6 @@ import numpy as np
 from qmpy.analysis.thermodynamics.phase import Phase, PhaseData
 from camd.analysis import PhaseSpaceAL, ELEMENTS
 from camd.agent.base import HypothesisAgent, QBC
-from camd.log import camd_traced
 
 from sklearn.gaussian_process.kernels import RBF, ConstantKernel
 from sklearn.gaussian_process import GaussianProcessRegressor
@@ -38,7 +37,7 @@ class StabilityAgent(HypothesisAgent, metaclass=abc.ABCMeta):
     which is responsible for making decisions about stability.
     """
     def __init__(self, candidate_data=None, seed_data=None, n_query=1,
-                 hull_distance=0.0, multiprocessing=True):
+                 hull_distance=0.0, parallel=cpu_count()):
         """
         Args:
             candidate_data (DataFrame): data about the candidates
@@ -46,7 +45,7 @@ class StabilityAgent(HypothesisAgent, metaclass=abc.ABCMeta):
             n_query (int): number of hypotheses to generate
             hull_distance (float): hull distance as a criteria for
                 which to deem a given material as "stable"
-            multiprocessing (bool, int): whether to use multiprocessing
+            parallel (bool, int): whether to use multiprocessing
                 for phase stability analysis, if an int, sets the n_jobs
                 parameter as well.  If a bool, sets n_jobs to cpu_count()
                 if True and n_jobs to 1 if false.
@@ -57,22 +56,10 @@ class StabilityAgent(HypothesisAgent, metaclass=abc.ABCMeta):
         self.n_query = n_query
         self.hull_distance = hull_distance
         self.pd = None
-
-        # TODO: Probably should just use a single parameter here
-        self.multiprocessing = multiprocessing
-        if isinstance(self.multiprocessing, bool):
-            if self.multiprocessing:
-                self.n_jobs = cpu_count()
-            else:
-                self.n_jobs = 1
-        elif isinstance(self.multiprocessing, int) and self.multiprocessing > 0:
-            self.n_jobs = self.multiprocessing
-        else:
-            self.n_jobs = 1
+        self.parallel = parallel
 
         # These might be able to go into the base class
         self.cv_score = np.nan
-        self.indices_to_compute = None
 
     def get_pd(self):
         """
@@ -110,7 +97,8 @@ class StabilityAgent(HypothesisAgent, metaclass=abc.ABCMeta):
         #   brevity.  This is a little dangerous, because
         #   we might not drop everything we intend to
         drop_columns = ['Composition', 'N_species', 'delta_e',
-                        'pred_delta_e', 'pred_stability']
+                        'pred_delta_e', 'pred_stability',
+                        'stability', 'is_stable']
         if candidate_data is not None:
             self.candidate_data = candidate_data
             X_cand = candidate_data.drop(
@@ -165,11 +153,7 @@ class StabilityAgent(HypothesisAgent, metaclass=abc.ABCMeta):
         space_ml = PhaseSpaceAL(bounds=ELEMENTS, data=pd_ml)
 
         # Compute and return stabilities
-        if self.multiprocessing:
-            space_ml.compute_stabilities_multi(candidate_phases)
-        else:
-            space_ml.compute_stabilities_mod(candidate_phases)
-
+        space_ml.compute_stabilities(candidate_phases, self.parallel)
         self.candidate_data['pred_stability'] = \
             [phase.stability for phase in candidate_phases]
 
@@ -180,10 +164,9 @@ class StabilityAgent(HypothesisAgent, metaclass=abc.ABCMeta):
         return self.candidate_data
 
 
-@camd_traced
 class QBCStabilityAgent(StabilityAgent):
     def __init__(self, candidate_data=None, seed_data=None, n_query=1,
-                 hull_distance=0.0, multiprocessing=True, alpha=0.5,
+                 hull_distance=0.0, parallel=cpu_count(), alpha=0.5,
                  training_fraction=0.5, model=None, n_members=10):
         """
         Args:
@@ -192,7 +175,7 @@ class QBCStabilityAgent(StabilityAgent):
             n_query (int): number of hypotheses to generate
             hull_distance (float): hull distance as a criteria for
                 which to deem a given material as "stable"
-            multiprocessing (bool): whether to use multiprocessing
+            parallel (bool): whether to use multiprocessing
                 for phase stability analysis
             training_fraction (float): fraction of data to use for
                 training committee members
@@ -205,7 +188,7 @@ class QBCStabilityAgent(StabilityAgent):
         super(QBCStabilityAgent, self).__init__(
             candidate_data=candidate_data, seed_data=seed_data,
             n_query=n_query, hull_distance=hull_distance,
-            multiprocessing=multiprocessing
+            parallel=parallel
         )
 
         self.alpha = alpha
@@ -237,11 +220,9 @@ class QBCStabilityAgent(StabilityAgent):
         stability_filter = self.candidate_data['pred_stability'] <= self.hull_distance
         within_hull = self.candidate_data[stability_filter]
 
-        self.indices_to_compute = within_hull.head(self.n_query).index.tolist()
-        return self.indices_to_compute
+        return within_hull.head(self.n_query)
 
 
-@camd_traced
 class AgentStabilityML5(StabilityAgent):
     """
     An agent that does a certain fraction of full exploration and
@@ -249,7 +230,7 @@ class AgentStabilityML5(StabilityAgent):
     N_query options (frac), and explore the rest of its budget.
     """
     def __init__(self, candidate_data=None, seed_data=None, n_query=1,
-                 hull_distance=0.0, multiprocessing=True,
+                 hull_distance=0.0, parallel=cpu_count(),
                  model=None, exploit_fraction=0.5):
         """
         Args:
@@ -258,7 +239,7 @@ class AgentStabilityML5(StabilityAgent):
             n_query (int): number of hypotheses to generate
             hull_distance (float): hull distance as a criteria for
                 which to deem a given material as "stable"
-            multiprocessing (bool): whether to use multiprocessing
+            parallel (bool): whether to use multiprocessing
                 for phase stability analysis
             model (sklearn-style Regressor): Regression method
             exploit_fraction (float): fraction of n_query to assign to
@@ -267,7 +248,7 @@ class AgentStabilityML5(StabilityAgent):
         super(AgentStabilityML5, self).__init__(
             candidate_data=candidate_data, seed_data=seed_data,
             n_query=n_query, hull_distance=hull_distance,
-            multiprocessing=multiprocessing
+            parallel=parallel
         )
 
         self.model = model or LinearRegression()
@@ -305,9 +286,7 @@ class AgentStabilityML5(StabilityAgent):
         if n_exploration > len(remaining):
             n_exploration = len(remaining)
         to_compute.extend(remaining.sample(n_exploration).index.tolist())
-
-        self.indices_to_compute = to_compute
-        return self.indices_to_compute
+        return candidate_data.loc[to_compute]
 
 
 class GaussianProcessStabilityAgent(StabilityAgent):
@@ -315,7 +294,7 @@ class GaussianProcessStabilityAgent(StabilityAgent):
     Simple Gaussian Process Regressor based Stability Agent
     """
     def __init__(self, candidate_data=None, seed_data=None, n_query=1,
-                 hull_distance=0.0, multiprocessing=True,
+                 hull_distance=0.0, parallel=cpu_count(),
                  alpha=0.5):
         """
         Args:
@@ -324,7 +303,7 @@ class GaussianProcessStabilityAgent(StabilityAgent):
             n_query (int): number of hypotheses to generate
             hull_distance (float): hull distance as a criteria for
                 which to deem a given material as "stable"
-            multiprocessing (bool): whether to use multiprocessing
+            parallel (bool): whether to use multiprocessing
                 for phase stability analysis
             alpha (float): weighting factor for the stdev in making
                 best-case predictions of the stability
@@ -332,9 +311,9 @@ class GaussianProcessStabilityAgent(StabilityAgent):
         super(GaussianProcessStabilityAgent, self).__init__(
             candidate_data=candidate_data, seed_data=seed_data,
             n_query=n_query, hull_distance=hull_distance,
-            multiprocessing=multiprocessing
+            parallel=parallel
         )
-        self.multiprocessing = multiprocessing
+        self.multiprocessing = parallel
         self.alpha = alpha
         self.GP = GaussianProcessRegressor(kernel=ConstantKernel(1) * RBF(1), alpha=0.002)
 
@@ -363,8 +342,7 @@ class GaussianProcessStabilityAgent(StabilityAgent):
         stability_filter = self.candidate_data['pred_stability'] <= self.hull_distance
         within_hull = self.candidate_data[stability_filter]
 
-        self.indices_to_compute = within_hull.head(self.n_query).index.tolist()
-        return self.indices_to_compute
+        return within_hull.head(self.n_query)
 
 
 class SVGProcessStabilityAgent(StabilityAgent):
@@ -391,7 +369,7 @@ class SVGProcessStabilityAgent(StabilityAgent):
 
     """
     def __init__(self, candidate_data=None, seed_data=None, n_query=1,
-                 hull_distance=0.0, multiprocessing=True,
+                 hull_distance=0.0, parallel=cpu_count(),
                  alpha=0.5, M=600):
         """
         Args:
@@ -400,7 +378,7 @@ class SVGProcessStabilityAgent(StabilityAgent):
             n_query (int): number of hypotheses to generate
             hull_distance (float): hull distance as a criteria for
                 which to deem a given material as "stable"
-            multiprocessing (bool): whether to use multiprocessing
+            parallel (bool): whether to use multiprocessing
                 for phase stability analysis
             alpha (float): weighting factor for the stdev in making
                 best-case predictions of the stability
@@ -410,7 +388,7 @@ class SVGProcessStabilityAgent(StabilityAgent):
         super(SVGProcessStabilityAgent, self).__init__(
             candidate_data=candidate_data, seed_data=seed_data,
             n_query=n_query, hull_distance=hull_distance,
-            multiprocessing=multiprocessing
+            parallel=parallel
         )
         self.alpha = alpha
         self.M = M
@@ -492,8 +470,7 @@ class SVGProcessStabilityAgent(StabilityAgent):
         stability_filter = self.candidate_data['pred_stability'] <= self.hull_distance
         within_hull = self.candidate_data[stability_filter]
 
-        self.indices_to_compute = within_hull.head(self.n_query).index.tolist()
-        return self.indices_to_compute
+        return within_hull.head(self.n_query)
 
     def run_adam(self, model, iterations):
         """
@@ -547,7 +524,7 @@ class BaggedGaussianProcessStabilityAgent(StabilityAgent):
 
     """
     def __init__(self, candidate_data=None, seed_data=None, n_query=1,
-                 hull_distance=0.0, multiprocessing=True,
+                 hull_distance=0.0, parallel=cpu_count(),
                  alpha=0.5, n_estimators=8, max_samples=5000,
                  bootstrap=False):
         """
@@ -557,7 +534,7 @@ class BaggedGaussianProcessStabilityAgent(StabilityAgent):
             n_query (int): number of hypotheses to generate
             hull_distance (float): hull distance as a criteria for
                 which to deem a given material as "stable"
-            multiprocessing (bool): whether to use multiprocessing
+            parallel (bool): whether to use multiprocessing
                 for phase stability analysis
             alpha (float): scaling for stdev for estimation of best-
                 case formation energies
@@ -565,7 +542,7 @@ class BaggedGaussianProcessStabilityAgent(StabilityAgent):
         super(BaggedGaussianProcessStabilityAgent, self).__init__(
             candidate_data=candidate_data, seed_data=seed_data,
             n_query=n_query, hull_distance=hull_distance,
-            multiprocessing=multiprocessing
+            parallel=parallel
         )
 
         self.alpha = alpha
@@ -584,7 +561,7 @@ class BaggedGaussianProcessStabilityAgent(StabilityAgent):
         bag_reg = BaggingRegressor(
             base_estimator=pipeline, n_estimators=self.n_estimators,
             max_samples=self.max_samples, bootstrap=self.bootstrap,
-            verbose=True, n_jobs=self.n_jobs)
+            verbose=True, n_jobs=self.parallel)
         self.cv_score = np.mean(
             -1.0 * cross_val_score(
                 pipeline, X_seed, y_seed, cv=KFold(3, shuffle=True),
@@ -592,18 +569,8 @@ class BaggedGaussianProcessStabilityAgent(StabilityAgent):
         )
         bag_reg.fit(X_seed, y_seed)
 
-        # TODO: make this a static method
-        def _get_unc(bagging_regressor, X_test):
-            stds = []
-            pres = []
-            for est in bagging_regressor.estimators_:
-                _p, _s = est.predict(X_test, return_std=True)
-                stds.append(_s)
-                pres.append(_p)
-            return np.mean(np.array(pres), axis=0), np.min(np.array(stds), axis=0)
-
         # GP makes predictions for Hf and uncertainty*alpha on candidate data
-        preds, stds = _get_unc(bag_reg, X_cand)
+        preds, stds = self._get_unc(bag_reg, X_cand)
         expected = preds - stds * self.alpha
 
         # Update candidate data dataframe with predictions
@@ -613,12 +580,31 @@ class BaggedGaussianProcessStabilityAgent(StabilityAgent):
         # Find the most stable ones up to n_query within hull_distance
         stability_filter = self.candidate_data['pred_stability'] <= self.hull_distance
         within_hull = self.candidate_data[stability_filter]
+        return within_hull.head(self.n_query)
 
-        self.indices_to_compute = within_hull.head(self.n_query).index.tolist()
-        return self.indices_to_compute
+    @staticmethod
+    def _get_unc(bagging_regressor, X_test):
+        """
+
+        Args:
+            bagging_regressor (RegressorMixin): regressor for which
+                to get uncertainty
+            X_test (np.ndarray): test data on which to estimate
+                uncertainty
+
+        Returns:
+            (np.ndarray): array of uncertainty values
+
+        """
+        stds = []
+        pres = []
+        for est in bagging_regressor.estimators_:
+            _p, _s = est.predict(X_test, return_std=True)
+            stds.append(_s)
+            pres.append(_p)
+        return np.mean(np.array(pres), axis=0), np.min(np.array(stds), axis=0)
 
 
-@camd_traced
 class AgentStabilityAdaBoost(StabilityAgent):
     """
     An agent that does a certain fraction of full exploration and
@@ -626,7 +612,7 @@ class AgentStabilityAdaBoost(StabilityAgent):
     of N_query options (frac), and explore the rest of its budget.
     """
     def __init__(self, candidate_data=None, seed_data=None, n_query=1,
-                 hull_distance=0.0, multiprocessing=True,
+                 hull_distance=0.0, parallel=cpu_count(),
                  model=None, uncertainty=True, alpha=0.5,
                  n_estimators=10, exploit_fraction=0.5,
                  diversify=False, dynamic_alpha=False):
@@ -637,7 +623,7 @@ class AgentStabilityAdaBoost(StabilityAgent):
             n_query (int): number of hypotheses to generate
             hull_distance (float): hull distance as a criteria for
                 which to deem a given material as "stable"
-            multiprocessing (bool): whether to use multiprocessing
+            parallel (bool): whether to use multiprocessing
                 for phase stability analysis
             model (sklearn-style regressor): Regression method
             uncertainty (bool): whether uncertainty is included in
@@ -659,7 +645,7 @@ class AgentStabilityAdaBoost(StabilityAgent):
         super(AgentStabilityAdaBoost, self).__init__(
             candidate_data=candidate_data, seed_data=seed_data,
             n_query=n_query, hull_distance=hull_distance,
-            multiprocessing=multiprocessing
+            parallel=parallel
         )
         self.model = model
         self.exploit_fraction = exploit_fraction
@@ -730,8 +716,7 @@ class AgentStabilityAdaBoost(StabilityAgent):
             n_exploration = len(remaining)
         to_compute.extend(remaining.sample(n_exploration).index.tolist())
 
-        self.indices_to_compute = to_compute
-        return self.indices_to_compute
+        return candidate_data.loc[to_compute]
 
     @staticmethod
     def _get_unc_ada(ada, X):

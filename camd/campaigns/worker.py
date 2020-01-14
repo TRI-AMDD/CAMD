@@ -26,7 +26,8 @@ from docopt import docopt
 from monty.tempfile import ScratchDir
 from camd import CAMD_S3_BUCKET, CAMD_STOP_FILE
 from camd.log import camd_traced
-from camd.campaigns.structure_discovery import run_proto_dft_campaign, run_atf_campaign
+from camd.campaigns.structure_discovery import \
+    ProtoDFTCampaign, CloudATFCampaign
 
 
 @camd_traced
@@ -75,12 +76,13 @@ class Worker(object):
 
         """
         if self.campaign == "proto-dft":
-            run_proto_dft_campaign(chemsys)
+            campaign = ProtoDFTCampaign.from_chemsys(chemsys)
         elif self.campaign == "oqmd-atf":
             # This is more or less just a test
-            run_atf_campaign(chemsys)
+            campaign = CloudATFCampaign.from_chemsys(chemsys)
         else:
             raise ValueError("Campaign {} is not valid".format(self.campaign))
+        campaign.autorun()
 
     def get_latest_chemsys(self):
         """

@@ -78,7 +78,7 @@ class QBC:
         self.trained = True
 
         if self.test_full_model:
-            # Get a CV score for an overall model with present dataset
+            # Get a CV score for an overall model with plot_hull dataset
             full_scaler = StandardScaler()
             _X = full_scaler.fit_transform(self._X, self._y)
             full_model = clone(self.model)
@@ -108,7 +108,6 @@ class RandomAgent(HypothesisAgent):
         self.candidate_data = candidate_data
         self.seed_data = seed_data
         self.n_query = n_query
-        self.cv_score = np.nan
         super(RandomAgent, self).__init__()
 
     def get_hypotheses(self, candidate_data, seed_data=None):
@@ -124,4 +123,4 @@ class RandomAgent(HypothesisAgent):
             (List) of indices
 
         """
-        return candidate_data.sample(self.n_query).index.tolist()
+        return candidate_data.sample(self.n_query)

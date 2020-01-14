@@ -1,13 +1,13 @@
 #  Copyright (c) 2019 Toyota Research Institute
 """
-This module is intended to create a parameter table associated
-with agent testing, e. g. to categorize Agents via numerical
-vectors
+This module implements agent-tools for meta-analysis of
+other agents
 """
 
 
 import numpy as np
 from taburu.table import ParameterTable
+import pandas as pd
 
 
 REGRESSOR_PARAMS = [
@@ -45,20 +45,38 @@ AGENT_PARAMS = [
         "n_members": list(range(2, 5)),
         "hull_distance": list(np.arange(0.05, 0.21, 0.05)),
         "training_fraction": [0.4, 0.5, 0.6],
-        "regressor": REGRESSOR_PARAMS
+        "model": REGRESSOR_PARAMS
     },
     {
         "@class": ["camd.agent.agents.AgentStabilityML5"],
         "n_query": [4, 6, 8],
         "hull_distance": [0.05, 0.1, 0.15, 0.2],
         "exploit_fraction": [0.4, 0.5, 0.6],
-        "regressor": REGRESSOR_PARAMS
+        "model": REGRESSOR_PARAMS
     },
 ]
 
-# Some things to test
-# Whether prior iteration always has same first row set
-# Synchronicity of order and value for parameter lists/tables
+
+def convert_parameter_table_to_dataframe(parameter_table, fillna=np.nan):
+    """
+    Converts parameter table in its current state to dataframe
+
+    Args:
+        parameter_table (ParameterTable): parameter table to
+            convert to array
+        fillna (int): a fill value for any remaining entries
+            in the table
+
+    Returns:
+        (DataFrame): dataframe corresponding to parameter table
+            data
+
+    """
+    df = pd.DataFrame(parameter_table, dtype="int64")
+    df['agent'] = [parameter_table.hydrate_index(i, construct_object=True)
+                   for i in range(len(parameter_table))]
+    df.fillna(fillna)
+    return df
 
 
 if __name__ == "__main__":

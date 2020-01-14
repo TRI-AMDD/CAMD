@@ -1,9 +1,9 @@
 # Copyright Toyota Research Institute 2019
-from camd.loop import Loop
+from camd.campaigns.base import Campaign
 
 from sklearn.neural_network import MLPRegressor
-from camd.agent.agents import AgentStabilityAdaBoost
-from camd.analysis import AnalyzeStability
+from camd.agent.stability import AgentStabilityAdaBoost
+from camd.analysis import StabilityAnalyzer
 from camd.experiment.base import ATFSampler
 from camd.utils.data import load_default_atf_data
 
@@ -25,12 +25,12 @@ agent = AgentStabilityAdaBoost(
     exploit_fraction=0.75,
     n_estimators=20
 )
-analyzer = AnalyzeStability(hull_distance=0.05)
+analyzer = StabilityAnalyzer(hull_distance=0.05)
 experiment = ATFSampler(dataframe=df)
 candidate_data = df
 
 ##########################################################
-new_loop = Loop(
+new_loop = Campaign(
     candidate_data, agent, experiment, analyzer,
     create_seed=n_seed
 )
