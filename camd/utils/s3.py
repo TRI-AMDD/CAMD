@@ -175,7 +175,7 @@ def s3_sync(s3_bucket, s3_prefix, sync_path="."):
 
 # List of objects to sync upon running of this script
 MATRIO_S3_OBJS = [
-    "camd/shared-data/ooqmd_voro_v3.csv",
+    "camd/shared-data/oqmd_voro_v3.csv",
     "camd/shared-data/oqmd1.2_icsd_featurized_clean_v2.pickle",
     "camd/shared-data/protosearch-data/materials-db/oqmd/oqmd_ver3.db"
 ]
