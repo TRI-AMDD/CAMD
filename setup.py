@@ -4,7 +4,7 @@ import warnings
 try:
     import numpy
 except ImportError:
-    # This is goofy, but the best way I can figure to do this
+    # This is crude, but the best way I can figure to do this
     warnings.warn("Setup requires pre-installation of numpy, run pip "
                   "install numpy before setup.py")
 
@@ -41,11 +41,10 @@ setup(
                       "tensorflow",
                       "gpflow"
                       ],
-    # TODO: make this materials?
     dependency_links=[
         "http://github.com/JosephMontoya-TRI/qmpy_py3/tarball/master#egg=qmpy",
-        "git+ssh://git@github.awsinternal.tri.global/materials/bulk_enumerator#egg=bulk_enumerator",
-        "git+ssh://git@github.awsinternal.tri.global/materials/protosearch#egg=protosearch"
+        "http://github.com/ToyotaResearchInstitute/bulk_enumerator/tarball/master#egg=bulk_enumerator",
+        "http://github.com/ToyotaResearchInstitute/protosearch/tarball/master#egg=protosearch",
     ],
     entry_points={
         "console_scripts": [
