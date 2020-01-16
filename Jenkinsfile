@@ -33,8 +33,8 @@ node {
 		// checks out branch that was just updated on GHE
         stage('checkout') {
           checkout scm
-          sh "git submodule init"
-          sh "git submodule update"
+          // sh "git submodule init"
+          // sh "git submodule update"
         }
 
 		  // Build Stage:
