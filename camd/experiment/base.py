@@ -20,7 +20,6 @@ class Experiment(abc.ABC, MSONable):
         self.unique_ids = params['unique_ids'] if 'unique_ids' in params else []
         self.job_status = params['job_status'] if 'job_status' in params else {}
 
-
     @abc.abstractmethod
     def get_state(self):
         """

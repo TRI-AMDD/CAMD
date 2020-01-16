@@ -287,12 +287,13 @@ def get_stoichiometric_formulas(n_components, grid=None):
     Returns:
         list: unique stoichiometric formula from an allowed grid of integers.
     """
-    grid = grid if grid else list(range(1,8))
+    grid = grid if grid else list(range(1, 8))
     args = [grid for _ in range(n_components)]
     stoics = np.array(list(itertools.product(*args)))
-    fracs = stoics.astype(float)/np.sum(stoics,axis=1)[:,None]
-    _, indices, counts = np.unique(fracs,axis=0, return_index=True, return_counts = True)
-    return stoics[ indices ]
+    fracs = stoics.astype(float)/np.sum(stoics, axis=1)[:, None]
+    _, indices, counts = np.unique(fracs, axis=0, return_index=True,
+                                   return_counts=True)
+    return stoics[indices]
 
 
 def create_formulas(bounds, charge_balanced=True, oxi_states_extend=None, oxi_states_override=None,
@@ -313,7 +314,7 @@ def create_formulas(bounds, charge_balanced=True, oxi_states_extend=None, oxi_st
 
     if charge_balanced:
 
-        charge_balanced_formulas=[]
+        charge_balanced_formulas = []
 
         if oxi_states_extend:
             oxi_states_override = oxi_states_override if oxi_states_override else {}
@@ -332,3 +333,30 @@ def create_formulas(bounds, charge_balanced=True, oxi_states_extend=None, oxi_st
         return charge_balanced_formulas
     else:
         return formulas
+
+
+def heuristic_setup(elements):
+    """
+    Helper function to setup a default structure_domain
+    """
+    grid_defaults = {2:5, 3:5}
+    Ncomp = len(elements)
+    _g = grid_defaults.get(Ncomp, 4)
+    if {"O", "Cl", "F", "S", "N", "Br", "I"}.intersection(set(elements)):
+        charge_balanced = True
+    else:
+        charge_balanced = False
+    if not charge_balanced:
+        return (_g, charge_balanced)
+    else:
+        g_max_max = 8
+        while True:
+            sd = StructureDomain.from_bounds(elements, charge_balanced=True, **{'grid':range(1,_g)})
+            N = len(sd.formulas)
+            if N>=20:
+                return (_g, charge_balanced)
+            else:
+                if _g < g_max_max:
+                    _g+=1
+                else:
+                    return (_g, charge_balanced)

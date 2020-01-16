@@ -1,0 +1,4 @@
+__pycache__
+camd/s3_cache
+scripts/cache
+.git

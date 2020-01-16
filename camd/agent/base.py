@@ -23,69 +23,57 @@ class HypothesisAgent(metaclass=abc.ABCMeta):
 
         """
 
-    # @abc.abstractmethod
-    # def update_candidate_data(self, new_results):
-    #     """
-    #
-    #     Args:
-    #         new_results:
-    #
-    #     Returns:
-    #
-    #     """
-
 
 class QBC:
     """
     Uncertainty quantification for non-supporting regressors with Query-By-Committee
     """
-    def __init__(self, N_members, frac, ML_algorithm=None, ML_algorithm_params=None,
-                 test_full_model=True):
+    def __init__(self, n_members, training_fraction, ml_algorithm=None,
+                 ml_algorithm_params=None, test_full_model=True):
         """
-        :param N_members: Number of committee members (i.e. models to train)
-        :param frac: fraction of data to use in training committee members
-        :param ML_algorithm: sklearn-style regressor
-        :param ML_algorithm_params: (dict) parameters to pass to the algorithm
+        :param n_members: Number of committee members (i.e. models to train)
+        :param training_fraction: fraction of data to use in training committee members
+        :param ml_algorithm: sklearn-style regressor
+        :param ml_algorithm_params: (dict) parameters to pass to the algorithm
         """
-        self.N_members = N_members
-        self.frac = frac
-        self.ML_algorithm = ML_algorithm if ML_algorithm else LinearRegression
-        self.ML_algorithm_params = ML_algorithm_params if ML_algorithm_params else {}
+        self.n_members = n_members
+        self.training_fraction = training_fraction
+        self.ml_algorithm = ml_algorithm if ml_algorithm else LinearRegression
+        self.ml_algorithm_params = ml_algorithm_params if ml_algorithm_params else {}
         self.committee_models = []
-        self.ignore_columns = None
         self.trained = False
         self.test_full_model = test_full_model
         self.cv_score = np.nan
+        self._X = None
+        self._y = None
 
-    def fit(self, X, y, ignore_columns=None):
-
-        self.ignore_columns = ignore_columns if ignore_columns else []
-        self._X = X.drop(ignore_columns, axis=1)
-        self._y = y
+    def fit(self, X, y):
+        self._X, self._y = X, y
 
         split_X = []
         split_y = []
 
-        for i in range(self.N_members):
+        for i in range(self.n_members):
             a = np.arange(len(X))
             np.random.shuffle(a)
-            indices = a[:int(self.frac * len(X))]
+            indices = a[:int(self.training_fraction * len(X))]
             split_X.append(X.iloc[indices])
             split_y.append(y.iloc[indices])
 
         self.committee_models = []
-        for i in tqdm(list(range(self.N_members))):
+        for i in tqdm(list(range(self.n_members))):
             scaler = StandardScaler()
-            X = scaler.fit_transform(split_X[i].drop(ignore_columns, axis=1))
+            X = scaler.fit_transform(split_X[i])
             y = split_y[i]
-            model = self.ML_algorithm(**self.ML_algorithm_params)
+            model = self.ml_algorithm(**self.ml_algorithm_params)
             model.fit(X, y)
             self.committee_models.append([scaler, model])  # Note we're saving the scaler to use in predictions
-        self.trained=True
+
+        self.trained = True
 
         if self.test_full_model:
             # Get a CV score for an overall model with present dataset
-            overall_model = self.ML_algorithm(**self.ML_algorithm_params)
+            overall_model = self.ml_algorithm(**self.ml_algorithm_params)
             overall_scaler = StandardScaler()
             _X = overall_scaler.fit_transform(self._X, self._y)
             overall_model.fit(_X, self._y)
@@ -93,21 +81,16 @@ class QBC:
                                        cv=KFold(5, shuffle=True), scoring='neg_mean_absolute_error')
             self.cv_score = np.mean(cv_score) * -1
 
-    def predict(self, X, ignore_columns=None):
-
-        ignore_columns = ignore_columns if ignore_columns else self.ignore_columns
-
+    def predict(self, X):
         # Apply the committee of models to candidate space
         committee_predictions = []
-        for i in tqdm(list(range(self.N_members))):
+        for i in tqdm(list(range(self.n_members))):
             scaler = self.committee_models[i][0]
             model = self.committee_models[i][1]
-            _X = X.drop(ignore_columns, axis=1)
-            _X = scaler.transform(_X)
+            _X = scaler.transform(X)
             committee_predictions.append(model.predict(_X))
         stds = np.std(np.array(committee_predictions), axis=0)
         means = np.mean(np.array(committee_predictions), axis=0)
-
         return means, stds
 
 
@@ -115,27 +98,23 @@ class RandomAgent(HypothesisAgent):
     """
     Baseline agent: Randomly picks next experiments
     """
-    def __init__(self, candidate_data=None, seed_data=None, N_query=None,
-                 pd=None, hull_distance=None, N_species=None):
+    def __init__(self, candidate_data=None, seed_data=None, n_query=1):
 
         self.candidate_data = candidate_data
         self.seed_data = seed_data
-        self.hull_distance = hull_distance if hull_distance else 0.0
-        self.N_query = N_query if N_query else 1
-        self.pd = pd
-        self.N_species = N_species
+        self.n_query = n_query
         self.cv_score = np.nan
         super(RandomAgent, self).__init__()
 
     def get_hypotheses(self, candidate_data, seed_data=None):
-        if self.N_species:
-            self.candidate_data = candidate_data[ candidate_data['N_species'] == self.N_species ]
-        else:
-            self.candidate_data = candidate_data
-        indices_to_compute = []
-        for data in self.candidate_data.iterrows():
-            indices_to_compute.append(data[0])
-        a = np.array(indices_to_compute)
-        np.random.shuffle(a)
-        indices_to_compute = a[:self.N_query].tolist()
-        return indices_to_compute
+        """
+
+        Args:
+            candidate_data (DataFrame): candidate data
+            seed_data (DataFrame): seed data
+
+        Returns:
+            (List) of indices
+
+        """
+        return candidate_data.sample(self.n_query).index.tolist()

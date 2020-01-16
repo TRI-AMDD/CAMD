@@ -4,7 +4,7 @@ import warnings
 try:
     import numpy
 except ImportError:
-    # This is goofy, but the best way I can figure to do this
+    # This is crude, but the best way I can figure to do this
     warnings.warn("Setup requires pre-installation of numpy, run pip "
                   "install numpy before setup.py")
 
@@ -22,6 +22,7 @@ setup(
     # a proper install, pin numpy/networkx/matplotlib
     setup_requires=["numpy>=1.16"],
     install_requires=["numpy>=1.16",
+                      "python-dateutil==2.8.0",
                       "networkx==2.2",
                       "matplotlib",
                       "qmpy",
@@ -36,11 +37,18 @@ setup(
                       "protosearch",
                       "autologging",
                       "awscli",
+                      "docopt",
+                      "tensorflow",
+                      "gpflow"
                       ],
-    # TODO: make this materials?
     dependency_links=[
         "http://github.com/JosephMontoya-TRI/qmpy_py3/tarball/master#egg=qmpy",
         "http://github.com/ToyotaResearchInstitute/bulk_enumerator/tarball/master#egg=bulk_enumerator",
         "http://github.com/ToyotaResearchInstitute/protosearch/tarball/master#egg=protosearch",
-    ]
+    ],
+    entry_points={
+        "console_scripts": [
+            "camd_worker = camd.campaigns.worker:main"
+        ]
+    }
 )

@@ -1,7 +1,7 @@
 from camd.domain import StructureDomain
 from camd.loop import Loop
 from camd.agent.agents import QBCStabilityAgent
-from camd.analysis import AnalyzeStability_mod
+from camd.analysis import AnalyzeStability
 from camd.experiment.dft import OqmdDFTonMC1
 from sklearn.neural_network import MLPRegressor
 
@@ -15,14 +15,14 @@ structure_dict = domain.hypo_structures_dict
 
 agent = QBCStabilityAgent           # We use a query-by-committee (QBC) based agent
 agent_params = {                    # Parameters of the agent
-    'ML_algorithm': MLPRegressor,   # We use simple fully connected neural network as our regressor
-    'ML_algorithm_params': {'hidden_layer_sizes': (84, 50)},
-    'N_query': 3,                   # Agent is allowed 3 experiments per iteration
-    'N_members': 10,                # Committee size for QBC
+    'ml_algorithm': MLPRegressor,   # We use simple fully connected neural network as our regressor
+    'ml_algorithm_params': {'hidden_layer_sizes': (84, 50)},
+    'n_query': 3,                   # Agent is allowed 3 experiments per iteration
+    'n_members': 10,                # Committee size for QBC
     'hull_distance': 0.1,   # Distance to hull to consider a finding as discovery (eV/atom)
     'frac': 0.5
     }
-analyzer = AnalyzeStability_mod     # Analyzer for stability
+analyzer = AnalyzeStability     # Analyzer for stability
 analyzer_params = {'hull_distance': 0.1}
 experiment = OqmdDFTonMC1           # This is the Experiment method to run OQMD compatible DFT on AWS-MC1
 experiment_params = {'structure_dict': structure_dict,  # Parameters of this experiment class include structures.
