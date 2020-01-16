@@ -34,13 +34,15 @@ setup(
                       "sqlalchemy",
                       "matminer",
                       "psycopg2",
-                      "protosearch",
                       "autologging",
                       "awscli",
                       "docopt",
                       "tensorflow",
                       "gpflow"
                       ],
+    extras_require={
+        "proto_dft": ["protosearch", "bulk_enumerator"]
+    },
     dependency_links=[
         "http://github.com/JosephMontoya-TRI/qmpy_py3/tarball/master#egg=qmpy",
         "http://github.com/ToyotaResearchInstitute/bulk_enumerator/tarball/master#egg=bulk_enumerator",
