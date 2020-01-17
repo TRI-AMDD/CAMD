@@ -630,7 +630,7 @@ class AgentStabilityAdaBoost(StabilityAgent):
                 minimal predictions
             alpha (float): weighting factor for the stdev in making
                 best-case predictions of the stability
-            n_estimators (int): number of estimators fro the AdaBoosting
+            n_estimators (int): number of estimators for the AdaBoosting
                 algorithm
             exploit_fraction (float): fraction of n_query to assign to
                 exploitation hypotheses
