@@ -247,7 +247,7 @@ def run_oqmd_calculation(poscar_filename):
     os.chdir("relax")
     calc = Calculation()
     calc.setup(starting_structure, "relaxation")
-    os.system("mpirun -n 1 vasp_std")
+    os.system("mpirun -n 16 vasp_std")
     # Just in case the mysql server process dies
     # Kids, don't try this at home
     os.system("sudo -u mysql mysqld &")
@@ -259,7 +259,7 @@ def run_oqmd_calculation(poscar_filename):
     os.chdir("static")
     calc = Calculation()
     calc.setup(relaxed_structure, "static")
-    os.system("mpirun -n 1 vasp_std")
+    os.system("mpirun -n 16 vasp_std")
     os.chdir('..')
 
 
