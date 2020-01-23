@@ -25,17 +25,18 @@ __version__ = "2019.09.16"
 
 # TODO: abstract campaign?
 
-def run_proto_dft_campaign(chemsys):
+def run_proto_dft_campaign(chemsys, s3_prefix="proto-dft-2"):
     """
 
     Args:
         chemsys (str): chemical system for the campaign
+        s3_prefix (str): s3 prefix to sync to
 
     Returns:
         (bool): True if run exits
 
     """
-    s3_prefix = "proto-dft/runs/{}".format(chemsys)
+    s3_prefix = "{}/runs/{}".format(s3_prefix, chemsys)
 
     # Initialize s3
     dumpfn({"started": datetime.now().isoformat(),
@@ -85,7 +86,7 @@ def run_proto_dft_campaign(chemsys):
             candidate_data, agent, experiment, analyzer, agent_params=agent_params,
             analyzer_params=analyzer_params, experiment_params=experiment_params,
             finalizer=finalizer, finalizer_params=finalizer_params, heuristic_stopper=5,
-            s3_prefix="proto-dft/runs/{}".format(chemsys))
+            s3_prefix=s3_prefix)
         new_loop.auto_loop_in_directories(
             n_iterations=n_max_iter, timeout=10, monitor=True,
             initialize=True, with_icsd=True)
