@@ -26,12 +26,13 @@ class Mc1Test(unittest.TestCase):
         self.assertEqual(len(bad_silicon), 4)
         params = {"structure_dict": {"good": good_silicon,
                                      "bad": bad_silicon},
-                  "poll_time": 30, "timeout": 150}
+                  "poll_time": 30, "timeout": 300}
 
         experiment = OqmdDFTonMC1(params)
         experiment.submit()
         status = experiment.monitor()
-        results = experiment.get_results(['good', 'bad'], populate_candidate_data=False)
+        results = experiment.get_results(
+            ['good', 'bad'], populate_candidate_data=False)
 
         self.assertAlmostEqual(results['good'], 0, 5)
         self.assertIsNone(results.get('bad'))
