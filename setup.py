@@ -28,7 +28,7 @@ setup(
                       "qmpy",  # This version is constrained by the source
                       "tqdm==4.19.1",
                       "pandas==0.24.2",
-                      "sklearn==0.0",
+                      "scikit-learn==0.22.1",
                       "boto3==1.9.136",
                       "monty==2.0.6",
                       "sqlalchemy",
