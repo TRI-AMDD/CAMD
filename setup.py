@@ -26,11 +26,9 @@ setup(
                       "networkx==2.2",
                       "matplotlib==3.1.1",
                       "qmpy",  # This version is constrained by the source
-                      "tqdm==4.19.1",
                       "pandas==0.24.2",
                       "scikit-learn==0.22.1",
                       "boto3==1.9.136",
-                      "monty==2.0.6",
                       "sqlalchemy",
                       "matminer==0.5.5",
                       "psycopg2==2.8.2",
