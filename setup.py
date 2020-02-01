@@ -38,7 +38,7 @@ setup(
                       "autologging",
                       "awscli",
                       "docopt",
-                      "tensorflow==1.14.0",
+                      "tensorflow",
                       "gpflow"
                       ],
     # TODO: make this materials?

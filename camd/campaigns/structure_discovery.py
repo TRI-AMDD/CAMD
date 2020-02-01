@@ -14,7 +14,7 @@ from camd.loop import Loop
 from camd import CAMD_TEST_FILES, CAMD_S3_BUCKET
 from camd.utils.s3 import s3_sync
 
-from camd.analysis import AnalyzeStability_mod, FinalizeQqmdCampaign
+from camd.analysis import AnalyzeStability, FinalizeQqmdCampaign
 from camd.experiment.dft import OqmdDFTonMC1
 from sklearn.neural_network import MLPRegressor
 import pickle
@@ -25,17 +25,18 @@ __version__ = "2019.09.16"
 
 # TODO: abstract campaign?
 
-def run_proto_dft_campaign(chemsys):
+def run_proto_dft_campaign(chemsys, s3_prefix="proto-dft-2"):
     """
 
     Args:
         chemsys (str): chemical system for the campaign
+        s3_prefix (str): s3 prefix to sync to
 
     Returns:
         (bool): True if run exits
 
     """
-    s3_prefix = "proto-dft/runs/{}".format(chemsys)
+    s3_prefix = "{}/runs/{}".format(s3_prefix, chemsys)
 
     # Initialize s3
     dumpfn({"started": datetime.now().isoformat(),
@@ -71,7 +72,7 @@ def run_proto_dft_campaign(chemsys):
             'diversify': True,
             'n_estimators': 20
         }
-        analyzer = AnalyzeStability_mod
+        analyzer = AnalyzeStability
         analyzer_params = {'hull_distance': 0.2}  # analysis criterion (need not be exactly same as agent's goal)
         experiment = OqmdDFTonMC1
         experiment_params = {'structure_dict': structure_dict, 'candidate_data': candidate_data, 'timeout': 30000}
@@ -85,7 +86,7 @@ def run_proto_dft_campaign(chemsys):
             candidate_data, agent, experiment, analyzer, agent_params=agent_params,
             analyzer_params=analyzer_params, experiment_params=experiment_params,
             finalizer=finalizer, finalizer_params=finalizer_params, heuristic_stopper=5,
-            s3_prefix="proto-dft/runs/{}".format(chemsys))
+            s3_prefix=s3_prefix)
         new_loop.auto_loop_in_directories(
             n_iterations=n_max_iter, timeout=10, monitor=True,
             initialize=True, with_icsd=True)
@@ -113,7 +114,7 @@ def run_atf_campaign(chemsys):
     n_query = 10  # This many new candidates are "calculated with DFT" (i.e. requested from Oracle -- DFT)
     agent = RandomAgent
     agent_params = {'hull_distance': 0.05, 'N_query': n_query}
-    analyzer = AnalyzeStability_mod
+    analyzer = AnalyzeStability
     analyzer_params = {'hull_distance': 0.05}
     experiment = ATFSampler
     experiment_params = {'dataframe': df}
