@@ -27,7 +27,7 @@ setup(
                       "matplotlib",
                       "qmpy",
                       "tqdm",
-                      "pandas",
+                      "pandas==0.24.2",
                       "sklearn",
                       "boto3",
                       "monty",
