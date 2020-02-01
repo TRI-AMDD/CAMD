@@ -18,9 +18,8 @@ setup(
     author='muratahan.aykol',
     author_email='murat.aykol@tri.global',
     description='',
-    # Since qmpy can't be bothered to maintain
-    # a proper install, pin numpy/networkx/matplotlib
-    setup_requires=["numpy==1.18"],
+    setup_requires=["numpy==1.18",
+                    "Django==2.2"],  # For qmpy depnedency
     install_requires=["numpy==1.18",
                       "python-dateutil==2.8.0",
                       "networkx==2.2",

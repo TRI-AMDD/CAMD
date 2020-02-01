@@ -18,8 +18,6 @@ COPY . /home/camd
 
 # Install package
 RUN source /opt/conda/bin/activate camd && \
-    pip install numpy && \
-    pip install Django && \
     cd bulk_enumerator && python setup.py install && cd .. && \
     cd protosearch && python setup.py install && cd .. && \
     python setup.py develop && \
