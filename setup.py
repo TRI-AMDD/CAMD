@@ -24,7 +24,7 @@ setup(
     install_requires=["numpy>=1.16",
                       "python-dateutil==2.8.0",
                       "networkx==2.2",
-                      "matplotlib==3.3.1",
+                      "matplotlib==3.1.1",
                       "qmpy",  # This version is constrained by the source
                       "tqdm==4.19.1",
                       "pandas==0.24.2",
