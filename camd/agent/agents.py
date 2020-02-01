@@ -819,7 +819,7 @@ def diverse_quant(points, target_length, df, quantiles=None):
             break
         res.append(to_remove)
     if len(res) == 0:
-        return points
+        return points[:target_length]
     else:
         d = OrderedDict()
         for i in res[-1]: # fall back to the latest remove list before break
