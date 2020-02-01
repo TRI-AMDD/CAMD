@@ -18,10 +18,8 @@ COPY . /home/camd
 
 # Install package
 RUN source /opt/conda/bin/activate camd && \
-    pip install gpflow tensorflow==1.15.0 && \
     pip install numpy && \
     pip install Django && \
-    pip install botocore && \
     cd bulk_enumerator && python setup.py install && cd .. && \
     cd protosearch && python setup.py install && cd .. && \
     python setup.py develop && \

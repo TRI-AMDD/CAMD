@@ -20,8 +20,8 @@ setup(
     description='',
     # Since qmpy can't be bothered to maintain
     # a proper install, pin numpy/networkx/matplotlib
-    setup_requires=["numpy>=1.16"],
-    install_requires=["numpy>=1.16",
+    setup_requires=["numpy==1.18"],
+    install_requires=["numpy==1.18",
                       "python-dateutil==2.8.0",
                       "networkx==2.2",
                       "matplotlib==3.1.1",
