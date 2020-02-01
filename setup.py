@@ -27,7 +27,6 @@ setup(
                       "matplotlib==3.1.1",
                       "qmpy",  # This version is constrained by the source
                       "pandas==0.24.2",
-                      "scikit-learn==0.22.1",
                       "boto3==1.9.136",
                       "sqlalchemy",
                       "matminer==0.5.5",
