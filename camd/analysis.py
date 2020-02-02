@@ -148,6 +148,7 @@ class AnalyzeStructures(AnalyzerBase):
                     self.matching_icsd_strs.append(match) # store the matching ICSD structures.
                 else:
                     self.matching_icsd_strs.append(None)
+
             # Flip matching bools, and create a filter
             self._icsd_filter = [not i for i in self.matching_icsd_strs]
             self.structure_is_unique = (np.array(self.structure_is_unique) * np.array(self._icsd_filter)).tolist()

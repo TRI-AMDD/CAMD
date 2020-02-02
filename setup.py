@@ -18,28 +18,24 @@ setup(
     author='muratahan.aykol',
     author_email='murat.aykol@tri.global',
     description='',
-    # Since qmpy can't be bothered to maintain
-    # a proper install, pin numpy/networkx/matplotlib
-    setup_requires=["numpy>=1.16"],
-    install_requires=["numpy>=1.16",
+    setup_requires=["numpy==1.18",
+                    "Django==2.2",
+                    "tensorflow==1.15.0",
+                    "gpflow==1.5.0"],  # For qmpy depnedency
+    install_requires=["numpy==1.18",
                       "python-dateutil==2.8.0",
                       "networkx==2.2",
-                      "matplotlib",
-                      "qmpy",
-                      "tqdm",
-                      "pandas",
-                      "sklearn",
-                      "boto3",
-                      "monty",
+                      "matplotlib==3.1.1",
+                      "qmpy",  # This version is constrained by the source
+                      "pandas==0.24.2",
+                      "boto3==1.9.136",
                       "sqlalchemy",
-                      "matminer",
-                      "psycopg2",
+                      "matminer==0.5.5",
+                      "psycopg2==2.8.2",
                       "protosearch",
                       "autologging",
-                      "awscli",
-                      "docopt",
-                      "tensorflow",
-                      "gpflow"
+                      "awscli==1.16.199",
+                      "docopt==0.6.2",
                       ],
     # TODO: make this materials?
     dependency_links=[
