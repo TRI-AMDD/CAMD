@@ -136,16 +136,19 @@ def n_max_iter_heuristics(n_data, n_query, low_bound=5, up_bound=20):
     """
     Helper method to define maximum number of iterations for a given campaign.
     This is based on the empirical evidence in various systems >90% of stable
-        materials are identified when 25% of candidates are tested. We also enforce
-        upper and lower bounds of 20 and 5 to avoid edge cases with too many or too few
-        calculations to run.
+    materials are identified when 25% of candidates are tested. We also enforce
+    upper and lower bounds of 20 and 5 to avoid edge cases with too many or too
+    few calculations to run.
+
     Args:
         n_data (int): number of data points in candidate space
         n_query (int): number of queries allowed in each iteration
         low_bound (int): lower bound allowed for n_max_iter
         up_bound (int): upper bound allowed for n_max_ite
+
     Returns:
         maximum number of iterations as integer
+
     """
     _target = round(n_data*0.25/n_query)
     if _target<low_bound:
