@@ -26,15 +26,17 @@ class HypothesisAgent(metaclass=abc.ABCMeta):
 
 class QBC:
     """
-    Uncertainty quantification for non-supporting regressors with Query-By-Committee
+    Helper class for Uncertainty quantification using
+    non-supporting regressors with Query-By-Committee
     """
     def __init__(self, n_members, training_fraction, ml_algorithm=None,
                  ml_algorithm_params=None, test_full_model=True):
         """
-        :param n_members: Number of committee members (i.e. models to train)
-        :param training_fraction: fraction of data to use in training committee members
-        :param ml_algorithm: sklearn-style regressor
-        :param ml_algorithm_params: (dict) parameters to pass to the algorithm
+        n_members (int): Number of committee members (i.e. models to train)
+        training_fraction (float): fraction of data to use in training committee members
+        ml_algorithm (sklearn.RegressorMixin): sklearn-style regressor for
+            regression algorithm
+        ml_algorithm_params (dict): parameters to pass to the algorithm
         """
         self.n_members = n_members
         self.training_fraction = training_fraction
@@ -96,7 +98,7 @@ class QBC:
 
 class RandomAgent(HypothesisAgent):
     """
-    Baseline agent: Randomly picks next experiments
+    Baseline agent: Randomly picks from candidate dataset
     """
     def __init__(self, candidate_data=None, seed_data=None, n_query=1):
 
