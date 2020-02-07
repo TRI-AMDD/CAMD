@@ -25,17 +25,18 @@ apt install -y default-libmysqlclient-dev gcc
 export PATH=$PATH:/usr/local/mysql/bin
 ```
 
-Install numpy via pip first, since the build depends on this and numpy has some difficulty recognizing
+Install numpy/Django via pip first, since the build depends on this and numpy has some difficulty recognizing
 its own install:
 
 ```angular2
 pip install numpy
+pip install Django
 ```
 
 Then use the included setup.py procedure, from the cloned directory.
 
 ```angular2
-python setup.py install
+python setup.py develop
 ```
 
 ### Mac OSX
@@ -49,15 +50,28 @@ $ brew install postgresql
 $ brew install gcc
 ```
 
-Install numpy via pip first, since the build depends on this and numpy has some difficulty recognizing
+Install numpy/Django via pip first, since the build depends on these and numpy has some difficulty recognizing
 its own install:
 
 ```angular2
 pip install numpy
+pip install Django
 ```
 
 Then use the included setup.py procedure, from the cloned directory.
 
 ```angular2
 python setup.py develop
+```
+
+## Data download
+
+Dataset for featurized OQMD entries for after-the-fact testing can be 
+downloaded from dedicated S3 bucket.  This should happen automatically
+from the current boto3 interface, but can also be done via the below command.
+
+If you are in the vaspUsers group (e. g. SUNCAT), you can use the shell command:
+
+```angular2
+aws s3 cp s3://matr.io/materials-data-external/OQMD_data/oqmd_voro_March25_v2.csv .
 ```
