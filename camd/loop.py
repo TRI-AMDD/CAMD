@@ -314,6 +314,9 @@ class Loop(MSONable):
             raise ValueError("No seed data available. "
                              "Either supply or ask for creation.")
 
+        if len(suggested_experiments) == 0:
+            raise ValueError("No hypotheses found to initialize with. Stopping the loop.")
+
         print("Loop {} state: Running experiments".format(self.iteration))
         self.job_status = self.experiment.submit(suggested_experiments)
 
