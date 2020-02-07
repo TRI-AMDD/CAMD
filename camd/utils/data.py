@@ -5,9 +5,12 @@ for CAMD, mostly in the form of dataframes
 """
 
 import os
+
 import requests
 import pandas as pd
+from camd.utils.s3 import hook
 from monty.os import makedirs_p
+from monty.dev import deprecated
 from camd import CAMD_CACHE, tqdm
 
 # TODO-PUBLIC: this will need to be made general for the
@@ -101,3 +104,26 @@ def cache_matrio_data(filename):
     key = MATRIO_DATA_KEYS[filename]
     if not os.path.isfile(filename):
         cache_download("{}/{}/download".format(prefix, key), filename)
+
+
+@deprecated(None, "cache_s3_objects has been replaced with cache_matrio_data")
+def cache_s3_objs(obj_names, bucket_name='matr.io'):
+    """
+    Quick function to download relevant s3 files to cache.
+    Note that this only works with public urls for s3 objects,
+    and is marked for deprecation prior to release.
+
+    Args:
+        obj_names ([str]): list of object names
+        bucket_name (str): name of s3 bucket
+
+    Returns:
+        None
+    """
+    # Only works with public urls
+    urls = ["https://s3.amazonaws.com/{}/{}".format(bucket_name, obj_name)
+            for obj_name in obj_names]
+
+    for obj_name, url in zip(obj_names, urls):
+        cache_download(url, obj_name)
+

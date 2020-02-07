@@ -11,7 +11,7 @@ from camd.agent.base import RandomAgent
 from camd.analysis import AnalyzeStability as AnalyzeStability
 from camd.experiment import ATFSampler
 from camd.loop import Loop
-from camd.utils.s3 import cache_s3_objs
+from camd.utils.data import cache_s3_objs
 from camd import CAMD_CACHE, CAMD_TEST_FILES
 
 

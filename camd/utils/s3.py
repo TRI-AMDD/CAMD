@@ -7,7 +7,6 @@ import os
 import boto3
 from botocore.exceptions import NoCredentialsError
 import pandas as pd
-from camd import CAMD_CACHE, tqdm
 
 
 def s3_connection_broken(bucket, prefix):
@@ -84,44 +83,6 @@ def hook(t):
     def inner(bytes_amount):
         t.update(bytes_amount)
     return inner
-
-
-def cache_s3_objs(obj_names, bucket_name='matr.io',
-                  filter_existing_files=True):
-    """
-    Quick function to download relevant s3 files to cache
-
-    Args:
-        obj_names ([str]): list of object names
-        bucket_name (str): name of s3 bucket
-        filter_existing_files (bool): whether or not to filter existing files
-
-    Returns:
-        None
-    """
-
-    # make cache dir
-    if not os.path.isdir(CAMD_CACHE):
-        os.mkdir(CAMD_CACHE)
-
-    # Initialize s3 resource
-    s3 = boto3.resource("s3")
-    bucket = s3.Bucket(bucket_name)
-
-    # Filter out existing files if desired
-    if filter_existing_files:
-        obj_names = [obj_name for obj_name in obj_names
-                     if not os.path.isfile(os.path.join(CAMD_CACHE, obj_name))]
-
-    for s3_key in obj_names:
-        path, filename = os.path.split(s3_key)
-        if not os.path.isdir(os.path.join(CAMD_CACHE, path)):
-            os.makedirs(os.path.join(CAMD_CACHE, path))
-        file_object = s3.Object(bucket_name, s3_key)
-        file_size = file_object.content_length
-        with tqdm(total=file_size, unit_scale=True, desc=s3_key) as t:
-            bucket.download_file(
-                s3_key, os.path.join(CAMD_CACHE, s3_key), Callback=hook(t))
 
 
 def iterate_bucket_items(bucket):
