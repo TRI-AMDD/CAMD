@@ -9,7 +9,7 @@ import itertools
 import numpy as np
 import uuid
 
-from camd import S3_CACHE
+from camd import CAMD_CACHE
 from camd.utils.s3 import cache_s3_objs
 from protosearch.build_bulk.oqmd_interface import OqmdInterface
 
@@ -278,7 +278,7 @@ def get_structures_from_protosearch(formulas, source='icsd',
     if db_interface is None:
         obj = "camd/shared-data/protosearch-data/materials-db/oqmd/oqmd_ver3.db"
         cache_s3_objs([obj])
-        oqmd_db_path = os.path.join(S3_CACHE, obj)
+        oqmd_db_path = os.path.join(CAMD_CACHE, obj)
         db_interface = OqmdInterface(oqmd_db_path)
     dataframes = [
         db_interface.create_proto_data_set(

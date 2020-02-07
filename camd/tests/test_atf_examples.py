@@ -12,7 +12,7 @@ from camd.analysis import AnalyzeStability as AnalyzeStability
 from camd.experiment import ATFSampler
 from camd.loop import Loop
 from camd.utils.s3 import cache_s3_objs
-from camd import S3_CACHE, CAMD_TEST_FILES
+from camd import CAMD_CACHE, CAMD_TEST_FILES
 
 
 CAMD_LONG_TESTS = os.environ.get("CAMD_LONG_TESTS", False)
@@ -35,9 +35,9 @@ class AftLoopTestLong(unittest.TestCase):
 
     def test_random_agent_loop(self):
 
-        self.assertTrue(os.path.exists(os.path.join(S3_CACHE, 'camd/shared-data/oqmd_voro_March25_v2.csv')))
+        self.assertTrue(os.path.exists(os.path.join(CAMD_CACHE, 'camd/shared-data/oqmd_voro_March25_v2.csv')))
 
-        df = pd.read_csv(os.path.join(S3_CACHE, 'camd/shared-data/oqmd_voro_March25_v2.csv')).sample(frac=0.2)
+        df = pd.read_csv(os.path.join(CAMD_CACHE, 'camd/shared-data/oqmd_voro_March25_v2.csv')).sample(frac=0.2)
         n_seed = 5000
         n_query = 200
         agent = RandomAgent

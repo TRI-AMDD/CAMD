@@ -9,7 +9,7 @@ import shutil
 
 from monty.json import MSONable
 from camd.utils.s3 import cache_s3_objs, s3_sync
-from camd import S3_CACHE, CAMD_S3_BUCKET
+from camd import CAMD_CACHE, CAMD_S3_BUCKET
 from camd.agent.base import RandomAgent
 from camd.log import camd_traced
 from pymatgen.util.plotting import pretty_plot
@@ -335,7 +335,7 @@ class Loop(MSONable):
             raise ValueError("Initialization may overwrite existing loop data. Exit.")
         cache_s3_objs(["camd/shared-data/oqmd1.2_icsd_featurized_clean_v2.pickle"])
         self.seed_data = pd.read_pickle(
-            os.path.join(S3_CACHE, "camd/shared-data/oqmd1.2_icsd_featurized_clean_v2.pickle"))
+            os.path.join(CAMD_CACHE, "camd/shared-data/oqmd1.2_icsd_featurized_clean_v2.pickle"))
         self.initialize(random_state=random_state)
 
     def report(self):
