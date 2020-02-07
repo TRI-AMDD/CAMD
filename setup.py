@@ -37,6 +37,9 @@ setup(
                       "awscli==1.16.199",
                       "docopt==0.6.2",
                       ],
+    extras_require={
+        "proto_dft": ["protosearch", "bulk_enumerator"]
+    },
     dependency_links=[
         "http://github.com/JosephMontoya-TRI/qmpy_py3/tarball/master#egg=qmpy",
         "http://github.com/ToyotaResearchInstitute/bulk_enumerator/tarball/master#egg=bulk_enumerator",
