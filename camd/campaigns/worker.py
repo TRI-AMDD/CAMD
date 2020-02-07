@@ -6,7 +6,7 @@ Usage:
     camd_worker COMMAND [options]
 
 Options:
-    --campaign CAMPAIGN  campaign name  [default: proto-dft]
+    --campaign CAMPAIGN  campaign name  [default: proto-dft-2]
     --loops NUM_LOOPS    number of loops to run
     -h --help            Show this screen
     --version            Show version
@@ -29,10 +29,9 @@ from camd.log import camd_traced
 from camd.campaigns.structure_discovery import run_proto_dft_campaign, run_atf_campaign
 
 
-# TODO: set up test bucket, instead of using complicated pathing
 @camd_traced
 class Worker(object):
-    def __init__(self, campaign="proto-dft"):
+    def __init__(self, campaign="proto-dft-2"):
         self.campaign = campaign
 
     def start(self, num_loops=np.inf, sleep_time=60):
@@ -75,7 +74,7 @@ class Worker(object):
             None
 
         """
-        if self.campaign == "proto-dft":
+        if self.campaign == "proto-dft-2":
             run_proto_dft_campaign(chemsys)
         elif self.campaign == "oqmd-atf":
             # This is more or less just a test

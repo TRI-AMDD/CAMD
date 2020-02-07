@@ -34,15 +34,12 @@ ELEMENTS = ['Ru', 'Re', 'Rb', 'Rh', 'Be', 'Ba', 'Bi', 'Br', 'H', 'P',
             'Ag', 'Ir', 'Al', 'As', 'Ar', 'Au', 'In', 'Mo']
 
 
-# TODO: Eval Performance = start / stop?
 class AnalyzerBase(abc.ABC):
     @abc.abstractmethod
     def analyze(self):
         """
         Performs the analysis procedure associated with the analyzer
 
-        # TODO: I'm not yet sure what we might want to do here
-        #       in terms of enforcing a result contract
         Returns:
             Some arbitrary result
 
@@ -107,8 +104,9 @@ class AnalyzeStructures(AnalyzerBase):
 
         if self.energies:
             for i in range(len(self.groups)):
-                self.groups[i] = [x for _, x in sorted(zip([self.energies[self.structures.index(s)]
-                                                            for s in self.groups[i]], self.groups[i]))]
+                self.groups[i] = [x for _, x in sorted(
+                    zip([self.energies[self.structures.index(s)]
+                         for s in self.groups[i]], self.groups[i]))]
 
         self._unique_structures = [i[0] for i in self.groups]
         for s in structures:
@@ -148,20 +146,26 @@ class AnalyzeStructures(AnalyzerBase):
                     self.matching_icsd_strs.append(match) # store the matching ICSD structures.
                 else:
                     self.matching_icsd_strs.append(None)
+
             # Flip matching bools, and create a filter
             self._icsd_filter = [not i for i in self.matching_icsd_strs]
-            self.structure_is_unique = (np.array(self.structure_is_unique) * np.array(self._icsd_filter)).tolist()
-            self.unique_structures = list(itertools.compress(self.structures, self.structure_is_unique))
+            self.structure_is_unique = (np.array(self.structure_is_unique)
+                                        * np.array(self._icsd_filter)).tolist()
+            self.unique_structures = list(itertools.compress(
+                self.structures, self.structure_is_unique))
         else:
             self.unique_structures = self._unique_structures
 
         # We store the final list of unique structures as unique_structures.
-        # We return a corresponding list of bool to the initial structure list provided.
+        # We return a corresponding list of bool to the initial structure
+        # list provided.
         return self.structure_is_unique
 
-    def analyze_vaspqmpy_jobs(self, jobs, against_icsd=False, use_energies=False):
+    def analyze_vaspqmpy_jobs(self, jobs, against_icsd=False,
+                              use_energies=False):
         """
         Useful for analysis integrated as part of a campaign itself
+
         Args:
             jobs:
             against_icsd:
@@ -173,11 +177,12 @@ class AnalyzeStructures(AnalyzerBase):
         self.energies = []
         for j, r in jobs.items():
             if r['status'] == 'SUCCEEDED':
-                self.structures.append( r['result']['output']['crystal'] )
+                self.structures.append(r['result']['output']['crystal'])
                 self.structure_ids.append(j)
-                self.energies.append( r['result']['output']['final_energy_per_atom'] )
+                self.energies.append(r['result']['output']['final_energy_per_atom'])
         if use_energies:
-            return self.analyze(self.structures, self.structure_ids, against_icsd, self.energies)
+            return self.analyze(self.structures, self.structure_ids,
+                                against_icsd, self.energies)
         else:
             return self.analyze(self.structures, self.structure_ids, against_icsd)
 
@@ -229,7 +234,8 @@ class AnalyzeStability(AnalyzerBase):
         _df = df if df is not None else self.df
         phases = []
         for data in _df.iterrows():
-            phases.append(Phase(data[1]['Composition'], energy=data[1]['delta_e'], per_atom=True, description=data[0]))
+            phases.append(Phase(data[1]['Composition'], energy=data[1]['delta_e'],
+                                per_atom=True, description=data[0]))
         for el in ELEMENTS:
             phases.append(Phase(el, 0.0, per_atom=True))
 
@@ -328,11 +334,12 @@ class AnalyzeStability(AnalyzerBase):
             (pyplot): plotter instance
         """
         df = df if df is not None else self.df
-        new_result_ids = new_result_ids if new_result_ids is not None else self.new_result_ids
-        all_result_ids = all_result_ids if all_result_ids is not None else self.all_result_ids
+        new_result_ids = new_result_ids if new_result_ids is not None \
+            else self.new_result_ids
+        all_result_ids = all_result_ids if all_result_ids is not None \
+            else self.all_result_ids
 
-        # TODO: remove duplicated code here
-        # TODO: good lord we need a database
+        # TODO: consolidate duplicated code here
         # Generate all entries
         comps = df.loc[all_result_ids]['Composition'].dropna()
         system_elements = []
@@ -385,8 +392,8 @@ class AnalyzeStability(AnalyzerBase):
                          if new_result_id in _df.index]
 
         if finalize:
-            # If finalize, we'll reset pd to all entries at this point to measure stabilities wrt.
-            # the ultimate hull.
+            # If finalize, we'll reset pd to all entries at this point
+            # to measure stabilities wrt. the ultimate hull.
             pd = PhaseDiagram(_df['entry'].values, elements=pg_elements)
             plotter = PDPlotter(pd, **{"markersize": 0, "linestyle": "-", "linewidth": 2})
             plot = plotter.get_plot(plt=plot)
@@ -412,7 +419,8 @@ class AnalyzeStability(AnalyzerBase):
                 coords = triangular_coord(coords)
             elif pd.dim == 4:
                 coords = tet_coord(coords)
-            plot.plot(*coords, marker=marker, markeredgecolor=color, markerfacecolor="None", markersize=11,
+            plot.plot(*coords, marker=marker, markeredgecolor=color,
+                      markerfacecolor="None", markersize=11,
                       markeredgewidth=markeredgewidth)
 
         if filename is not None:
@@ -436,14 +444,10 @@ class PhaseSpaceAL(PhaseSpace):
     def compute_stabilities_mod(self, phases_to_evaluate=None):
         """
         Calculate the stability for every Phase.
-        Keyword Arguments:
-            phases:
-                List of Phases. If None, uses every Phase in PhaseSpace.phases
-            save:
-                If True, save the value for stability to the database.
-            new_only:
-                If True, only compute the stability for Phases which did not
-                import a stability from the OQMD. False by default.
+
+        Args:
+            phases_to_evaluate ([phase]): Included phases, if None,
+                uses every Phase in PhaseSpace.phases
         """
 
         if phases_to_evaluate is None:
@@ -472,37 +476,40 @@ class PhaseSpaceAL(PhaseSpace):
     def compute_stabilities_multi(self, phases_to_evaluate=None,
                                   ncpus=multiprocessing.cpu_count()):
         """
-        Calculate the stability for every Phase.
-        Keyword Arguments:
-            phases:
-                List of Phases. If None, uses every Phase in PhaseSpace.phases
-            save:
-                If True, save the value for stability to the database.
-            new_only:
-                If True, only compute the stability for Phases which did not
-                import a stability from the OQMD. False by default.
+        Calculate the stability for every Phase using multiprocessing
+
+        Args:
+            phases_to_evaluate ([phase]): Included phases, if None,
+                uses every Phase in PhaseSpace.phases
+            ncpus (int): number of cpus to use in multiprocessing
         """
 
         if phases_to_evaluate is None:
             phases_to_evaluate = self.phases
 
-        # Creating a map from entry uid to index of entry in the current list of phases in space.
-        self.uid_to_phase_ind = dict([(self.phases[i].description, i) for i in range(len(self.phases))])
+        # Creating a map from entry uid to index of entry in the
+        # current list of phases in space.
+        self.uid_to_phase_ind = dict([(self.phases[i].description, i)
+                                      for i in range(len(self.phases))])
 
         phase_dict_list = list(self.phase_dict.values())
-        _result_list1 = parmap(self._multiproc_help1,  phase_dict_list, nprocs=ncpus)
+        _result_list1 = parmap(self._multiproc_help1,
+                               phase_dict_list, nprocs=ncpus)
         for i in range(len(phase_dict_list)):
             self.phase_dict[phase_dict_list[i].name].stability = _result_list1[i]
 
-        _result_list2 = parmap(self._multiproc_help2, phases_to_evaluate, nprocs=ncpus)
+        _result_list2 = parmap(self._multiproc_help2,
+                               phases_to_evaluate, nprocs=ncpus)
         for i in range(len(phases_to_evaluate)):
-            # we will use the uid_to_phase_ind create above to be able to map results of parmap to self.phases
+            # we will use the uid_to_phase_ind create above to be able
+            # to map results of parmap to self.phases
             ind = self.uid_to_phase_ind[phases_to_evaluate[i].description]
             self.phases[ind].stability = _result_list2[i]
 
 
     def _multiproc_help1(self, p):
-        if p.stability is None:  # for low e phases, we only need to eval stability if it doesn't exist
+        # For low e phases, we only eval stability if it doesn't exist
+        if p.stability is None:
             try:
                 p.stability = p.energy - self.gclp(p.unit_comp)[0]
             except:
@@ -568,7 +575,8 @@ def update_run_w_structure(folder, hull_distance=0.2):
             jobs = {}
             while True:
                 if os.path.isdir(str(iteration)):
-                    jobs.update(loadfn(os.path.join(str(iteration), '_exp_raw_results.json')))
+                    jobs.update(loadfn(os.path.join(
+                        str(iteration), '_exp_raw_results.json')))
                     iteration += 1
                 else:
                     break
@@ -580,9 +588,11 @@ def update_run_w_structure(folder, hull_distance=0.2):
             _, stablities_of_discovered = st_a.analyze(df, all_ids, all_ids)
 
             # Having calculated stabilities again, we plot the overall hull.
-            st_a.present(df, all_ids, all_ids, filename="hull_finalized.png", finalize=True, save_hull_distance=True)
+            st_a.present(df, all_ids, all_ids, filename="hull_finalized.png",
+                         finalize=True, save_hull_distance=True)
 
-            stable_discovered = list(itertools.compress(all_ids, stablities_of_discovered))
+            stable_discovered = list(itertools.compress(
+                all_ids, stablities_of_discovered))
             s_a = AnalyzeStructures()
             s_a.analyze_vaspqmpy_jobs(jobs, against_icsd=True, use_energies=True)
             unique_s_dict = {}
@@ -592,7 +602,8 @@ def update_run_w_structure(folder, hull_distance=0.2):
                     unique_s_dict[s_a.structure_ids[i]] = s_a.structures[i]
 
             with open("discovered_unique_structures.json", "w") as f:
-                json.dump(dict([(k, s.as_dict()) for k, s in unique_s_dict.items()]), f)
+                json.dump(dict([(k, s.as_dict())
+                                for k, s in unique_s_dict.items()]), f)
 
             with open('structure_report.log', "w") as f:
                 f.write("consumed discovery unique_discovery duplicate in_icsd \n")

@@ -22,7 +22,8 @@ class OqmdDFTonMC1(Experiment):
     def __init__(self, params):
 
         if 'structure_dict' not in params:
-            raise ValueError("A dictionary of structures must be provided as input as structure_dict")
+            raise ValueError("A dictionary of structures must be "
+                             "provided as input as structure_dict")
 
         self.structure_dict = params['structure_dict']
         self.poll_time = params['poll_time'] if 'poll_time' in params else 60
@@ -58,8 +59,9 @@ class OqmdDFTonMC1(Experiment):
         results_dict = {}
         for structure_id, calc in self.job_status.items():
             if calc['status'] == "SUCCEEDED":
-                delta_e = get_qmpy_formation_energy(calc['result']['output']['final_energy_per_atom'],
-                                                    calc['result']['pretty_formula'], 1)
+                delta_e = get_qmpy_formation_energy(
+                    calc['result']['output']['final_energy_per_atom'],
+                    calc['result']['pretty_formula'], 1)
 
                 results_dict[structure_id] = delta_e
 
@@ -75,13 +77,18 @@ class OqmdDFTonMC1(Experiment):
     def submit(self, unique_ids=None):
         """
         Args:
-            unique_ids (list): Unique ids for structures to run from the structure_dict. If None, all entries in
-            structure_dict are submitted.
+            unique_ids (list): Unique ids for structures to run from t
+                he structure_dict. If None, all entries in structure_dict
+                are submitted.
+
         Returns:
+            (str): job status
 
         """
-        self.unique_ids = unique_ids if unique_ids else list(self.structure_dict.keys())
-        self._structures_to_run = dict([(k, v) for k, v in self.structure_dict.items() if k in self.unique_ids])
+        self.unique_ids = unique_ids if unique_ids \
+            else list(self.structure_dict.keys())
+        self._structures_to_run = dict([(k, v) for k, v in self.structure_dict.items()
+                                        if k in self.unique_ids])
         self.job_status = submit_dft_calcs_to_mc1(self._structures_to_run)
         return self.job_status
 
@@ -97,9 +104,9 @@ class OqmdDFTonMC1(Experiment):
                 finished = self.get_state()
                 for doc in self.job_status.values():
                     doc["elapsed_time"] = time.time() - doc["start_time"]
-                status_string = "\n".join(["{}: {} {}".format(key, value["status"],
-                                                              datetime.timedelta(0,value["elapsed_time"]))
-                                           for key, value in self.job_status.items()])
+                status_string = "\n".join(["{}: {} {}".format(
+                    key, value["status"], datetime.timedelta(0, value["elapsed_time"]))
+                    for key, value in self.job_status.items()])
                 print("Calc status:\n{}".format(status_string))
                 print("Timeout is set as {}.".format(datetime.timedelta(0, self.timeout)))
 
@@ -111,7 +118,8 @@ class OqmdDFTonMC1(Experiment):
                             doc.update({"status": "FAILED",
                                         "error": "timeout"})
                             # Kill AWS job
-                            kill_cmd = "aws batch terminate-job --region=us-east-1 --job-id {} --reason camd_timeout".format(
+                            kill_cmd = "aws batch terminate-job --region=us-east-1 " \
+                                       "--job-id {} --reason camd_timeout".format(
                                 doc['jobId'])
                             kill_result = subprocess.check_output(shlex.split(kill_cmd))
 
@@ -160,7 +168,9 @@ def submit_dft_calcs_to_mc1(structure_dict):
             # TODO: ensure this is checked for failure to submit
             print("Submitting job: {}".format(structure_id))
             try:
-                calc = subprocess.check_output(["trisub", "-q", "oqmd_test_queue", "-r", "16000", "-c", "16"])
+                calc = subprocess.check_output([
+                    "trisub", "-q", "oqmd_test_queue",
+                    "-r", "16000", "-c", "16"])
             except subprocess.CalledProcessError as e:
                 print(e.output)
 
@@ -190,7 +200,8 @@ def check_dft_calcs(calc_status):
             continue
         path = calc['path']
         print("Checking status of {}: {}".format(path, structure_id))
-        aws_cmd = "aws batch describe-jobs --jobs --region=us-east-1 {}".format(calc['jobId'])
+        aws_cmd = "aws batch describe-jobs --jobs " \
+                  "--region=us-east-1 {}".format(calc['jobId'])
         result = subprocess.check_output(shlex.split(aws_cmd))
         result = json.loads(result)
         aws_status = result["jobs"][0]["status"]
@@ -226,7 +237,6 @@ def check_dft_calcs(calc_status):
     return calc_status
 
 
-
 MODEL_TEMPLATE = """
 import os
 
@@ -247,7 +257,7 @@ def run_oqmd_calculation(poscar_filename):
     os.chdir("relax")
     calc = Calculation()
     calc.setup(starting_structure, "relaxation")
-    os.system("mpirun -n 1 vasp_std")
+    os.system("mpirun -n 16 vasp_std")
     # Just in case the mysql server process dies
     # Kids, don't try this at home
     os.system("sudo -u mysql mysqld &")
@@ -259,28 +269,13 @@ def run_oqmd_calculation(poscar_filename):
     os.chdir("static")
     calc = Calculation()
     calc.setup(relaxed_structure, "static")
-    os.system("mpirun -n 1 vasp_std")
+    os.system("mpirun -n 16 vasp_std")
     os.chdir('..')
 
 
 if __name__ == '__main__':
     run_oqmd_calculation("POSCAR")
 """
-
-
-def get_dft_calcs_aft(uids, df):
-    """
-    Mock function that mimics fetching DFT calculations
-    """
-    uids = [uids] if type(uids) != list else uids
-    return df.loc[uids]
-
-
-def get_dft_calcs_from_northwestern(uids):
-    """
-    Placeholder function for fetching DFT calculations from Northwestern
-    """
-    raise NotImplementedError("Northwestern interface not yet implemented")
 
 
 def get_qmpy_formation_energy(total_e, formula, n_atoms):
@@ -313,5 +308,5 @@ def get_qmpy_formation_energy(total_e, formula, n_atoms):
     for k,v in c.as_dict().items():
         e -= mus[k]*v
         if (k in hubbard_mus) and ('O' in c):
-            e-=hubbard_mus[k]*v
+            e -= hubbard_mus[k]*v
     return e
