@@ -68,7 +68,7 @@ def cache_download(url, path):
     # Download and write file
     if not os.path.isfile(cache_path):
         makedirs_p(os.path.split(cache_path)[0])
-        r = requests.get(url)
+        r = requests.get(url, stream=True)
         total_size = int(r.headers.get('content-length', 0))
         block_size = 1024  # 1 Kibibyte
         t = tqdm(total=total_size, unit='iB', unit_scale=True)
