@@ -171,15 +171,3 @@ def s3_sync(s3_bucket, s3_prefix, sync_path="."):
         for file in files:
             file_key = os.path.join(prefix, file)
             bucket.upload_file(os.path.join(path, file), file_key)
-
-
-# List of objects to sync upon running of this script
-MATRIO_S3_OBJS = [
-    "camd/shared-data/oqmd_voro_v3.csv",
-    "camd/shared-data/oqmd1.2_icsd_featurized_clean_v2.pickle",
-    "camd/shared-data/protosearch-data/materials-db/oqmd/oqmd_ver3.db"
-]
-
-if __name__ == "__main__":
-    cache_s3_objs(MATRIO_S3_OBJS, bucket_name="matr.io",
-                  filter_existing_files=True)

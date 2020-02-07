@@ -7,8 +7,8 @@ for CAMD, mostly in the form of dataframes
 import os
 import requests
 import pandas as pd
-from camd import CAMD_CACHE
-from camd.utils.s3 import cache_s3_objs
+from monty.os import makedirs_p
+from camd import CAMD_CACHE, tqdm
 
 # TODO-PUBLIC: this will need to be made general for the
 #   release of the code, mostly by making the s3 bucket public
@@ -16,8 +16,11 @@ from camd.utils.s3 import cache_s3_objs
 
 def load_dataframe(dataset_name):
     """
+    Helper function to load a dataframe from the utilities below
+
     Supported datasets include:
         * oqmd_1.2_voronoi_magpie_fingerprints
+        * oqmd1.2_exp_based_entries_featurized_v2,
 
     Args:
         dataset_name (str): dataset name to load
@@ -26,9 +29,9 @@ def load_dataframe(dataset_name):
         (DataFrame): dataframe corresponding to specified dataset
 
     """
-    key = 'camd/shared-data/{}.pickle'.format(dataset_name)
-    cache_s3_objs([key])
-    return pd.read_pickle(os.path.join(CAMD_CACHE, key))
+    filename = '{}.pickle'.format(dataset_name)
+    cache_matrio_data(filename)
+    return pd.read_pickle(os.path.join(CAMD_CACHE, filename))
 
 
 def load_default_atf_data():
@@ -59,13 +62,23 @@ def cache_download(url, path):
     Returns:
         (None)
     """
-    r = requests.get(url)
+    # Prep cache path and make necessary dirs
+    cache_path = os.path.join(CAMD_CACHE, path)
 
-    with open(path, 'wb') as f:
-        f.write(r.content)
+    # Download and write file
+    if not os.path.isfile(cache_path):
+        makedirs_p(os.path.split(cache_path)[0])
+        r = requests.get(url)
+        total_size = int(r.headers.get('content-length', 0))
+        block_size = 1024  # 1 Kibibyte
+        t = tqdm(total=total_size, unit='iB', unit_scale=True)
+        with open(cache_path, 'wb') as f:
+            for data in r.iter_content(block_size):
+                t.update(len(data))
+                f.write(data)
 
 
-# Mapping of matrio data hashes to cache pathes
+# Mapping of matrio data hashes to cache paths
 MATRIO_DATA_KEYS = {
     "oqmd1.2_exp_based_entries_featurized_v2.pickle": "5e3b0e9bc91e209071f33ce8",
     "oqmd_1.2_voronoi_magpie_fingerprints.pickle": "5e39ce2cd9f13e075b7dfaaf",
@@ -86,4 +99,5 @@ def cache_matrio_data(filename):
     """
     prefix = "https://data.matr.io/3/api/v1/file"
     key = MATRIO_DATA_KEYS[filename]
-    cache_download("{}/{}/download".format(prefix, key), filename)
+    if not os.path.isfile(filename):
+        cache_download("{}/{}/download".format(prefix, key), filename)
