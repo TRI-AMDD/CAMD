@@ -18,7 +18,7 @@ from pymatgen.analysis.phase_diagram import PhaseDiagram, PDPlotter, tet_coord,\
     triangular_coord
 from pymatgen.analysis.structure_matcher import StructureMatcher
 from pymatgen import Structure, Element
-from camd.utils.data import cache_s3_objs
+from camd.utils.data import cache_matrio_data
 from camd import CAMD_CACHE
 from monty.os import cd
 from monty.serialization import loadfn
@@ -118,7 +118,7 @@ class AnalyzeStructures(AnalyzerBase):
 
         if self.against_icsd:
             structure_file = 'camd/shared-data/oqmd1.2_structs_icsd.json'
-            cache_s3_objs([structure_file])
+            cache_matrio_data(structure_file)
             with open(os.path.join(CAMD_CACHE, structure_file), 'r') as f:
                 icsd_structures = json.load(f)
             chemsys = set()
