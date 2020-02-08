@@ -8,8 +8,7 @@ import pandas as pd
 import shutil
 
 from monty.json import MSONable
-from camd.utils.s3 import s3_sync
-from camd.utils.data import load_dataframe
+from camd.utils.data import load_dataframe, s3_sync
 from camd import CAMD_S3_BUCKET
 from camd.agent.base import RandomAgent
 from camd.log import camd_traced

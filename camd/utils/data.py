@@ -6,6 +6,7 @@ for CAMD, mostly in the form of dataframes
 
 import os
 
+import boto3
 import requests
 import pandas as pd
 from camd.utils.s3 import hook
@@ -85,7 +86,8 @@ def cache_download(url, path):
 MATRIO_DATA_KEYS = {
     "oqmd1.2_exp_based_entries_featurized_v2.pickle": "5e3b0e9bc91e209071f33ce8",
     "oqmd_1.2_voronoi_magpie_fingerprints.pickle": "5e39ce2cd9f13e075b7dfaaf",
-    "oqmd_ver3.db": "5e39ce96d9f13e075b7dfab3"
+    "oqmd_ver3.db": "5e39ce96d9f13e075b7dfab3",
+    "oqmd1.2_exp_based_entries_structures.json": "5e3dd303c91e209071f33cec"
 }
 
 
@@ -127,3 +129,33 @@ def cache_s3_objs(obj_names, bucket_name='matr.io'):
     for obj_name, url in zip(obj_names, urls):
         cache_download(url, obj_name)
 
+
+def s3_sync(s3_bucket, s3_prefix, sync_path="."):
+    """
+    Syncs a given path to an s3 prefix
+
+    Args:
+        s3_bucket (str): bucket name
+        s3_prefix (str): s3 prefix to sync to
+        sync_path (str, Path): path to sync to bucket:prefix
+
+    Returns:
+        (None)
+
+    """
+    # Get bucket
+    s3_resource = boto3.resource("s3")
+    bucket = s3_resource.Bucket(s3_bucket)
+
+    # Walk paths and subdirectories, uploading files
+    for path, subdirs, files in os.walk(sync_path):
+        # Get relative path prefix
+        relpath = os.path.relpath(path, sync_path)
+        if not relpath.startswith('.'):
+            prefix = os.path.join(s3_prefix, relpath)
+        else:
+            prefix = s3_prefix
+
+        for file in files:
+            file_key = os.path.join(prefix, file)
+            bucket.upload_file(os.path.join(path, file), file_key)
