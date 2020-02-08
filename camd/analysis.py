@@ -117,7 +117,7 @@ class AnalyzeStructures(AnalyzerBase):
         self._not_duplicate = self.structure_is_unique
 
         if self.against_icsd:
-            structure_file = 'camd/shared-data/oqmd1.2_structs_icsd.json'
+            structure_file = "oqmd1.2_exp_based_entries_structures.json"
             cache_matrio_data(structure_file)
             with open(os.path.join(CAMD_CACHE, structure_file), 'r') as f:
                 icsd_structures = json.load(f)
