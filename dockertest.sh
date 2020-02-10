@@ -8,13 +8,10 @@ set -e
 # Set TQDM to be off in tests
 export TQDM_OFF=1
 
-# TODO: set up postgresql testing
-# Start postgres in the background
-# service postgresql start
-
 # Run nosetests
 nosetests --with-xunit --all-modules --traverse-namespace \
-    --with-coverage --cover-package=camd --cover-inclusive
+    --with-coverage --cover-package=camd --cover-inclusive \
+    --nologcapture
 
 # Generate coverage
 python -m coverage xml --include=camd*
