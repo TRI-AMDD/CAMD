@@ -11,7 +11,12 @@ import uuid
 
 from camd import CAMD_CACHE
 from camd.utils.data import cache_matrio_data
-from protosearch.build_bulk.oqmd_interface import OqmdInterface
+
+try:
+    from protosearch.build_bulk.oqmd_interface import OqmdInterface
+except ModuleNotFoundError:
+    print("No module found for camd.domain")
+
 
 from pymatgen.io.ase import AseAtomsAdaptor
 from pymatgen import Composition, Element
