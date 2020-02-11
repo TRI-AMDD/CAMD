@@ -73,36 +73,6 @@ node {
             publishIssues issues: [pylint_issues]
             slackSend color: 'good', message: "Stage 'publish' of build $buildLink passed", channel: "materials-dev"
         }
-
-       	// Push to Docker Stage:
-	    // Gets AWS login and pushes docker image to docker registry
-
-        stage('push docker') {
-
-            withCredentials([[$class: 'AmazonWebServicesCredentialsBinding', credentialsId: 'ec2-jenkins-master', variable: 'AWS_ACCESS_KEY_ID']]) {
-                   echo "pushing to $dockerRegistry/$dockerRegistryPrefix:$dockerTag\n\n"
-                   sh """
-                     export AWS_ACCESS_KEY_ID=${env.AWS_ACCESS_KEY_ID}
-                     export AWS_SECRET_ACCESS_KEY=${env.AWS_SECRET_ACCESS_KEY}
-                     docker push $dockerRegistry/$dockerRegistryPrefix:$dockerTagLatest
-                     docker push $dockerRegistry/$dockerRegistryPrefix:$dockerTag
-                     """
-                }
-            }
-
-          echo "local docker images cleanup\n\n"
-          sh """
-            # remove old images
-            docker images
-            docker image prune -a -f --filter "until=240h"  # TODO better filter using labels
-            docker container prune --force --filter "until=240h"
-            # what's left
-            docker images
-            """
-
-        slackSend color: 'good', message: "New build ${buildEnv.slackBuildLink} ready for docker pull from ECR: `docker pull $dockerRegistry/$dockerRegistryPrefix:$dockerTag`", channel: "materials-dev"
-        }
-
 	  }
 	  catch(Exception e) {
         slackSend color: 'danger', message: "Build $buildLink failed", channel: "materials-dev"
