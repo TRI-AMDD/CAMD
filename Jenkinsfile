@@ -7,7 +7,7 @@ def dockerTagLatest = "${dockerTagWithoutBuildNumber}-latest"
 def awsRegion = "us-west-2"
 def githubOrg = "ToyotaResearchInstitute"
 def dockerRegistry = "251589461219.dkr.ecr.${awsRegion}.amazonaws.com"
-def dockerRegistryPrefix = "camd-worker"
+def dockerRegistryPrefix = "camd-public"
 def dockerfile = "Dockerfile"
 def buildLink = "<${env.BUILD_URL}|${env.JOB_NAME} ${env.BUILD_NUMBER}>"
 // Define the python test, coverage, lint procedures
