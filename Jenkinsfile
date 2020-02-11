@@ -30,6 +30,7 @@ node {
                sh "echo \"Successfully retrieved AWS credentials\""
         	}
   		   // Checkout Stage:
+  		   }
 		// checks out branch that was just updated on GHE
         stage('checkout') {
           checkout scm
