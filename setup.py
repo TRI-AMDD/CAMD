@@ -32,7 +32,6 @@ setup(
                       "sqlalchemy",
                       "matminer==0.5.5",
                       "psycopg2==2.8.2",
-                      "protosearch",
                       "autologging",
                       "awscli==1.16.199",
                       "docopt==0.6.2",

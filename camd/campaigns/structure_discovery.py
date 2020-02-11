@@ -12,7 +12,7 @@ from camd.agent.base import RandomAgent
 from camd.experiment import ATFSampler
 from camd.loop import Loop
 from camd import CAMD_TEST_FILES, CAMD_S3_BUCKET
-from camd.utils.s3 import s3_sync
+from camd.utils.data import s3_sync
 
 from camd.analysis import AnalyzeStability, FinalizeQqmdCampaign
 from camd.experiment.dft import OqmdDFTonMC1

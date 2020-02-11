@@ -1,7 +1,8 @@
 import unittest
 import os
-from camd.domain import StructureDomain, get_structures_from_protosearch, heuristic_setup
 from pymatgen import Structure
+
+from camd.domain import StructureDomain, get_structures_from_protosearch, heuristic_setup
 
 
 CAMD_LONG_TESTS = os.environ.get("CAMD_LONG_TESTS", False)
