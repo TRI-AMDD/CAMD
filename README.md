@@ -1,11 +1,6 @@
 # Computational Autonomy for Materials Discovery (CAMD)
 
 
-
-CAMD documents and flow diagram for stable material 
-discovery is available on [Google Drive](https://drive.google.com/open?id=1wvPy4qOzY_-AD5xar4SeUQ4GlcDrzF77).
-
-
 ## Installation
 
 Note that, since qmpy is currently only python 2.7 compatible, CAMD python 3 
@@ -66,12 +61,5 @@ python setup.py develop
 
 ## Data download
 
-Dataset for featurized OQMD entries for after-the-fact testing can be 
-downloaded from dedicated S3 bucket.  This should happen automatically
-from the current boto3 interface, but can also be done via the below command.
-
-If you are in the vaspUsers group (e. g. SUNCAT), you can use the shell command:
-
-```angular2
-aws s3 cp s3://matr.io/materials-data-external/OQMD_data/oqmd_voro_March25_v2.csv .
-```
+Datasets for featurized OQMD entries for after-the-fact testing can be 
+downloaded at [data.matr.io/3](https://data.matr.io/3/)
