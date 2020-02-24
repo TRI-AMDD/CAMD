@@ -31,9 +31,7 @@ setup(
                       "qmpy",  # This version is constrained by the source
                       "pandas==0.24.2",
                       "boto3==1.9.136",
-                      "sqlalchemy",
                       "matminer==0.5.5",
-                      "psycopg2==2.8.2",
                       "autologging",
                       "awscli==1.16.199",
                       "docopt==0.6.2",
