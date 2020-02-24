@@ -1,6 +1,0 @@
-[submodule "bulk_enumerator"]
-	path = bulk_enumerator
-	url = git@github.com:ToyotaResearchInstitute/bulk_enumerator.git
-[submodule "protosearch"]
-	path = protosearch
-	url = git@github.com:ToyotaResearchInstitute/protosearch.git
