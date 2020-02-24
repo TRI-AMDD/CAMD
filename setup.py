@@ -8,16 +8,18 @@ except ImportError:
     warnings.warn("Setup requires pre-installation of numpy, run pip "
                   "install numpy before setup.py")
 
+DESCRIPTION = "camd is software designed to support autonomous materials " \
+              "research and sequential learning"
+
+LONG_DESCRIPTION = "camd is "
 
 setup(
     name='CAMD',
-    version='1.0',
+    url="https://github.com/ToyotaResearchInstitute/beep",
+    version="2020.2.24",
     packages=find_packages(),
-    url='',
-    license='',
-    author='muratahan.aykol',
-    author_email='murat.aykol@tri.global',
-    description='',
+    description=DESCRIPTION,
+    long_description=LONG_DESCRIPTION,
     setup_requires=["numpy==1.18",
                     "Django==2.2",
                     "tensorflow==1.15.0",
@@ -37,16 +39,36 @@ setup(
                       "docopt==0.6.2",
                       ],
     extras_require={
-        "proto_dft": ["protosearch", "bulk_enumerator"]
+        "proto_dft": ["protosearch"]
     },
     dependency_links=[
         "http://github.com/JosephMontoya-TRI/qmpy_py3/tarball/master#egg=qmpy",
-        "http://github.com/ToyotaResearchInstitute/bulk_enumerator/tarball/master#egg=bulk_enumerator",
         "http://github.com/ToyotaResearchInstitute/protosearch/tarball/master#egg=protosearch",
     ],
     entry_points={
         "console_scripts": [
             "camd_worker = camd.campaigns.worker:main"
         ]
-    }
-)
+    },
+    classifiers=[
+          "Programming Language :: Python :: 3",
+          "License :: OSI Approved :: Apache Software License",
+          "Operating System :: OS Independent",
+    ],
+    package_data={
+        "beep.conversion_schemas": ["*.yaml", "*.md"],
+        "beep.procedure_templates": ["*.000", "*.csv", "*.json"],
+        "beep.validation_schemas": ["*.yaml"],
+    },
+    include_package_data=True,
+    author="AMDD - Toyota Research Institute",
+    author_email="murat.aykol@tri.global",
+    maintainer="Murat Aykol, Joseph Montoya",
+    maintainer_email="murat.aykol@tri.global",
+    license="Apache",
+    keywords=[
+        "materials", "battery", "chemistry", "science",
+        "density functional theory", "energy", "AI", "artificial intelligence",
+        "sequential learning", "active learning"
+    ],
+    )

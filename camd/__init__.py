@@ -5,6 +5,8 @@ from functools import partial
 from tqdm import tqdm as _tqdm
 
 
+__version__ = "2020.2.24"
+
 CAMD_ROOT = os.path.dirname(os.path.abspath(__file__))
 CAMD_TEST_FILES = os.path.join(CAMD_ROOT, "tests", "test_files")
 CAMD_CACHE = os.path.join(CAMD_ROOT, "_cache")
