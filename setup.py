@@ -39,7 +39,12 @@ setup(
                       "docopt==0.6.2",
                       ],
     extras_require={
-        "proto_dft": ["protosearch"]
+        "proto_dft": ["protosearch"],
+        "tests": ["nose",
+                  "coverage",
+                  "pylint",
+                  "memory_profiler",
+                  "matplotlib"]
     },
     dependency_links=[
         "http://github.com/JosephMontoya-TRI/qmpy_py3/tarball/master#egg=qmpy",
