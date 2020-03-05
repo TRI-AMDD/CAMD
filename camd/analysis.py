@@ -18,8 +18,8 @@ from pymatgen.analysis.phase_diagram import PhaseDiagram, PDPlotter, tet_coord,\
     triangular_coord
 from pymatgen.analysis.structure_matcher import StructureMatcher
 from pymatgen import Structure, Element
-from camd.utils.s3 import cache_s3_objs
-from camd import S3_CACHE
+from camd.utils.data import cache_matrio_data
+from camd import CAMD_CACHE
 from monty.os import cd
 from monty.serialization import loadfn
 
@@ -34,7 +34,6 @@ ELEMENTS = ['Ru', 'Re', 'Rb', 'Rh', 'Be', 'Ba', 'Bi', 'Br', 'H', 'P',
             'Ag', 'Ir', 'Al', 'As', 'Ar', 'Au', 'In', 'Mo']
 
 
-# TODO: Eval Performance = start / stop?
 class AnalyzerBase(abc.ABC):
     @abc.abstractmethod
     def analyze(self, seed_data, new_experimental_results):
@@ -104,8 +103,9 @@ class AnalyzeStructures(AnalyzerBase):
 
         if self.energies:
             for i in range(len(self.groups)):
-                self.groups[i] = [x for _, x in sorted(zip([self.energies[self.structures.index(s)]
-                                                            for s in self.groups[i]], self.groups[i]))]
+                self.groups[i] = [x for _, x in sorted(
+                    zip([self.energies[self.structures.index(s)]
+                         for s in self.groups[i]], self.groups[i]))]
 
         self._unique_structures = [i[0] for i in self.groups]
         for s in structures:
@@ -116,9 +116,9 @@ class AnalyzeStructures(AnalyzerBase):
         self._not_duplicate = self.structure_is_unique
 
         if self.against_icsd:
-            cache_s3_objs(['camd/shared-data/oqmd1.2_structs_icsd.json'])
-            with open(os.path.join(S3_CACHE,
-                                   'camd/shared-data/oqmd1.2_structs_icsd.json'), 'r') as f:
+            structure_file = "oqmd1.2_exp_based_entries_structures.json"
+            cache_matrio_data(structure_file)
+            with open(os.path.join(CAMD_CACHE, structure_file), 'r') as f:
                 icsd_structures = json.load(f)
             chemsys = set()
             for s in self._unique_structures:
@@ -145,20 +145,26 @@ class AnalyzeStructures(AnalyzerBase):
                     self.matching_icsd_strs.append(match) # store the matching ICSD structures.
                 else:
                     self.matching_icsd_strs.append(None)
+
             # Flip matching bools, and create a filter
             self._icsd_filter = [not i for i in self.matching_icsd_strs]
-            self.structure_is_unique = (np.array(self.structure_is_unique) * np.array(self._icsd_filter)).tolist()
-            self.unique_structures = list(itertools.compress(self.structures, self.structure_is_unique))
+            self.structure_is_unique = (np.array(self.structure_is_unique)
+                                        * np.array(self._icsd_filter)).tolist()
+            self.unique_structures = list(itertools.compress(
+                self.structures, self.structure_is_unique))
         else:
             self.unique_structures = self._unique_structures
 
         # We store the final list of unique structures as unique_structures.
-        # We return a corresponding list of bool to the initial structure list provided.
+        # We return a corresponding list of bool to the initial structure
+        # list provided.
         return self.structure_is_unique
 
-    def analyze_vaspqmpy_jobs(self, jobs, against_icsd=False, use_energies=False):
+    def analyze_vaspqmpy_jobs(self, jobs, against_icsd=False,
+                              use_energies=False):
         """
         Useful for analysis integrated as part of a campaign itself
+
         Args:
             jobs:
             against_icsd:
@@ -170,11 +176,12 @@ class AnalyzeStructures(AnalyzerBase):
         self.energies = []
         for j, r in jobs.items():
             if r['status'] == 'SUCCEEDED':
-                self.structures.append( r['result']['output']['crystal'] )
+                self.structures.append(r['result']['output']['crystal'])
                 self.structure_ids.append(j)
                 self.energies.append(r['result']['output']['final_energy_per_atom'])
         if use_energies:
-            return self.analyze(self.structures, self.structure_ids, against_icsd, self.energies)
+            return self.analyze(self.structures, self.structure_ids,
+                                against_icsd, self.energies)
         else:
             return self.analyze(self.structures, self.structure_ids, against_icsd)
 
@@ -565,7 +572,8 @@ def update_run_w_structure(folder, hull_distance=0.2):
             jobs = {}
             while True:
                 if os.path.isdir(str(iteration)):
-                    jobs.update(loadfn(os.path.join(str(iteration), '_exp_raw_results.json')))
+                    jobs.update(loadfn(os.path.join(
+                        str(iteration), '_exp_raw_results.json')))
                     iteration += 1
                 else:
                     break
@@ -593,7 +601,8 @@ def update_run_w_structure(folder, hull_distance=0.2):
                     unique_s_dict[s_a.structure_ids[i]] = s_a.structures[i]
 
             with open("discovered_unique_structures.json", "w") as f:
-                json.dump(dict([(k, s.as_dict()) for k, s in unique_s_dict.items()]), f)
+                json.dump(dict([(k, s.as_dict())
+                                for k, s in unique_s_dict.items()]), f)
 
             with open('structure_report.log', "w") as f:
                 f.write("consumed discovery unique_discovery duplicate in_icsd \n")

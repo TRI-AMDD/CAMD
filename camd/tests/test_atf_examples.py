@@ -11,9 +11,9 @@ from camd.agent.base import RandomAgent
 from camd.analysis import StabilityAnalyzer
 from camd.experiment import ATFSampler
 from camd.campaigns.base import Campaign
-from camd.utils.s3 import cache_s3_objs
+from camd.utils.data import cache_matrio_data, load_dataframe, \
+    load_default_atf_data
 from camd import CAMD_TEST_FILES
-from camd.utils.data import load_default_atf_data
 
 
 CAMD_LONG_TESTS = os.environ.get("CAMD_LONG_TESTS", False)
@@ -23,9 +23,6 @@ SKIP_MSG = "Long tests disabled, set CAMD_LONG_TESTS to run long tests"
 @unittest.skipUnless(CAMD_LONG_TESTS, SKIP_MSG)
 class AftLoopTestLong(unittest.TestCase):
     def setUp(self):
-        # Normally put in setUpClass but that doesn't
-        # work with skip apparently
-        cache_s3_objs('camd/shared-data/oqmd_voro_March25_v2.csv')
         self.pwd = os.getcwd()
         self.tempdir = tempfile.mkdtemp()
         os.chdir(self.tempdir)
@@ -35,7 +32,7 @@ class AftLoopTestLong(unittest.TestCase):
         shutil.rmtree(self.tempdir)
 
     def test_random_agent_loop(self):
-        df = load_default_atf_data()
+        df = load_dataframe("oqmd1.2_exp_based_entries_featurized_v2")
         n_seed = 5000
         agent = RandomAgent(n_query=200)
         analyzer = StabilityAnalyzer(hull_distance=0.05)

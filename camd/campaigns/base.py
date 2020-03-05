@@ -8,8 +8,8 @@ import pandas as pd
 import shutil
 
 from monty.json import MSONable
-from camd.utils.s3 import cache_s3_objs, s3_sync
-from camd import S3_CACHE, CAMD_S3_BUCKET
+from camd.utils.data import load_dataframe, s3_sync
+from camd import CAMD_S3_BUCKET
 from camd.agent.base import RandomAgent
 
 
@@ -217,8 +217,9 @@ class Campaign(MSONable):
                                  monitor=False, initialize=False,
                                  with_icsd=False):
         """
-        Runs the loop repeatedly
+        Runs the loop repeatedly in directories for each iteration
         TODO: Stopping criterion from Analyzer
+
         Args:
             n_iterations (int): Number of iterations.
             timeout (int): Time (in seconds) to wait on idle for
