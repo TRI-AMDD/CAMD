@@ -1,0 +1,4 @@
+include LICENSE README.md requirements*.txt
+recursive-include camd *.py
+prune camd/tests
+prune camd/atf_examples

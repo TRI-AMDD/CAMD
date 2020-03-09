@@ -1,11 +1,6 @@
 # Computational Autonomy for Materials Discovery (CAMD)
 
 
-
-CAMD documents and flow diagram for stable material 
-discovery is available on [Google Drive](https://drive.google.com/open?id=1wvPy4qOzY_-AD5xar4SeUQ4GlcDrzF77).
-
-
 ## Installation
 
 Note that, since qmpy is currently only python 2.7 compatible, CAMD python 3 
@@ -25,17 +20,18 @@ apt install -y default-libmysqlclient-dev gcc
 export PATH=$PATH:/usr/local/mysql/bin
 ```
 
-Install numpy via pip first, since the build depends on this and numpy has some difficulty recognizing
+Install numpy/Django via pip first, since the build depends on this and numpy has some difficulty recognizing
 its own install:
 
 ```angular2
 pip install numpy
+pip install Django
 ```
 
 Then use the included setup.py procedure, from the cloned directory.
 
 ```angular2
-python setup.py install
+python setup.py develop
 ```
 
 ### Mac OSX
@@ -49,11 +45,12 @@ $ brew install postgresql
 $ brew install gcc
 ```
 
-Install numpy via pip first, since the build depends on this and numpy has some difficulty recognizing
+Install numpy/Django via pip first, since the build depends on these and numpy has some difficulty recognizing
 its own install:
 
 ```angular2
 pip install numpy
+pip install Django
 ```
 
 Then use the included setup.py procedure, from the cloned directory.
@@ -61,3 +58,8 @@ Then use the included setup.py procedure, from the cloned directory.
 ```angular2
 python setup.py develop
 ```
+
+## Data download
+
+Datasets for featurized OQMD entries for after-the-fact testing can be 
+downloaded at [data.matr.io/3](https://data.matr.io/3/)

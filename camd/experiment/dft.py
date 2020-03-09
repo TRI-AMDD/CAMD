@@ -125,6 +125,7 @@ class OqmdDFTonMC1(Experiment):
         """
         Method for continuously polling for completion
 
+
         Returns:
             (str): calculation status string
 
@@ -247,7 +248,6 @@ class OqmdDFTonMC1(Experiment):
             self.current_data.loc[structure_id, 'error'] = 'timeout'
         self._update_job_status()
 
-
 MODEL_TEMPLATE = """
 import os
 
@@ -268,7 +268,7 @@ def run_oqmd_calculation(poscar_filename):
     os.chdir("relax")
     calc = Calculation()
     calc.setup(starting_structure, "relaxation")
-    os.system("mpirun -n 1 vasp_std")
+    os.system("mpirun -n 16 vasp_std")
     # Just in case the mysql server process dies
     # Kids, don't try this at home
     os.system("sudo -u mysql mysqld &")
@@ -280,7 +280,7 @@ def run_oqmd_calculation(poscar_filename):
     os.chdir("static")
     calc = Calculation()
     calc.setup(relaxed_structure, "static")
-    os.system("mpirun -n 1 vasp_std")
+    os.system("mpirun -n 16 vasp_std")
     os.chdir('..')
 
 

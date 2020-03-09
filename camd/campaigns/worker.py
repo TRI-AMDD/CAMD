@@ -6,7 +6,7 @@ Usage:
     camd_worker COMMAND [options]
 
 Options:
-    --campaign CAMPAIGN  campaign name  [default: proto-dft]
+    --campaign CAMPAIGN  campaign name  [default: proto-dft-2]
     --loops NUM_LOOPS    number of loops to run
     -h --help            Show this screen
     --version            Show version
@@ -25,14 +25,12 @@ from pathlib import Path
 from docopt import docopt
 from monty.tempfile import ScratchDir
 from camd import CAMD_S3_BUCKET, CAMD_STOP_FILE
-from camd.log import camd_traced
 from camd.campaigns.structure_discovery import \
     ProtoDFTCampaign, CloudATFCampaign
 
 
-@camd_traced
 class Worker(object):
-    def __init__(self, campaign="proto-dft"):
+    def __init__(self, campaign="proto-dft-2"):
         self.campaign = campaign
 
     def start(self, num_loops=np.inf, sleep_time=60):

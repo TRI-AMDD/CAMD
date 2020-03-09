@@ -12,7 +12,6 @@ from camd.experiment import ATFSampler
 from camd.campaigns.base import Campaign
 from camd import CAMD_TEST_FILES, CAMD_S3_BUCKET, S3_CACHE
 from camd.utils.s3 import s3_sync, cache_s3_objs
-
 from camd.analysis import StabilityAnalyzer
 from camd.experiment.dft import OqmdDFTonMC1
 from sklearn.neural_network import MLPRegressor
@@ -28,7 +27,7 @@ class ProtoDFTCampaign(Campaign):
     and factories for constructing prototype-generation
     stability campaigns for materials discovery with DFT
     experiments
-    """
+   """
     @classmethod
     def from_chemsys(cls, chemsys):
         """
@@ -43,7 +42,7 @@ class ProtoDFTCampaign(Campaign):
                 the chemical system
 
         """
-        s3_prefix = "proto-dft/runs/{}".format(chemsys)
+        s3_prefix = "proto-dft-2/runs/{}".format(chemsys)
 
         # Initialize s3
         dumpfn({"started": datetime.now().isoformat(),

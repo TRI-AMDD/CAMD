@@ -1,0 +1,16 @@
+numpy==1.18
+Django==2.2.10
+tensorflow==1.15.2
+gpflow==1.5.0
+numpy==1.18
+python-dateutil==2.8.0
+networkx==2.2
+matplotlib==3.1.1
+pandas==0.24.2
+matminer==0.5.5
+autologging
+awscli==1.16.199
+docopt==0.6.2
+
+# Temporary qmpy3 dependency
+git+git://github.com/JosephMontoya-TRI/qmpy_py3@master#egg=qmpy
