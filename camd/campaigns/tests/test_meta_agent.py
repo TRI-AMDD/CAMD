@@ -8,7 +8,9 @@ os.environ['CAMD_S3_BUCKET'] = 'camd-test'
 from taburu.table import ParameterTable
 from camd import CAMD_S3_BUCKET
 from camd.utils.data import load_default_atf_data
-from camd.campaigns.meta_agent import MetaAgentCampaign
+from camd.campaigns.meta_agent import MetaAgentCampaign, CampaignAnalyzer, \
+    META_AGENT_PREFIX
+from camd.experiment.agent_simulation import LocalAgentSimulation
 from monty.tempfile import ScratchDir
 from camd.analysis import StabilityAnalyzer
 
@@ -17,7 +19,7 @@ def teardown_s3():
     """Tear down test files in s3"""
     s3 = boto3.resource('s3')
     bucket = s3.Bucket(CAMD_S3_BUCKET)
-    bucket.objects.filter(Prefix="{}".format("agent_testing")).delete()
+    bucket.objects.filter(Prefix=META_AGENT_PREFIX).delete()
 
 
 TEST_REGRESSOR_PARAMS = [
@@ -31,12 +33,20 @@ TEST_REGRESSOR_PARAMS = [
 
 TEST_AGENT_PARAMS = [
     {
-        "@class": ["camd.agent.agents.QBCStabilityAgent"],
+        "@class": ["camd.agent.stability.QBCStabilityAgent"],
         "n_query": [10],
         "n_members": list(range(2, 5)),
         "hull_distance": [0.05],
         "training_fraction": [0.4],
         "model": TEST_REGRESSOR_PARAMS
+    },
+]
+
+
+RANDOM_TEST_AGENT_PARAMS = [
+    {
+        "@class": ["camd.agent.base.RandomAgent"],
+        "n_query": [5],
     },
 ]
 
@@ -49,6 +59,7 @@ class MetaAgentCampaignTest(unittest.TestCase):
         agent_pool = ParameterTable(TEST_AGENT_PARAMS)
         dataframe = load_default_atf_data()
         analyzer = StabilityAnalyzer()
+        experiment = LocalAgentSimulation()
 
         MetaAgentCampaign.reserve(
             name="test_meta_agent", dataframe=dataframe,
@@ -72,14 +83,20 @@ class MetaAgentCampaignTest(unittest.TestCase):
         self.assertEqual(len(agent_pool), 45)
 
     def test_run(self):
-        agent_pool = ParameterTable(TEST_AGENT_PARAMS)
+        agent_pool = ParameterTable(RANDOM_TEST_AGENT_PARAMS)
+        # Construct experiment
         dataframe = load_default_atf_data()
-        analyzer = StabilityAnalyzer()
+        experiment = LocalAgentSimulation(
+            atf_dataframe=dataframe, analyzer=StabilityAnalyzer(),
+            iterations=5, n_seed=5,
+        )
+        analyzer = CampaignAnalyzer()
         MetaAgentCampaign.reserve(
-            name="test_meta_agent", dataframe=dataframe,
+            name="test_meta_agent", experiment=experiment,
             agent_pool=agent_pool, analyzer=analyzer
         )
         with ScratchDir('.'):
+            print("Testing meta agent")
             campaign = MetaAgentCampaign.from_reserved_name(
                 "test_meta_agent")
             campaign.autorun()

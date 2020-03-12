@@ -27,6 +27,7 @@ from monty.tempfile import ScratchDir
 from camd import CAMD_S3_BUCKET, CAMD_STOP_FILE
 from camd.campaigns.structure_discovery import \
     ProtoDFTCampaign, CloudATFCampaign
+from camd.campaigns.meta_agent import MetaAgentCampaign
 
 
 class Worker(object):
@@ -62,22 +63,29 @@ class Worker(object):
                     sleep_time))
                 time.sleep(sleep_time)
 
-    def run_campaign(self, chemsys):
+    def run_campaign(self, **kwargs):
         """
         Runs the campaign for a given chemsys
 
         Args:
-            chemsys ([str]):
+            **kwargs: keyword-args for a given campaign,
+                specific to invocation method below i. e.
+
+                proto-dft/oqmd-atf require {'chemsys': CHEMSYS}
+                meta-agent requires {'name': NAME}
 
         Returns:
             None
 
         """
         if self.campaign == "proto-dft":
-            campaign = ProtoDFTCampaign.from_chemsys(chemsys)
+            campaign = ProtoDFTCampaign.from_chemsys(**kwargs)
         elif self.campaign == "oqmd-atf":
             # This is more or less just a test
-            campaign = CloudATFCampaign.from_chemsys(chemsys)
+            campaign = CloudATFCampaign.from_chemsys(**kwargs)
+        elif self.campaign.startswith("meta-agent"):
+            # For meta-agent campaigns, submit with meta_agent/CAMPAIGN_NAME
+            campaign = MetaAgentCampaign.from_reserved_name(**kwargs)
         else:
             raise ValueError("Campaign {} is not valid".format(self.campaign))
         campaign.autorun()
@@ -189,7 +197,7 @@ def main():
         worker.remove_stop_file()
         worker.start(num_loops=num_loops)
     elif args['COMMAND'] == "stop":
-        worker.write_stopfile()
+        worker.write_stop_file()
     else:
         raise ValueError("Invalid command {}.  Worker command must be 'start' or 'stop'")
 

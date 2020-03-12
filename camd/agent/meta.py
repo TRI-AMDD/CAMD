@@ -40,7 +40,7 @@ REGRESSOR_PARAMS = [
 
 AGENT_PARAMS = [
     {
-        "@class": ["camd.agent.agents.QBCStabilityAgent"],
+        "@class": ["camd.agent.stability.QBCStabilityAgent"],
         "n_query": [4, 6, 8],
         "n_members": list(range(2, 5)),
         "hull_distance": list(np.arange(0.05, 0.21, 0.05)),

@@ -97,6 +97,7 @@ class Campaign(MSONable):
             self.initialized = False
             self.loop_state = "UNSTARTED"
 
+
     def run(self, finalize=False):
         """
         This method applies a single iteration of the loop, and
