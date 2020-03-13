@@ -181,12 +181,20 @@ class StabilityMetaAgentCampaign(MetaAgentCampaign):
 from camd.analysis import AnalyzerBase
 
 
-class CampaignAnalyzer(AnalyzerBase):
+# For now this is specific to stability
+class StabilityCampaignAnalyzer(AnalyzerBase):
     def __init__(self):
         pass
 
-    def analyze(self, seed_data, new_experimental_results):
-        import nose; nose.tools.set_trace()
+    def analyze(self, new_experimental_results, seed_data):
+        new_experimental_results.total_10 = None
+        new_experimental_results.total_25 = None
+        new_experimental_results.total_50 = None
         for key, row in new_experimental_results.iterrows():
-            import nose; nose.tools.set_trace()
-
+            history = row.campaign.history
+            new_experimental_results.loc[key, "discovered_10"] = history.loc[10, 'total_stable']
+            new_experimental_results.loc[key, "discovered_25"] = history.loc[25, 'total_stable']
+            new_experimental_results.loc[key, "discovered_51"] = history.iloc[-1]['total_stable']
+        seed_data = seed_data.append(new_experimental_results)
+        summary = new_experimental_results.loc["discovered_10": "discovered_51"]
+        return summary, seed_data

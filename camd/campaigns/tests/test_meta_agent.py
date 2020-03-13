@@ -8,11 +8,12 @@ os.environ['CAMD_S3_BUCKET'] = 'camd-test'
 from taburu.table import ParameterTable
 from camd import CAMD_S3_BUCKET
 from camd.utils.data import load_default_atf_data
-from camd.campaigns.meta_agent import MetaAgentCampaign, CampaignAnalyzer, \
+from camd.campaigns.meta_agent import MetaAgentCampaign, StabilityCampaignAnalyzer, \
     META_AGENT_PREFIX
 from camd.experiment.agent_simulation import LocalAgentSimulation
 from monty.tempfile import ScratchDir
 from camd.analysis import StabilityAnalyzer
+from camd.agent.base import RandomAgent
 
 
 def teardown_s3():
@@ -46,7 +47,7 @@ TEST_AGENT_PARAMS = [
 RANDOM_TEST_AGENT_PARAMS = [
     {
         "@class": ["camd.agent.base.RandomAgent"],
-        "n_query": [5],
+        "n_query": [5, 6],
     },
 ]
 
@@ -59,10 +60,10 @@ class MetaAgentCampaignTest(unittest.TestCase):
         agent_pool = ParameterTable(TEST_AGENT_PARAMS)
         dataframe = load_default_atf_data()
         analyzer = StabilityAnalyzer()
-        experiment = LocalAgentSimulation()
+        experiment = LocalAgentSimulation(dataframe)
 
         MetaAgentCampaign.reserve(
-            name="test_meta_agent", dataframe=dataframe,
+            name="test_meta_agent", experiment=experiment,
             agent_pool=agent_pool, analyzer=analyzer
         )
         self.assertRaises(ValueError, MetaAgentCampaign.reserve,
@@ -88,9 +89,9 @@ class MetaAgentCampaignTest(unittest.TestCase):
         dataframe = load_default_atf_data()
         experiment = LocalAgentSimulation(
             atf_dataframe=dataframe, analyzer=StabilityAnalyzer(),
-            iterations=5, n_seed=5,
+            iterations=50, n_seed=5,
         )
-        analyzer = CampaignAnalyzer()
+        analyzer = StabilityCampaignAnalyzer()
         MetaAgentCampaign.reserve(
             name="test_meta_agent", experiment=experiment,
             agent_pool=agent_pool, analyzer=analyzer
@@ -98,7 +99,8 @@ class MetaAgentCampaignTest(unittest.TestCase):
         with ScratchDir('.'):
             print("Testing meta agent")
             campaign = MetaAgentCampaign.from_reserved_name(
-                "test_meta_agent")
+                "test_meta_agent", meta_agent=RandomAgent(n_query=1),
+            )
             campaign.autorun()
         self.assertTrue(True)
 

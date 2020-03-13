@@ -73,6 +73,7 @@ def convert_parameter_table_to_dataframe(parameter_table, fillna=np.nan):
 
     """
     df = pd.DataFrame(parameter_table, dtype="int64")
+    df.index = ['-'.join([str(i) for i in row]) for row in np.array(df)]
     df['agent'] = [parameter_table.hydrate_index(i, construct_object=True)
                    for i in range(len(parameter_table))]
     df.fillna(fillna)
