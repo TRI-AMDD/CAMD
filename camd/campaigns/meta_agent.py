@@ -6,27 +6,45 @@ from taburu.table import ParameterTable
 from camd import CAMD_S3_BUCKET
 from camd.agent.meta import AGENT_PARAMS, \
     convert_parameter_table_to_dataframe
-from camd.agent.base import RandomAgent
-from camd.experiment.agent_simulation import LocalAgentSimulation
 from camd.campaigns.base import Campaign
 import pickle
 import boto3
 import botocore
 
+META_AGENT_PREFIX = "meta_agent"
 
-# TODO: rethink analyzer-campaign ties, whether or not these can
-#       be functionally separated
+
 class MetaAgentCampaign(Campaign):
     @staticmethod
-    def reserve(name, dataframe, analyzer,
-                agent_pool=None, bucket=CAMD_S3_BUCKET):
+    def reserve(name, experiment, analyzer, agent_pool=None,
+                bucket=CAMD_S3_BUCKET):
+        """
+        Method for making an reservation for a given campaign in s3
+
+        Args:
+            name (str): reservation name
+            experiment (Experiment, DataFrame): complete
+                experiment provisioned for agent testing,
+                typically a LocalAgentSimulation
+            analyzer (camd.analysis.Analyzer): analyzer for which
+                to analyze/judge meta-agent campaigns
+            agent_pool (ParameterTable): parameter table corresponding
+                to agents to be tested
+            bucket (str): name of s3 bucket
+
+        Returns:
+            (None)
+
+        """
+        # Check reservation
         client = boto3.client("s3")
-        prefix = "agent_testing/{}".format(name)
+        prefix = "{}/{}".format(META_AGENT_PREFIX, name)
         result = client.list_objects(Bucket=bucket, Prefix=prefix)
         if result.get('Contents'):
             raise ValueError(
                 "{} exists in s3, please choose another name".format(name))
 
+        # Store agent pool
         agent_pool = agent_pool or ParameterTable(AGENT_PARAMS)
         pickled_agent = pickle.dumps(agent_pool)
         client.put_object(
@@ -35,12 +53,15 @@ class MetaAgentCampaign(Campaign):
             Body=pickled_agent
         )
 
-        pickled_dataframe = pickle.dumps(dataframe)
+        # Store experiment
+        pickled_experiment = pickle.dumps(experiment)
         client.put_object(
             Bucket=bucket,
-            Key="{}/atf_data.pickle".format(prefix),
-            Body=pickled_dataframe
+            Key="{}/experiment.pickle".format(prefix),
+            Body=pickled_experiment
         )
+
+        # Store analyzer
         pickled_analyzer = pickle.dumps(analyzer)
         client.put_object(
             Bucket=bucket,
@@ -64,7 +85,7 @@ class MetaAgentCampaign(Campaign):
 
             """
         client = boto3.client("s3")
-        prefix = "agent_testing/{}".format(name)
+        prefix = "{}/{}".format(META_AGENT_PREFIX, name)
         agent_pool = MetaAgentCampaign.load_pickled_objects(name, bucket)[0]
         agent_pool.extend(params)
 
@@ -93,9 +114,9 @@ class MetaAgentCampaign(Campaign):
 
         """
         client = boto3.client("s3")
-        prefix = "agent_testing/{}".format(name)
+        prefix = "{}/{}".format(META_AGENT_PREFIX, name)
         all_objs = []
-        for obj_name in ['agent_pool', 'atf_data', 'analyzer']:
+        for obj_name in ['agent_pool', 'experiment', 'analyzer']:
             try:
                 raw_obj = client.get_object(
                     Bucket=bucket,
@@ -127,35 +148,8 @@ class MetaAgentCampaign(Campaign):
                 to the campaign
 
         """
-        agent_pool, atf_data, analyzer = cls.load_pickled_objects(name, bucket)
-        s3_prefix = "agent_testing/{}".format(name)
-        return cls.from_data_and_pool(
-            dataframe=atf_data, analyzer=analyzer, agent_pool=agent_pool,
-            meta_agent=meta_agent, s3_prefix=s3_prefix, bucket=bucket)
-
-    @classmethod
-    def from_data_and_pool(cls, dataframe, analyzer, agent_pool=None,
-                           meta_agent=None, s3_prefix=None, bucket=None):
-        """
-
-        Args:
-            dataframe (DataFrame): ATF Dataset to run campaign on
-            analyzer (Analyzer): Analyzer for which to run ATF
-                experiments
-            agent_pool (ParameterTable): parameter table for agents
-            meta_agent (HypothesisAgent): agent used to select
-                subsequent runs of agent parameters
-            s3_prefix (str): s3 prefix for syncing
-            bucket (str): name of s3 sync bucket if desired
-
-        Returns:
-            (MetaAgentCampaign) associated with the above objects
-
-        """
-        meta_agent = meta_agent or RandomAgent(n_query=1)
-        experiment = LocalAgentSimulation(
-            atf_dataframe=dataframe, analyzer=analyzer,
-            iterations=50, n_seed=5)
+        agent_pool, experiment, analyzer = cls.load_pickled_objects(name, bucket)
+        s3_prefix = "{}/{}".format(META_AGENT_PREFIX, name)
         candidate_data = convert_parameter_table_to_dataframe(agent_pool)
         return cls(
             candidate_data=candidate_data,
@@ -175,15 +169,32 @@ class MetaAgentCampaign(Campaign):
         self.auto_loop(n_iterations=5, initialize=True)
 
 
+class StabilityMetaAgentCampaign(MetaAgentCampaign):
+    """
+    Convenience class to construct MetaAgent
+    campaigns around stability
+    """
+    pass
+
+
+# TODO: move this into analysis
 from camd.analysis import AnalyzerBase
 
 
-class CampaignAnalyzer(AnalyzerBase):
-    def __init__(self, dataframe):
-        self.dataframe = dataframe
+# For now this is specific to stability
+class StabilityCampaignAnalyzer(AnalyzerBase):
+    def __init__(self):
+        pass
 
-    def analyze(self, seed_data, new_experimental_results):
-        import nose; nose.tools.set_trace()
+    def analyze(self, new_experimental_results, seed_data):
+        new_experimental_results.total_10 = None
+        new_experimental_results.total_25 = None
+        new_experimental_results.total_50 = None
         for key, row in new_experimental_results.iterrows():
-            pass
-
+            history = row.campaign.history
+            new_experimental_results.loc[key, "discovered_10"] = history.loc[10, 'total_stable']
+            new_experimental_results.loc[key, "discovered_25"] = history.loc[25, 'total_stable']
+            new_experimental_results.loc[key, "discovered_51"] = history.iloc[-1]['total_stable']
+        seed_data = seed_data.append(new_experimental_results)
+        summary = new_experimental_results.loc["discovered_10": "discovered_51"]
+        return summary, seed_data

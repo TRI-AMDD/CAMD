@@ -40,7 +40,7 @@ REGRESSOR_PARAMS = [
 
 AGENT_PARAMS = [
     {
-        "@class": ["camd.agent.agents.QBCStabilityAgent"],
+        "@class": ["camd.agent.stability.QBCStabilityAgent"],
         "n_query": [4, 6, 8],
         "n_members": list(range(2, 5)),
         "hull_distance": list(np.arange(0.05, 0.21, 0.05)),
@@ -73,6 +73,7 @@ def convert_parameter_table_to_dataframe(parameter_table, fillna=np.nan):
 
     """
     df = pd.DataFrame(parameter_table, dtype="int64")
+    df.index = ['-'.join([str(i) for i in row]) for row in np.array(df)]
     df['agent'] = [parameter_table.hydrate_index(i, construct_object=True)
                    for i in range(len(parameter_table))]
     df.fillna(fillna)

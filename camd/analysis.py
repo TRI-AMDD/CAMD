@@ -36,17 +36,17 @@ ELEMENTS = ['Ru', 'Re', 'Rb', 'Rh', 'Be', 'Ba', 'Bi', 'Br', 'H', 'P',
 
 class AnalyzerBase(abc.ABC):
     @abc.abstractmethod
-    def analyze(self, seed_data, new_experimental_results):
+    def analyze(self, new_experimental_results, seed_data):
         """
         Analyze method, performs some operation on new
         experimental results in order to place them
         in the context of the seed data
 
         Args:
-            seed_data (DataFrame): current seed data from
-                campaign
             new_experimental_results (DataFrame): new data
                 to be added to the seed
+            seed_data (DataFrame): current seed data from
+                campaign
 
         Returns:
             (DataFrame): dataframe corresponding to the summary

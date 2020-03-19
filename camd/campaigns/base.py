@@ -114,7 +114,7 @@ class Campaign(MSONable):
             raise ValueError("Campaign must be initialized.")
 
         # Get new results
-        print("Campaign {} state: Getting new results".format(self.iteration))
+        print("{} {} state: Getting new results".format(self.type, self.iteration))
         self.experiment.monitor()
         new_experimental_results = self.experiment.get_results()
         os.chdir(self.path)
@@ -123,7 +123,7 @@ class Campaign(MSONable):
         self.load('seed_data', method='pickle')
 
         # Analyze new results
-        print("Campaign {} state: Analyzing results".format(self.iteration))
+        print("{} {} state: Analyzing results".format(self.type, self.iteration))
         summary, new_seed_data = self.analyzer.analyze(
             new_experimental_results, self.seed_data
         )
@@ -139,6 +139,9 @@ class Campaign(MSONable):
         candidate_space = self.candidate_data.index.difference(
             new_experimental_results.index, sort=False).tolist()
         self.candidate_data = self.candidate_data.loc[candidate_space]
+        if len(self.candidate_data) == 0:
+            print("Candidate data exhausted.  Stopping loop.")
+            return False
 
         # Campaign stopper if no discoveries in last few cycles.
         if self.iteration > self.heuristic_stopper:
@@ -146,27 +149,27 @@ class Campaign(MSONable):
             if new_discoveries == 0:
                 self.finalize()
                 print("Not enough new discoveries. Stopping the loop.")
-                return True
+                return False
 
         # Campaign stopper if finalization is desired but will be done
         # outside of run (e.g. auto_loop)
         if finalize:
-            return None
+            return False
 
         # Agent suggests new experiments
-        print("Campaign {} state: Agent {} hypothesizing".format(
-            self.iteration, self.agent.__class__.__name__))
+        print("{} {} state: Agent {} hypothesizing".format(
+            self.type, self.iteration, self.agent.__class__.__name__))
         suggested_experiments = self.agent.get_hypotheses(
             self.candidate_data, self.seed_data)
 
         # Campaign stopper if agent doesn't have anything to suggest.
         if len(suggested_experiments) == 0:
             self.finalize()
-            print("No space left to explore. Stopping the loop.")
-            return True
+            print("No agent suggestions. Stopping the loop.")
+            return False
 
         # Experiments submitted
-        print("Campaign {} state: Running experiments".format(self.iteration))
+        print("{} {} state: Running experiments".format(self.type, self.iteration))
         self.job_status = self.experiment.submit(suggested_experiments)
         self.save("job_status")
 
@@ -177,8 +180,9 @@ class Campaign(MSONable):
 
         self.iteration += 1
         self.save("iteration")
+        return True
 
-    def auto_loop(self, n_iterations=10, timeout=10, monitor=False,
+    def auto_loop(self, n_iterations=10, monitor=False,
                   initialize=False, with_icsd=False):
         """
         Runs the loop repeatedly, and locally. Pretty light weight,
@@ -187,8 +191,6 @@ class Campaign(MSONable):
 
         Args:
             n_iterations (int): Number of iterations.
-            timeout (float): Time (in seconds) to wait on idle for
-                submitted experiments to finish.
             monitor (bool): Use Experiment's monitor method to
                 keep track of requested experiments.
             initialize (bool): whether to initialize the loop
@@ -202,14 +204,13 @@ class Campaign(MSONable):
                 self.initialize_with_icsd_seed()
             else:
                 self.initialize()
-            time.sleep(timeout)
         while n_iterations - self.iteration >= 0:
             print("Iteration: {}".format(self.iteration))
-            self.run()
+            if not self.run():
+                break
             print("  Waiting for next round ...")
             if monitor:
                 self.experiment.monitor()
-            time.sleep(timeout)
         self.run(finalize=True)
         self.finalize()
 
@@ -288,21 +289,21 @@ class Campaign(MSONable):
             raise ValueError(
                 "Initialization may overwrite existing loop data. Exit.")
         if not self.seed_data.empty and not self.create_seed:
-            print("Campaign {} state: Agent {} hypothesizing".format(
-                'initialization', self.agent.__class__.__name__))
+            print("{} {} state: Agent {} hypothesizing".format(
+                self.type, 'initialization', self.agent.__class__.__name__))
             suggested_experiments = self.agent.get_hypotheses(
                 self.candidate_data, self.seed_data)
         elif self.create_seed:
             np.random.seed(seed=random_state)
             _agent = RandomAgent(self.candidate_data, n_query=self.create_seed)
-            print("Campaign {} state: Agent {} hypothesizing".format(
-                'initialization', _agent.__class__.__name__))
+            print("{} {} state: Agent {} hypothesizing".format(
+                self.type, 'initialization', _agent.__class__.__name__))
             suggested_experiments = _agent.get_hypotheses(self.candidate_data)
         else:
             raise ValueError(
                 "No seed data available. Either supply or ask for creation.")
 
-        print("Campaign {} state: Running experiments".format(self.iteration))
+        print("{} {} state: Running experiments".format(self.type, self.iteration))
         self.job_status = self.experiment.submit(suggested_experiments)
         self.consumed_candidates = suggested_experiments.index.values.tolist()
         self.create_seed = False
@@ -315,6 +316,17 @@ class Campaign(MSONable):
         self.save("iteration")
         if self.s3_prefix:
             self.s3_sync()
+
+    @property
+    def type(self):
+        """
+        Convenince property for campaign type
+
+        Returns:
+            Class name
+
+        """
+        return self.__class__.__name__
 
     # TODO: move this into ProtoDFTCampaign
     def initialize_with_icsd_seed(self, random_state=42):
