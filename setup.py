@@ -67,7 +67,7 @@ setup(
         "https://github.com/JosephMontoya-TRI/qmpy_py3/tarball/master#egg=qmpy",
         "https://github.com/ToyotaResearchInstitute/protosearch/tarball/master#egg=protosearch",
         # TODO: Fix dependency link
-        "https://github.awsinternal.tri.global/materials/taburu/tarball/master#egg=taburu",
+        "https://github.com/TRI-AMDD/taburu/tarball/master#egg=taburu",
     ],
     entry_points={
         "console_scripts": [
