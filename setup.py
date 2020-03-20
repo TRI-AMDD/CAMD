@@ -53,6 +53,7 @@ setup(
                       "awscli>=1.16.199",
                       "docopt==0.6.2",
                       "taburu"
+                      "boto3==1.9.136"
                       ],
     extras_require={
         "proto_dft": ["protosearch"],
