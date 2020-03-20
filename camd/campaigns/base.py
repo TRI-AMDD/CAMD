@@ -328,7 +328,7 @@ class Campaign(MSONable):
         """
         return self.__class__.__name__
 
-    # TODO: move this into ProtoDFTCampaign
+    # TODO: move this into ProtoDFTCampaign and fix caching
     def initialize_with_icsd_seed(self, random_state=42):
         if self.initialized:
             raise ValueError(

@@ -18,9 +18,12 @@ based on ongoing work led by the
 
 camd enables the construction of sequential learning pipelines using a set of
 abstractions that include 
-* Agents - decision making entities which select experiments to run from pre-determined candidate sets
-* Experiments - experimental procedures which augment candidate data in a way that facilitates further experiment selection
-* Analyzers - Post-processing procedures which frame experimental results in the context of candidate or seed datasets
+* Agents - decision making entities which select experiments to run from pre-determined 
+    candidate sets
+* Experiments - experimental procedures which augment candidate data in a way that 
+    facilitates further experiment selection
+* Analyzers - Post-processing procedures which frame experimental results in the context 
+    of candidate or seed datasets
 
 In addition to these abstractions, camd provides a loop construct which executes
 the sequence of hypothesize-experiment-analyze by the Agent, Experiment, and Analyzer,
