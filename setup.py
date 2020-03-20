@@ -52,7 +52,7 @@ setup(
                       "autologging",
                       "awscli>=1.16.199",
                       "docopt==0.6.2",
-                      "taburu"
+                      "taburu",
                       "boto3==1.9.136"
                       ],
     extras_require={
