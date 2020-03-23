@@ -1,12 +1,13 @@
 language: python
 python:
-- '3.6'
+  - '3.6'
 install:
-- pip install -e .[tests]
+  - pip install -r requirements.txt
+  - pip install -e .[tests]
 script:
-- pytest --cov=camd --cov-report html:coverage_reports
+  - pytest --cov=camd --cov-report html:coverage_reports
 after_script:
-- coveralls
+  - coveralls
 env:
   global:
     secure: 4GFWiYsHad2GGLuPa8CkTBdzRcpFBkBqRY8qmARlAcHLRXM/mtcZWG7rkrYezS8hifmldTy3L1A+SEXWlm09HLQF3r2lDCVStDprUJlbBJjAS1noEN4L8wVoow6FViMM+Vz24gBz/ccyhpULrMl/Ku6lUm/bGrqUggLubOWQ1uKv6QjW+x+13n0ey8JS72efo2n4G0YRuyFdMZFs7GGmcnLzC+4hu2Nl+7KVCdmpVSWC62KmeAClyIGScVEcJb/ERCZEDxBndZC762j1c0UOU59QqkQnpHkZsIxe0x/eaEuoAU5uurS1whQjilKT7zDRSLG2xtl+BUQILEFvcaJDSOsAzbqoKE7QdSkQmxZnn3Vsa8BzIdTZ4URydVC8tCKwHLGUN7fADVkekkQqQzCH2Kid/0QEUl7o7GFz0OEEzSqCK9OLMtZ5a/VqY5sI7APfcno0vWTN12OVYqiA9zNbe8KfD1GkHgRbcAVHLOtlWcK5lLwfZBkBi2/ZVXRJTr6mfJv9L0gqSd1TrAvyZ++pfx/lOIQMOGditJSONd2qvuCBQBh7V7rdgdIl/M8wxlFYhbwL/XiZZsNEyexgqvjw24N2dpdDe3VYuj+I3hMA/aieyPwer6Qn5dMESoDM0vAEiN6W790Ukn8azghJrtg2Oo/hTu7b+3r7UT5mu+wC6xE=
