@@ -37,7 +37,7 @@ setup(
     long_description=LONG_DESCRIPTION,
     setup_requires=["numpy==1.18",
                     "Django==2.2.10",
-                    "tensorflow==1.15.2",
+                    "tensorflow==1.15.0",
                     "gpflow==1.5.0"],  # For qmpy depnedency
     install_requires=["numpy==1.18",
                       "python-dateutil==2.8.0",
