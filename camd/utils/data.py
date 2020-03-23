@@ -85,7 +85,7 @@ MATRIO_DATA_KEYS = {
     "oqmd1.2_exp_based_entries_featurized_v2.pickle": "5e3b0e9bc91e209071f33ce8",
     "oqmd_1.2_voronoi_magpie_fingerprints.pickle": "5e39ce2cd9f13e075b7dfaaf",
     "oqmd_ver3.db": "5e39ce96d9f13e075b7dfab3",
-    "oqmd1.2_exp_based_entries_structures.json": "5e3dd303c91e209071f33cec"
+    "oqmd1.2_exp_based_entries_structures.json": "5e45befef23b399192b35242"
 }
 
 
