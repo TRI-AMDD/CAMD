@@ -1,16 +1,23 @@
 language: python
+services:
+  - docker
 python:
-- '3.6'
+  - '3.6'
 install:
-- pip install -r requirements.txt
-- pip install -e .[tests]
+  - pip install -r requirements.txt
+  - pip install -e .[tests]
 script:
-- pytest --show-capture=no --maxfail=3 --disable-pytest-warnings --cov=camd --cov-report
-  html:coverage_reports
+  - pytest --show-capture=no --maxfail=3 --disable-pytest-warnings --cov=camd --cov-report html:coverage_reports
 after_script:
-- coveralls
-- aws ecr get-login-password --region us-west-2 | docker login --username AWS --password-stdin
+  - coveralls
+  - aws ecr get-login-password --region us-west-2 | docker login --username AWS --password-stdin
   $DOCKER_URI
+deploy:
+  provider: script
+  script: deploy.sh
+  on:
+    all_branches: true
+    condition: $TRAVIS_BRANCH =~ ^(master|dev)$
 env:
   global:
   - TQMD_OFF=true
