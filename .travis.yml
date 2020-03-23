@@ -10,14 +10,13 @@ script:
   - pytest --show-capture=no --maxfail=3 --disable-pytest-warnings --cov=camd --cov-report html:coverage_reports
 after_script:
   - coveralls
-  - aws ecr get-login-password --region us-west-2 | docker login --username AWS --password-stdin
-  $DOCKER_URI
-deploy:
-  provider: script
-  script: deploy.sh
-  on:
-    all_branches: true
-    condition: $TRAVIS_BRANCH =~ ^(master|dev|update_travis)$
+  - bash deploy.sh
+# deploy:
+#   provider: script
+#   script: deploy.sh
+#   on:
+#     all_branches: true
+#     condition: $TRAVIS_BRANCH =~ ^(master|dev|update_travis)$
 env:
   global:
   - TQMD_OFF=true
