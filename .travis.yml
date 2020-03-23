@@ -5,7 +5,7 @@ install:
 - pip install -r requirements.txt
 - pip install -e .[tests]
 script:
-- pytest --show-capture=no --cov=camd --cov-report html:coverage_reports
+- pytest --show-capture=no --max-fail=3 --cov=camd --cov-report html:coverage_reports
 after_script:
 - coveralls
 env:
