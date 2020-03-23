@@ -30,7 +30,7 @@ after the fact sampling of known data.
 
 setup(
     name='camd',
-    url="https://github.com/ToyotaResearchInstitute/beep",
+    url="https://github.com/TRI-AMDD/CAMD",
     version="2020.2.24.post0",
     packages=find_packages(),
     description=DESCRIPTION,
@@ -52,11 +52,10 @@ setup(
                       ],
     extras_require={
         "proto_dft": ["protosearch"],
-        "tests": ["nose",
-                  "coverage",
-                  "pylint",
-                  "memory_profiler",
-                  "matplotlib"]
+        "tests": ["pytest",
+                  "pytest-cov",
+                  "coveralls"
+                  ]
     },
     dependency_links=[
         "https://github.com/JosephMontoya-TRI/qmpy_py3/tarball/master#egg=qmpy",
@@ -72,11 +71,6 @@ setup(
           "License :: OSI Approved :: Apache Software License",
           "Operating System :: OS Independent",
     ],
-    package_data={
-        "beep.conversion_schemas": ["*.yaml", "*.md"],
-        "beep.procedure_templates": ["*.000", "*.csv", "*.json"],
-        "beep.validation_schemas": ["*.yaml"],
-    },
     include_package_data=True,
     author="AMDD - Toyota Research Institute",
     author_email="murat.aykol@tri.global",
