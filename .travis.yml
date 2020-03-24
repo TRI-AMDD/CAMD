@@ -4,6 +4,7 @@ services:
 python:
   - '3.6'
 install:
+  - pip install numpy==1.18.2
   - pip install -r requirements.txt
   - pip install -e .[tests]
 script:
