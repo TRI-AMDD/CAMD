@@ -11,8 +11,7 @@ autologging
 awscli==1.18.27
 docopt==0.6.2
 boto3==1.9.136
-taburu==2020.3.24
+taburu
 
 # Temporary qmpy3 dependency
 git+git://github.com/JosephMontoya-TRI/qmpy_py3@master#egg=qmpy
-git+git://github.com/TRI-AMDD/taburu@master#egg=taburu"

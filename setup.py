@@ -53,8 +53,8 @@ setup(
                       "autologging",
                       "awscli==1.18.27",
                       "docopt==0.6.2",
-                      "taburu==2020.3.24",
-                      "boto3==1.9.136"
+                      "boto3==1.9.136",
+                      "taburu",
                       ],
     extras_require={
         "proto_dft": ["protosearch"],
