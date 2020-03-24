@@ -17,7 +17,7 @@ based on ongoing work led by the
 [Toyota Research Institute](http://www.tri.global/accelerated-materials-design-and-discovery/).
 
 camd enables the construction of sequential learning pipelines using a set of
-abstractions that include 
+abstractions that include
 * Agents - decision making entities which select experiments to run from pre-determined candidate sets
 * Experiments - experimental procedures which augment candidate data in a way that facilitates further experiment selection
 * Analyzers - Post-processing procedures which frame experimental results in the context of candidate or seed datasets
@@ -30,12 +30,12 @@ after the fact sampling of known data.
 
 setup(
     name='camd',
-    url="https://github.com/ToyotaResearchInstitute/beep",
-    version="2020.2.24.post0",
+    url="https://github.com/TRI-AMDD/CAMD",
+    version="2020.3.23",
     packages=find_packages(),
     description=DESCRIPTION,
     long_description=LONG_DESCRIPTION,
-    setup_requires=["numpy==1.18",
+    setup_requires=["numpy==1.18.2",
                     "Django==2.2.10",
                     "tensorflow==1.15.2",
                     "gpflow==1.5.0"],  # For qmpy depnedency
@@ -47,16 +47,15 @@ setup(
                       "pandas==0.24.2",
                       "matminer==0.5.5",
                       "autologging",
-                      "awscli>=1.16.199",
+                      "awscli==1.18.27",
                       "docopt==0.6.2",
                       ],
     extras_require={
         "proto_dft": ["protosearch"],
-        "tests": ["nose",
-                  "coverage",
-                  "pylint",
-                  "memory_profiler",
-                  "matplotlib"]
+        "tests": ["pytest",
+                  "pytest-cov",
+                  "coveralls"
+                  ]
     },
     dependency_links=[
         "https://github.com/JosephMontoya-TRI/qmpy_py3/tarball/master#egg=qmpy",
@@ -72,11 +71,6 @@ setup(
           "License :: OSI Approved :: Apache Software License",
           "Operating System :: OS Independent",
     ],
-    package_data={
-        "beep.conversion_schemas": ["*.yaml", "*.md"],
-        "beep.procedure_templates": ["*.000", "*.csv", "*.json"],
-        "beep.validation_schemas": ["*.yaml"],
-    },
     include_package_data=True,
     author="AMDD - Toyota Research Institute",
     author_email="murat.aykol@tri.global",

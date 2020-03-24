@@ -1,5 +1,5 @@
 __pycache__
 camd/s3_cache
-scripts/cache
+scripts
 camd/_cache
 .git
