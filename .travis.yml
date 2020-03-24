@@ -9,9 +9,9 @@ install:
   - pip install -e .[tests]
 script:
   - pytest --show-capture=no --maxfail=3 --disable-pytest-warnings --cov=camd --cov-report html:coverage_reports
+  - bash deploy.sh
 after_script:
   - coveralls
-  - bash deploy.sh
 env:
   global:
   - TQMD_OFF=true
