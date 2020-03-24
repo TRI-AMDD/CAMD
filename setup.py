@@ -31,10 +31,11 @@ after the fact sampling of known data.
 setup(
     name='camd',
     url="https://github.com/TRI-AMDD/CAMD",
-    version="2020.3.24",
+    version="2020.3.24-post0",
     packages=find_packages(),
     description=DESCRIPTION,
     long_description=LONG_DESCRIPTION,
+    long_description_content_type='text/markdown',
     setup_requires=["numpy==1.18.2",
                     "Django==2.2.10",
                     "tensorflow==1.15.2",
