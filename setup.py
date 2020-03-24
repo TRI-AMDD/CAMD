@@ -33,12 +33,13 @@ after the fact sampling of known data.
 
 setup(
     name='camd',
-    url="https://github.com/ToyotaResearchInstitute/beep",
-    version="2020.2.24.post0",
+    url="https://github.com/TRI-AMDD/CAMD",
+    version="2020.3.24-post0",
     packages=find_packages(),
     description=DESCRIPTION,
     long_description=LONG_DESCRIPTION,
-    setup_requires=["numpy==1.18",
+    long_description_content_type='text/markdown',
+    setup_requires=["numpy==1.18.2",
                     "Django==2.2.10",
                     "tensorflow==1.15.2",
                     "gpflow==1.5.0"],  # For qmpy depnedency
@@ -50,18 +51,17 @@ setup(
                       "pandas==0.24.2",
                       "matminer==0.5.5",
                       "autologging",
-                      "awscli>=1.16.199",
+                      "awscli==1.18.27",
                       "docopt==0.6.2",
                       "taburu",
                       "boto3==1.9.136"
                       ],
     extras_require={
         "proto_dft": ["protosearch"],
-        "tests": ["nose",
-                  "coverage",
-                  "pylint",
-                  "memory_profiler",
-                  "matplotlib"]
+        "tests": ["pytest",
+                  "pytest-cov",
+                  "coveralls"
+                  ]
     },
     dependency_links=[
         "https://github.com/JosephMontoya-TRI/qmpy_py3/tarball/master#egg=qmpy",
@@ -79,11 +79,6 @@ setup(
           "License :: OSI Approved :: Apache Software License",
           "Operating System :: OS Independent",
     ],
-    package_data={
-        "beep.conversion_schemas": ["*.yaml", "*.md"],
-        "beep.procedure_templates": ["*.000", "*.csv", "*.json"],
-        "beep.validation_schemas": ["*.yaml"],
-    },
     include_package_data=True,
     author="AMDD - Toyota Research Institute",
     author_email="murat.aykol@tri.global",
