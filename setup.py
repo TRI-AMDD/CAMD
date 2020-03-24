@@ -47,7 +47,7 @@ setup(
                       "pandas==0.24.2",
                       "matminer==0.5.5",
                       "autologging",
-                      "awscli>=1.16.199",
+                      "awscli==1.18.27",
                       "docopt==0.6.2",
                       ],
     extras_require={
