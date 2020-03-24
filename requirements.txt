@@ -14,3 +14,4 @@ boto3==1.9.136
 
 # Temporary qmpy3 dependency
 git+git://github.com/JosephMontoya-TRI/qmpy_py3@master#egg=qmpy
+git+git://github.com/TRI-AMDD/taburu@master#egg=taburu"
