@@ -12,25 +12,12 @@ fresh conda environment for the install (e. g. `conda create -n MY_ENV_NAME`).
 
 ### Linux
 
-Update packages via apt and set pathing for MySQL dependency:
+Install numpy via pip first, since the build depends on this and numpy has some difficulty recognizing
+its own install.  Then install requirements and use setup.py.
 
-```angular2
-apt-get update
-apt install -y default-libmysqlclient-dev gcc
-export PATH=$PATH:/usr/local/mysql/bin
 ```
-
-Install numpy/Django via pip first, since the build depends on this and numpy has some difficulty recognizing
-its own install:
-
-```angular2
 pip install numpy
-pip install Django
-```
-
-Then use the included setup.py procedure, from the cloned directory.
-
-```angular2
+pip install -r requirements.txt
 python setup.py develop
 ```
 
@@ -39,27 +26,21 @@ python setup.py develop
 First dependencies via [homebrew](https://brew.sh/). Thanks to the contributors to this 
 [stack exchange thread](https://stackoverflow.com/questions/12218229/my-config-h-file-not-found-when-intall-mysql-python-on-osx-10-8).
 
-```angular2
-$ brew install mysql
-$ brew install postgresql
-$ brew install gcc
+```
+brew install gcc
 ```
 
-Install numpy/Django via pip first, since the build depends on these and numpy has some difficulty recognizing
-its own install:
+Install numpy via pip first, since the build depends on this and numpy has some difficulty recognizing
+its own install.  Then install requirements and use setup.py.
 
-```angular2
+```
 pip install numpy
-pip install Django
-```
-
-Then use the included setup.py procedure, from the cloned directory.
-
-```angular2
+pip install -r requirements.txt
 python setup.py develop
 ```
 
 ## Data download
 
 Datasets for featurized OQMD entries for after-the-fact testing can be 
-downloaded at [data.matr.io/3](https://data.matr.io/3/)
+downloaded at [data.matr.io/3](https://data.matr.io/3/).  These are done automatically
+in the code and stored in the camd/_cache directory.
