@@ -53,7 +53,7 @@ setup(
                       "autologging",
                       "awscli==1.18.27",
                       "docopt==0.6.2",
-                      "taburu",
+                      "taburu==2020.3.24",
                       "boto3==1.9.136"
                       ],
     extras_require={
@@ -66,8 +66,6 @@ setup(
     dependency_links=[
         "https://github.com/JosephMontoya-TRI/qmpy_py3/tarball/master#egg=qmpy",
         "https://github.com/ToyotaResearchInstitute/protosearch/tarball/master#egg=protosearch",
-        # TODO: Fix dependency link
-        "https://github.com/TRI-AMDD/taburu/tarball/master#egg=taburu",
     ],
     entry_points={
         "console_scripts": [
