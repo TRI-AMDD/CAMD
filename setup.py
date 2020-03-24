@@ -35,7 +35,7 @@ setup(
     packages=find_packages(),
     description=DESCRIPTION,
     long_description=LONG_DESCRIPTION,
-    setup_requires=["numpy==1.18",
+    setup_requires=["numpy==1.18.2",
                     "Django==2.2.10",
                     "tensorflow==1.15.2",
                     "gpflow==1.5.0"],  # For qmpy depnedency

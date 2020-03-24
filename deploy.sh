@@ -1,4 +1,5 @@
 #!/bin/bash
+set -e
 
 export DOCKER_TAG=camd-public
 
