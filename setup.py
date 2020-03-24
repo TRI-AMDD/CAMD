@@ -17,7 +17,7 @@ based on ongoing work led by the
 [Toyota Research Institute](http://www.tri.global/accelerated-materials-design-and-discovery/).
 
 camd enables the construction of sequential learning pipelines using a set of
-abstractions that include 
+abstractions that include
 * Agents - decision making entities which select experiments to run from pre-determined candidate sets
 * Experiments - experimental procedures which augment candidate data in a way that facilitates further experiment selection
 * Analyzers - Post-processing procedures which frame experimental results in the context of candidate or seed datasets
@@ -31,7 +31,7 @@ after the fact sampling of known data.
 setup(
     name='camd',
     url="https://github.com/TRI-AMDD/CAMD",
-    version="2020.2.24.post0",
+    version="2020.3.23",
     packages=find_packages(),
     description=DESCRIPTION,
     long_description=LONG_DESCRIPTION,

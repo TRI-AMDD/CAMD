@@ -11,12 +11,6 @@ script:
 after_script:
   - coveralls
   - bash deploy.sh
-# deploy:
-#   provider: script
-#   script: deploy.sh
-#   on:
-#     all_branches: true
-#     condition: $TRAVIS_BRANCH =~ ^(master|dev|update_travis)$
 env:
   global:
   - TQMD_OFF=true
