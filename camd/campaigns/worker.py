@@ -57,7 +57,7 @@ class Worker(object):
             if latest_chemsys:
                 with ScratchDir('.') as sd:
                     print("Running {} in {}".format(latest_chemsys, sd))
-                    self.run_campaign(latest_chemsys)
+                    self.run_campaign(chemsys=latest_chemsys)
             else:
                 print("No new campaigns submitted, sleeping for {} seconds".format(
                     sleep_time))
