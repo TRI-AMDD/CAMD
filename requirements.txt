@@ -8,9 +8,9 @@ matplotlib==3.1.1
 pandas==0.24.2
 matminer==0.5.5
 autologging
-awscli==1.18.27
+awscli==1.18.28
 docopt==0.6.2
-boto3==1.9.136
+boto3==1.12.28
 taburu
 
 # Temporary qmpy3 dependency
