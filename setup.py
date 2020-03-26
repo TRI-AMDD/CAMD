@@ -53,7 +53,8 @@ setup(
                       "awscli==1.18.28",
                       "docopt==0.6.2",
                       "boto3==1.12.28",
-                      "taburu",
+                      "scikit-learn==0.20.3",
+                      "taburu"
                       ],
     extras_require={
         "proto_dft": ["protosearch",
