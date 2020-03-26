@@ -9,7 +9,8 @@ install:
   - pip install -e .[tests]
 script:
   - set -e
-  - pytest --show-capture=no --maxfail=3 --disable-pytest-warnings --cov=camd --cov-report html:coverage_reports
+  - pytest camd/campaigns/tests/test_worker.py::WorkerTest::test_cli
+  # - pytest --show-capture=no --maxfail=3 --disable-pytest-warnings --cov=camd --cov-report html:coverage_reports
   - bash deploy.sh
 after_script:
   - coveralls
