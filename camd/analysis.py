@@ -232,7 +232,7 @@ class StabilityAnalyzer(AnalyzerBase):
         chemsys = set(Composition(composition).keys())
         all_comps = df['Composition'].apply(Composition)
         indices_to_include = [ind for ind, comp in all_comps.items()
-                              if comp.keys() < chemsys]
+                              if comp.keys() <= chemsys]
         return df.loc[indices_to_include]
 
     @staticmethod
@@ -275,6 +275,7 @@ class StabilityAnalyzer(AnalyzerBase):
         # Aggregate seed_data and new experimental results
         new_seed = seed_data.append(new_experimental_results)
         include_columns = ['Composition', 'delta_e']
+        # TODO: resolve this issue with drop_duplicates
         filtered = new_seed[include_columns].drop_duplicates(keep='last').dropna()
 
         if not self.entire_space:
@@ -477,6 +478,10 @@ class PhaseSpaceAL(PhaseSpace):
         if ncpus > 1:
             with Pool(ncpus) as pool:
                 stabilities = pool.map(self.compute_stability, phases)
+            # Pool doesn't always modify the phases directly,
+            # so assign stability after
+            for phase, stability in zip(phases, stabilities):
+                phase.stability = stability
         else:
             stabilities = [self.compute_stability(phase)
                            for phase in tqdm(phases)]
