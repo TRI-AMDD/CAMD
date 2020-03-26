@@ -60,7 +60,10 @@ class MetaAgentCampaignTest(unittest.TestCase):
         agent_pool = ParameterTable(TEST_AGENT_PARAMS)
         dataframe = load_default_atf_data()
         analyzer = StabilityAnalyzer()
-        experiment = LocalAgentSimulation(dataframe)
+        experiment = LocalAgentSimulation(
+            dataframe, iterations=5,
+            analyzer=analyzer, n_seed=10
+        )
 
         MetaAgentCampaign.reserve(
             name="test_meta_agent", experiment=experiment,
@@ -72,7 +75,7 @@ class MetaAgentCampaignTest(unittest.TestCase):
         agent_pool, data, analyzer = MetaAgentCampaign.load_pickled_objects(
             "test_meta_agent"
         )
-        self.assertEqual(len(agent_pool), 45)
+        self.assertEqual(len(agent_pool), 12)
 
         MetaAgentCampaign.update_agent_pool(
             "test_meta_agent",
@@ -81,7 +84,7 @@ class MetaAgentCampaignTest(unittest.TestCase):
         agent_pool, _, _ = MetaAgentCampaign.load_pickled_objects(
             "test_meta_agent"
         )
-        self.assertEqual(len(agent_pool), 45)
+        self.assertEqual(len(agent_pool), 12)
 
     def test_run(self):
         agent_pool = ParameterTable(RANDOM_TEST_AGENT_PARAMS)
