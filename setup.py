@@ -56,7 +56,9 @@ setup(
                       "taburu",
                       ],
     extras_require={
-        "proto_dft": ["protosearch"],
+        "proto_dft": ["protosearch",
+                      "ase>=3.19",
+                      "shapely"],
         "tests": ["pytest",
                   "pytest-cov",
                   "coveralls"
