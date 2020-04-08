@@ -23,7 +23,7 @@ def main():
     campaign_prefix = args['CAMPAIGN_PREFIX']
     campaign_type, reserved_name = campaign_prefix.split('/', 1)
     # Switch for different campaign types
-    if campaign_type == "meta-agent":
+    if campaign_type == "meta_agent":
         campaign = MetaAgentCampaign.from_reserved_name(reserved_name)
     else:
         raise ValueError("{} is not a supported campaign type".format(
