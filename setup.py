@@ -71,7 +71,8 @@ setup(
     ],
     entry_points={
         "console_scripts": [
-            "camd_worker = camd.campaigns.worker:main"
+            "camd_worker = camd.campaigns.worker:main",
+            "camd_runner = camd.campaigns.runner:main"
         ]
     },
     classifiers=[
