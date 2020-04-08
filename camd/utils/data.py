@@ -9,11 +9,10 @@ import os
 import boto3
 import requests
 import pandas as pd
+import numpy as np
+from pymatgen import Composition
 from monty.os import makedirs_p
 from camd import CAMD_CACHE, tqdm
-
-# TODO-PUBLIC: this will need to be made general for the
-#   release of the code, mostly by making the s3 bucket public
 
 
 def load_dataframe(dataset_name):
@@ -210,6 +209,33 @@ def cache_matrio_data(filename):
     key = MATRIO_DATA_KEYS[filename]
     if not os.path.isfile(filename):
         cache_download("{}/{}/download".format(prefix, key), filename)
+
+
+def partition_intercomposition(dataframe, n_elements=None):
+    """
+    Utility function to partition a dataframe into
+    data in the interior of the phase diagram
+
+    Args:
+        dataframe (DataFrame): dataframe to be partitioned
+        n_elements (int): number of elements by which to
+            partition the dataframe, defaults to n-1, where n
+            is the total number of elements in the dataframe
+
+    Returns:
+        (DataFrame): data which contain elements in the
+            interior of the phase space according to the
+            n_element threshold
+        (DataFrame): data which are below the n_element
+            threshold
+    """
+    all_n_elts = [len(Composition(formula))
+                  for formula in dataframe['Composition']]
+    if n_elements is None:
+        n_elements = max(all_n_elts) - 1
+
+    mask = np.array(all_n_elts) > n_elements
+    return dataframe[mask], dataframe[~mask]
 
 
 def s3_sync(s3_bucket, s3_prefix, sync_path="."):

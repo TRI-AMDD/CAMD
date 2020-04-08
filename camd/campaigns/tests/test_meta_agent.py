@@ -91,7 +91,7 @@ class MetaAgentCampaignTest(unittest.TestCase):
         # Construct experiment
         dataframe = load_default_atf_data()
         experiment = LocalAgentSimulation(
-            atf_dataframe=dataframe, analyzer=StabilityAnalyzer(),
+            atf_candidate_data=dataframe, analyzer=StabilityAnalyzer(),
             iterations=50, n_seed=5,
         )
         analyzer = StabilityCampaignAnalyzer()

@@ -9,23 +9,24 @@ import os
 
 
 class LocalAgentSimulation(Experiment):
-    def __init__(self, atf_dataframe, iterations, analyzer, n_seed,
+    def __init__(self, atf_candidate_data, seed_data, analyzer, iterations,
                  current_data=None, job_status=None):
         """
         Args:
-            atf_dataframe (DataFrame): dataframe corresponding to after
+            atf_candidate_data (DataFrame): dataframe corresponding to after
                 the fact data to sample
+            seed_data (DataFrame): seed data to use for the campaign
+            analyzer (Analyzer): Analyzer to use in the loop
             iterations (int): number of iterations to execute
                 in the loop
-            analyzer (Analyzer): Analyzer to use in the loop
-            n_seed (int): number of points to use in the seed data
             current_data (dataframe): current data (for restarting)
             job_status (str): job status (for restarting)
+
         """
-        self.atf_dataframe = atf_dataframe
+        self.atf_dataframe = atf_candidate_data
         self.iterations = iterations
         self.analyzer = analyzer
-        self.n_seed = n_seed
+        self.seed_data = seed_data
         super(LocalAgentSimulation, self).__init__(
             current_data=current_data, job_status=job_status)
 
@@ -75,12 +76,12 @@ class LocalAgentSimulation(Experiment):
         """
         campaign = Campaign(
                 candidate_data=self.atf_dataframe,
+                seed_data=self.seed_data,
                 agent=agent,
                 analyzer=self.analyzer,
                 experiment=ATFSampler(
                     dataframe=self.atf_dataframe
                 ),
-                create_seed=self.n_seed,
             )
         campaign.auto_loop(n_iterations=self.iterations, initialize=True)
         return campaign
