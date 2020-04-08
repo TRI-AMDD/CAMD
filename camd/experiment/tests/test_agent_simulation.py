@@ -3,7 +3,8 @@
 import unittest
 import pandas as pd
 from monty.tempfile import ScratchDir
-from camd.utils.data import load_default_atf_data
+from camd.utils.data import load_dataframe, partition_intercomp, \
+    get_oqmd_data_by_chemsys
 from camd.agent.base import RandomAgent
 from camd.experiment.agent_simulation import LocalAgentSimulation
 from camd.analysis import StabilityAnalyzer
@@ -12,10 +13,12 @@ from camd.analysis import StabilityAnalyzer
 class CampaignSimulationTest(unittest.TestCase):
     def test_run(self):
         with ScratchDir('.'):
-            df = load_default_atf_data()
+            dataframe = get_oqmd_data_by_chemsys("Fe-O")
             agents_df = pd.DataFrame({"agent": [RandomAgent()]})
+            cand, seed = partition_intercomp(dataframe, n_elements=1)
             simulation = LocalAgentSimulation(
-                df, iterations=5, n_seed=10, analyzer=StabilityAnalyzer())
+                cand, iterations=5, seed_data=seed,
+                analyzer=StabilityAnalyzer())
             simulation.submit(agents_df)
             simulation.monitor()
             results = simulation.get_results()

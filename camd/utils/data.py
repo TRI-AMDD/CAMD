@@ -50,6 +50,51 @@ def load_default_atf_data():
     return df[df['N_species'] == 2].sample(frac=0.2)
 
 
+def filter_dataframe_by_composition(df, composition):
+    """
+    Filters dataframe by composition, i. e. finds all
+    rows in dataframe where the Composition contains a
+    subset of input composition
+
+    Args:
+        df (DataFrame): dataframe
+        composition (Composition or str): composition
+            or formula by which to filter
+
+    Returns:
+        (DataFrame): dataframe where every composition is sampled such
+            that its composition is a subset of the input element set
+
+    """
+    # Get elements in formula, composition, then filter
+    chemsys = set(Composition(composition).keys())
+    all_comps = df['Composition'].apply(Composition)
+    indices_to_include = [ind for ind, comp in all_comps.items()
+                          if comp.keys() <= chemsys]
+    return df.loc[indices_to_include]
+
+
+def get_oqmd_data_by_chemsys(chemsys):
+    """
+    Utility function for loading a chemsys from cached
+    OQMD data, used primarily for campaign simulations
+
+    Args:
+        chemsys (str): formula or hyphen separated list
+            of elements, e. g. FeO2, Fe-Cl, etc.
+
+    Returns:
+        (DataFrame): dataframe corresponding to oqmd
+            data from chemsys
+
+    """
+    all_data = load_dataframe("oqmd_1.2_voronoi_magpie_fingerprints")
+    dataset = filter_dataframe_by_composition(
+        all_data, chemsys.replace('-', '')
+    )
+    return dataset
+
+
 QMPY_REFERENCES = {
     u'Ac': -4.1060035325,
     u'Ag': -2.8217729525,
@@ -211,7 +256,7 @@ def cache_matrio_data(filename):
         cache_download("{}/{}/download".format(prefix, key), filename)
 
 
-def partition_intercomposition(dataframe, n_elements=None):
+def partition_intercomp(dataframe, n_elements=None):
     """
     Utility function to partition a dataframe into
     data in the interior of the phase diagram

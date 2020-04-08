@@ -17,8 +17,9 @@ from pymatgen.entries.computed_entries import ComputedEntry
 from pymatgen.analysis.phase_diagram import PhaseDiagram, PDPlotter, tet_coord,\
     triangular_coord
 from pymatgen.analysis.structure_matcher import StructureMatcher
-from pymatgen import Structure, Element
-from camd.utils.data import cache_matrio_data
+from pymatgen import Structure
+from camd.utils.data import cache_matrio_data, \
+    filter_dataframe_by_composition
 from camd import CAMD_CACHE
 from monty.os import cd
 from monty.serialization import loadfn
@@ -212,30 +213,6 @@ class StabilityAnalyzer(AnalyzerBase):
         super(StabilityAnalyzer, self).__init__()
 
     @staticmethod
-    def filter_dataframe_by_composition(df, composition):
-        """
-        Filters dataframe by composition, i. e. finds all
-        rows in dataframe where the Composition contains a
-        subset of input composition
-
-        Args:
-            df (DataFrame): dataframe
-            composition (Composition or str): composition
-                or formula by which to filter
-
-        Returns:
-            (DataFrame): dataframe where every composition is sampled such
-                that its composition is a subset of the input element set
-
-        """
-        # Get elements in formula, composition, then filter
-        chemsys = set(Composition(composition).keys())
-        all_comps = df['Composition'].apply(Composition)
-        indices_to_include = [ind for ind, comp in all_comps.items()
-                              if comp.keys() <= chemsys]
-        return df.loc[indices_to_include]
-
-    @staticmethod
     def get_phase_space(dataframe):
         """
         Gets PhaseSpace object associated with dataframe
@@ -283,7 +260,7 @@ class StabilityAnalyzer(AnalyzerBase):
             # More efficient when searching in a specified chemistry,
             # less efficient if larger spaces are without specified chemistry.
             total_comp = new_experimental_results['Composition'].dropna().sum()
-            filtered = self.filter_dataframe_by_composition(
+            filtered = filter_dataframe_by_composition(
                 filtered, total_comp)
 
         space = self.get_phase_space(filtered)
