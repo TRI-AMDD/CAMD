@@ -7,6 +7,7 @@ from monty.serialization import loadfn
 from monty.tempfile import ScratchDir
 from camd import CAMD_TEST_FILES
 from camd.analysis import StabilityAnalyzer, AnalyzeStructures
+from camd.utils.data import filter_dataframe_by_composition
 
 
 class StabilityAnalyzerTest(unittest.TestCase):
@@ -34,7 +35,7 @@ class StabilityAnalyzerTest(unittest.TestCase):
                          index_col="id")
         df['Composition'] = df['formula']
         analyzer = StabilityAnalyzer(hull_distance=0.1)
-        seed_data = analyzer.filter_dataframe_by_composition(df, "TiNO")
+        seed_data = filter_dataframe_by_composition(df, "TiNO")
         # TODO: resolve drop_duplicates filtering mp data
         seed_data = seed_data.drop_duplicates(keep='last').dropna()
         new_exp_indices = ["mp-30998", "mp-572822"]
