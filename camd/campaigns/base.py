@@ -211,7 +211,8 @@ class Campaign(MSONable):
             print("  Waiting for next round ...")
             if monitor:
                 self.experiment.monitor()
-        self.run(finalize=True)
+        # TODO: is this necessary?
+        # self.run(finalize=True)
         self.finalize()
 
     def auto_loop_in_directories(self, n_iterations=10, timeout=10,

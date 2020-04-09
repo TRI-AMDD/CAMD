@@ -74,7 +74,7 @@ def filter_dataframe_by_composition(df, composition):
     return df.loc[indices_to_include]
 
 
-def get_oqmd_data_by_chemsys(chemsys):
+def get_oqmd_data_by_chemsys(chemsys, drop_duplicates=True):
     """
     Utility function for loading a chemsys from cached
     OQMD data, used primarily for campaign simulations
@@ -82,6 +82,8 @@ def get_oqmd_data_by_chemsys(chemsys):
     Args:
         chemsys (str): formula or hyphen separated list
             of elements, e. g. FeO2, Fe-Cl, etc.
+        drop_duplicates (bool): whether to drop duplicate
+            values from dataframe
 
     Returns:
         (DataFrame): dataframe corresponding to oqmd
@@ -92,6 +94,8 @@ def get_oqmd_data_by_chemsys(chemsys):
     dataset = filter_dataframe_by_composition(
         all_data, chemsys.replace('-', '')
     )
+    if drop_duplicates:
+        dataset = dataset.drop_duplicates(keep='first')
     return dataset
 
 

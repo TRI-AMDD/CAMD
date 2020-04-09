@@ -14,8 +14,8 @@ class CampaignSimulationTest(unittest.TestCase):
     def test_run(self):
         with ScratchDir('.'):
             dataframe = get_oqmd_data_by_chemsys("Fe-O")
-            agents_df = pd.DataFrame({"agent": [RandomAgent()]})
             cand, seed = partition_intercomp(dataframe, n_elements=1)
+            agents_df = pd.DataFrame({"agent": [RandomAgent()]})
             simulation = LocalAgentSimulation(
                 cand, iterations=5, seed_data=seed,
                 analyzer=StabilityAnalyzer())

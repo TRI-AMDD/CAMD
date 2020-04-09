@@ -14,7 +14,7 @@ from qmpy.analysis.thermodynamics.space import PhaseSpace
 from multiprocessing import Pool, cpu_count
 from pymatgen import Composition
 from pymatgen.entries.computed_entries import ComputedEntry
-from pymatgen.analysis.phase_diagram import PhaseDiagram, PDPlotter, tet_coord,\
+from pymatgen.analysis.phase_diagram import PhaseDiagram, PDPlotter, tet_coord, \
     triangular_coord
 from pymatgen.analysis.structure_matcher import StructureMatcher
 from pymatgen import Structure
@@ -279,7 +279,7 @@ class StabilityAnalyzer(AnalyzerBase):
         # TODO: This is implicitly adding "stability", and "is_stable" columns
         #       but could be handled more gracefully
         if 'stability' not in new_seed.columns:
-            new_seed = pd.concat([new_seed, new_data], axis=1)
+            new_seed = pd.concat([new_seed, new_data], axis=1, sort=False)
         else:
             new_seed.update(new_data)
 
@@ -348,7 +348,7 @@ class StabilityAnalyzer(AnalyzerBase):
         if len(total_comp) > 4:
             warnings.warn("Number of elements too high for phase diagram plotting")
             return None
-        filtered = StabilityAnalyzer.filter_dataframe_by_composition(
+        filtered = filter_dataframe_by_composition(
             df, total_comp)
 
         # Create computed entry column with un-normalized energies

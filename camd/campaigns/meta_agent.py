@@ -2,11 +2,14 @@
 """
 This module provides resources for agent optimization campaigns
 """
+import pandas as pd
 from taburu.table import ParameterTable
 from camd import CAMD_S3_BUCKET
 from camd.agent.meta import AGENT_PARAMS, \
     convert_parameter_table_to_dataframe
+from camd.agent.base import RandomAgent
 from camd.campaigns.base import Campaign
+from matplotlib import pyplot as plt
 import pickle
 import boto3
 import botocore
@@ -139,7 +142,8 @@ class MetaAgentCampaign(Campaign):
             name (str): name of the campaign to be run
             meta_agent (HypothesisAgent): meta-agent with
                 which to select the agent simulations to
-                be run
+                be run, defaults to a random agent with
+                n_query of 1
             bucket (str): name of the bucket from which
                 to invoke the campaign
 
@@ -151,6 +155,7 @@ class MetaAgentCampaign(Campaign):
         agent_pool, experiment, analyzer = cls.load_pickled_objects(name, bucket)
         s3_prefix = "{}/{}".format(META_AGENT_PREFIX, name)
         candidate_data = convert_parameter_table_to_dataframe(agent_pool)
+        meta_agent = meta_agent or RandomAgent(n_query=1)
         return cls(
             candidate_data=candidate_data,
             agent=meta_agent, experiment=experiment,
@@ -183,18 +188,35 @@ from camd.analysis import AnalyzerBase
 
 # For now this is specific to stability
 class StabilityCampaignAnalyzer(AnalyzerBase):
-    def __init__(self):
-        pass
+    def __init__(self, checkpoint_indices):
+        self.checkpoint_indices = checkpoint_indices
 
     def analyze(self, new_experimental_results, seed_data):
-        new_experimental_results.total_10 = None
-        new_experimental_results.total_25 = None
-        new_experimental_results.total_50 = None
         for key, row in new_experimental_results.iterrows():
             history = row.campaign.history
-            new_experimental_results.loc[key, "discovered_10"] = history.loc[10, 'total_stable']
-            new_experimental_results.loc[key, "discovered_25"] = history.loc[25, 'total_stable']
-            new_experimental_results.loc[key, "discovered_51"] = history.iloc[-1]['total_stable']
+            for index in self.checkpoint_indices:
+                new_experimental_results.loc[key, "discovered_{}".format(index)] = history.loc[index, 'total_stable']
         seed_data = seed_data.append(new_experimental_results)
-        summary = new_experimental_results.loc["discovered_10": "discovered_51"]
+        summary = new_experimental_results.loc["discovered_{}".format(self.checkpoint_indices[0]):
+                                               "discovered_{}".format(self.checkpoint_indices[-1])]
+
         return summary, seed_data
+
+    def _plot(self, campaign_data):
+        fig = plt.figure(figsize=(10, 5))
+        ax1 = fig.add_subplot(1, 2, 1)
+        ax1.set_title("Total")
+        ax2 = fig.add_subplot(1, 2, 2)
+        ax2.set_title("Cumulative")
+        for idx, row in campaign_data.iterrows():
+            label = "{}-{}".format(row.agent.__class__.__name__, idx)
+            ax1.plot(row.campaign.history.total_stable, label=label)
+            ax2.plot(row.campaign.history.new_stable.cumsum(), label=label)
+        ax1.legend(loc='upper right')
+        fig.savefig("campaign_summary.png")
+
+    def finalize(self, path):
+        # load seed data
+        df = pd.read_pickle("seed_data.pickle")
+        self._plot(df)
+

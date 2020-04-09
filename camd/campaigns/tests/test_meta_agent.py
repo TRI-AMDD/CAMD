@@ -7,7 +7,8 @@ import os
 os.environ['CAMD_S3_BUCKET'] = 'camd-test'
 from taburu.table import ParameterTable
 from camd import CAMD_S3_BUCKET
-from camd.utils.data import load_default_atf_data
+from camd.utils.data import load_default_atf_data, get_oqmd_data_by_chemsys, \
+    partition_intercomp
 from camd.campaigns.meta_agent import MetaAgentCampaign, StabilityCampaignAnalyzer, \
     META_AGENT_PREFIX
 from camd.experiment.agent_simulation import LocalAgentSimulation
@@ -47,7 +48,7 @@ TEST_AGENT_PARAMS = [
 RANDOM_TEST_AGENT_PARAMS = [
     {
         "@class": ["camd.agent.base.RandomAgent"],
-        "n_query": [5, 6],
+        "n_query": [2, 3],
     },
 ]
 
@@ -58,11 +59,12 @@ class MetaAgentCampaignTest(unittest.TestCase):
 
     def test_initialize_and_update(self):
         agent_pool = ParameterTable(TEST_AGENT_PARAMS)
-        dataframe = load_default_atf_data()
+        dataframe = get_oqmd_data_by_chemsys("Fe-O")
+        cand, seed = partition_intercomp(dataframe, n_elements=1)
         analyzer = StabilityAnalyzer()
         experiment = LocalAgentSimulation(
-            dataframe, iterations=5,
-            analyzer=analyzer, n_seed=10
+            cand, iterations=5,
+            analyzer=analyzer, seed_data=seed
         )
 
         MetaAgentCampaign.reserve(
@@ -89,12 +91,13 @@ class MetaAgentCampaignTest(unittest.TestCase):
     def test_run(self):
         agent_pool = ParameterTable(RANDOM_TEST_AGENT_PARAMS)
         # Construct experiment
-        dataframe = load_default_atf_data()
+        dataframe = get_oqmd_data_by_chemsys("Fe-O")
+        cand, seed = partition_intercomp(dataframe, n_elements=1)
         experiment = LocalAgentSimulation(
-            atf_candidate_data=dataframe, analyzer=StabilityAnalyzer(),
-            iterations=50, n_seed=5,
+            atf_candidate_data=cand, seed_data=seed,
+            analyzer=StabilityAnalyzer(), iterations=10,
         )
-        analyzer = StabilityCampaignAnalyzer()
+        analyzer = StabilityCampaignAnalyzer(checkpoint_indices=[2, 5, 10])
         MetaAgentCampaign.reserve(
             name="test_meta_agent", experiment=experiment,
             agent_pool=agent_pool, analyzer=analyzer
