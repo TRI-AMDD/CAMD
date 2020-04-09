@@ -212,7 +212,7 @@ class StabilityCampaignAnalyzer(AnalyzerBase):
             label = "{}-{}".format(row.agent.__class__.__name__, idx)
             ax1.plot(row.campaign.history.total_stable, label=label)
             ax2.plot(row.campaign.history.new_stable.cumsum(), label=label)
-        ax1.legend(loc='upper right')
+        ax1.legend(loc='upper left')
         fig.savefig("campaign_summary.png")
 
     def finalize(self, path):
