@@ -14,7 +14,7 @@ WORKDIR /home/camd
 # Create camd env
 ENV PATH="/opt/conda/envs/camd/bin:$PATH"
 
-COPY . /home/camd
+COPY camd setup.py requirements.txt /home/camd/
 
 # Install package
 RUN source /opt/conda/bin/activate camd && \
