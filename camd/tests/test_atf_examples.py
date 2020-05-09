@@ -3,12 +3,16 @@ import os
 import tempfile
 import shutil
 import pandas as pd
+import numpy as np
 
 from sklearn.neural_network import MLPRegressor
+from sklearn.gaussian_process.kernels import RBF, ConstantKernel
+
 from camd.agent.stability import QBCStabilityAgent, GaussianProcessStabilityAgent, SVGProcessStabilityAgent, \
     BaggedGaussianProcessStabilityAgent, AgentStabilityAdaBoost
 from camd.agent.base import RandomAgent
-from camd.analysis import StabilityAnalyzer
+from camd.agent.generic import GenericGPUCB
+from camd.analysis import StabilityAnalyzer, GenericMaxAnalyze
 from camd.experiment import ATFSampler
 from camd.campaigns.base import Campaign
 from camd.utils.data import cache_matrio_data, load_dataframe, \
@@ -234,6 +238,35 @@ class AtfSVGPLoopTest(unittest.TestCase):
         new_loop.auto_loop(3)
         self.assertTrue(True)
 
+class AtfGenericAgents(unittest.TestCase):
+    def setUp(self):
+        self.pwd = os.getcwd()
+        self.tempdir = tempfile.mkdtemp()
+        os.chdir(self.tempdir)
+
+    def tearDown(self):
+        os.chdir(self.pwd)
+        shutil.rmtree(self.tempdir)
+
+    def test_gp_ucb_generic(self):
+        def f(x):
+            return np.sin(x) * np.sin(x) * (x ** 2)
+
+        x = np.linspace(0, 10, 500)
+        y = f(x)
+        df = pd.DataFrame({'x': x, 'target': y})
+
+        N_query = 2  # This many experiments are requested in each iteration
+        N_seed = 5  # This many samples are randomly acquired in the beginning to form a seed.
+        agent = GenericGPUCB(n_query=2,kernel=ConstantKernel(100.0) + RBF(10.0) * ConstantKernel(1.0))
+        analyzer = GenericMaxAnalyze(test_df=df, threshold=58)
+        experiment = ATFSampler(dataframe=df)
+        candidate_data = df
+        new_loop = Campaign(candidate_data, agent, experiment, analyzer, create_seed=N_seed)
+        new_loop.initialize(random_state=20)
+        self.assertTrue(new_loop.initialized)
+        new_loop.run()
+        self.assertTrue(True)
 
 if __name__ == '__main__':
     unittest.main()
