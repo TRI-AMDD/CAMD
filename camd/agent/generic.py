@@ -7,6 +7,7 @@ from sklearn.gaussian_process.kernels import RBF, ConstantKernel
 
 from camd.agent.base import HypothesisAgent
 
+
 class GenericGPUCB(HypothesisAgent):
     def __init__(self, candidate_data=None, seed_data=None, n_query=None, alpha=1.0, kernel=None):
         """
