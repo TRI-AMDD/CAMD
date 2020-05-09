@@ -18,10 +18,9 @@ from sklearn.gaussian_process.kernels import RBF, ConstantKernel
 from sklearn.gaussian_process import GaussianProcessRegressor
 from sklearn.linear_model import LinearRegression
 from sklearn.model_selection import cross_val_score, KFold, train_test_split
-from sklearn.ensemble.bagging import BaggingRegressor
 from sklearn.preprocessing import StandardScaler
 from sklearn.pipeline import Pipeline
-from sklearn.ensemble import AdaBoostRegressor
+from sklearn.ensemble import AdaBoostRegressor, BaggingRegressor
 from sklearn.cluster import MiniBatchKMeans
 from sklearn.metrics import pairwise_distances
 
