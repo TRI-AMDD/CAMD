@@ -145,7 +145,7 @@ class Campaign(MSONable):
 
         # Campaign stopper if no discoveries in last few cycles.
         if self.iteration > self.heuristic_stopper:
-            new_discoveries = self.history['N_Discovery'][-3:].values.sum()
+            new_discoveries = self.history['new_stable'][-3:].values.sum()
             if new_discoveries == 0:
                 self.finalize()
                 print("Not enough new discoveries. Stopping the loop.")
@@ -334,11 +334,7 @@ class Campaign(MSONable):
         if self.initialized:
             raise ValueError(
                 "Initialization may overwrite existing loop data. Exit.")
-        cache_s3_objs(
-            ["camd/shared-data/oqmd1.2_icsd_featurized_clean_v2.pickle"]
-        )
-        self.seed_data = pd.read_pickle(
-            os.path.join(S3_CACHE, "camd/shared-data/oqmd1.2_icsd_featurized_clean_v2.pickle"))
+        self.seed_data = load_dataframe("oqmd1.2_exp_based_entries_featurized_v2")
         self.initialize(random_state=random_state)
 
     def finalize(self):
