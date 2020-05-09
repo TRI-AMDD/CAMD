@@ -56,6 +56,31 @@ class AnalyzerBase(abc.ABC):
                 seed data
         """
 
+class GenericMaxAnalyze(AnalyzerBase):
+    """
+    Generic analyzer that checks new data with a target column against a threshold to be crossed.
+    """
+    def __init__(self, test_df, threshold=0):
+        self.test_df = test_df
+        self.threshold=threshold
+        self.score=[]
+        self.best_examples=[]
+        super(GenericMaxAnalyze, self).__init__()
+
+    def analyze(self, new_experimental_results, seed_data):
+        new_seed = seed_data.append(new_experimental_results)
+        self.score.append(np.sum(new_seed['target']>self.threshold))
+        self.best_examples.append(new_seed.loc[np.argmax(new_seed['target'])])
+        new_stable = [self.score[-1]-self.score[-2]] if len(self.score)>1 else [self.score[-1]]
+        summary = pd.DataFrame(
+            {
+                "score": [self.score[-1]],
+                "best_example": [self.best_examples[-1]],
+                "new_stable": new_stable
+             }
+        )
+        return summary, new_seed
+
 
 class AnalyzeStructures(AnalyzerBase):
     """
