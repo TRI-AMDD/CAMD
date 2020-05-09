@@ -6,7 +6,7 @@ Usage:
     camd_worker COMMAND [options]
 
 Options:
-    --campaign CAMPAIGN  campaign name  [default: proto-dft-2]
+    --campaign CAMPAIGN  campaign name  [default: proto-dft]
     --loops NUM_LOOPS    number of loops to run
     -h --help            Show this screen
     --version            Show version
