@@ -6,7 +6,7 @@ Usage:
     camd_worker COMMAND [options]
 
 Options:
-    --campaign CAMPAIGN  campaign name  [default: proto-dft]
+    --campaign CAMPAIGN  campaign name  [default: proto-dft-2]
     --loops NUM_LOOPS    number of loops to run
     -h --help            Show this screen
     --version            Show version
@@ -78,7 +78,7 @@ class Worker(object):
             None
 
         """
-        if self.campaign == "proto-dft":
+        if self.campaign == "proto-dft-2":
             campaign = ProtoDFTCampaign.from_chemsys(**kwargs)
         elif self.campaign == "oqmd-atf":
             # This is more or less just a test
