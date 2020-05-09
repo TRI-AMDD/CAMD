@@ -454,7 +454,7 @@ class StabilityAnalyzer(AnalyzerBase):
         """
         Post-processing a dft campaign
         """
-        update_run_w_structure(path, hull_distance=self.hull_distance)
+        update_run_w_structure(path, hull_distance=self.hull_distance, parallel=self.parallel)
 
 
 class PhaseSpaceAL(PhaseSpace):
@@ -561,7 +561,7 @@ class PhaseSpaceAL(PhaseSpace):
                     if phase.stability is None]) == 0
 
 
-def update_run_w_structure(folder, hull_distance=0.2):
+def update_run_w_structure(folder, hull_distance=0.2, parallel=True):
     """
     Updates a campaign grouped in directories with structure analysis
 
@@ -590,7 +590,7 @@ def update_run_w_structure(folder, hull_distance=0.2):
             with open("experiment.pickle", 'rb') as f:
                 experiment = pickle.load(f)
             all_submitted, all_results = experiment.agg_history
-            st_a = StabilityAnalyzer(hull_distance=hull_distance)
+            st_a = StabilityAnalyzer(hull_distance=hull_distance, parallel=parallel)
             summary, new_seed = st_a.analyze(df, pd.DataFrame())
 
             # Having calculated stabilities again, we plot the overall hull.
