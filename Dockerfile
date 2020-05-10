@@ -19,7 +19,8 @@ COPY setup.py requirements.txt /home/camd/
 # Install package
 RUN source /opt/conda/bin/activate camd && \
     pip install numpy==1.18.3 && \
-    pip install -r requirements.txt
+    pip install -r requirements.txt && \
+    pip install --upgrade pytest
 
 COPY camd /home/camd/camd
 RUN python setup.py develop
