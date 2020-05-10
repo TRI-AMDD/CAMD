@@ -16,8 +16,6 @@ script:
     -e COVERALLS_REPO_TOKEN=$COVERALLS_REPO_TOKEN
     camd-public bash -c 'pytest --show-capture=no --maxfail=3 --disable-pytest-warnings --cov=camd --cov-report html:coverage_reports && coveralls'
   - bash deploy.sh
-after_script:
-  - coveralls
 env:
   global:
     - DOCKER_TAG=camd-public
