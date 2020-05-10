@@ -4,12 +4,9 @@ services:
 python:
   - '3.6'
 install:
-  - pip install numpy==1.18.2
-  - pip install -r requirements.txt
-  - pip install -e .[tests]
+  - docker build -t $DOCKER_TAG .
 script:
   - set -e
-  - docker build -t $DOCKER_TAG .
   - |
     docker run -it
     -e CAMD_S3_BUCKET=$CAMD_S3_BUCKET
