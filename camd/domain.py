@@ -291,12 +291,10 @@ def get_structures_from_protosearch(formulas, source='icsd',
     """
 
     if db_interface is None:
-        cache_matrio_data("oqmd_ver3.db")
-        oqmd_db_path = os.path.join(CAMD_CACHE, "oqmd_ver3.db")
-        db_interface = OqmdInterface(oqmd_db_path)
+        db_interface = OqmdInterface(source)
     dataframes = [
         db_interface.create_proto_data_set(
-            source=source, chemical_formula=formula)
+            chemical_formula=formula)
         for formula in formulas
     ]
     _structures = pd.concat(dataframes)
