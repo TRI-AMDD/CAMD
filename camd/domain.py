@@ -306,7 +306,7 @@ def get_structures_from_protosearch(formulas, source='icsd',
     ase_adap = AseAtomsAdaptor()
     pmg_structures = [ase_adap.get_structure(_structures.iloc[i]['atoms'])
                       for i in range(len(_structures))]
-    _structures['pmg_structures'] = pmg_structures
+    _structures['structure'] = pmg_structures
 
     # The uuid below is probably an overkill. But want the strings
     # to be unique. Sometimes in spaces with similar stoichiometries
