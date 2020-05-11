@@ -29,10 +29,9 @@ analyzer = StabilityAnalyzer(hull_distance=0.05)
 experiment = ATFSampler(dataframe=df)
 candidate_data = df
 
-##########################################################
 new_loop = Campaign(
     candidate_data, agent, experiment, analyzer,
     create_seed=n_seed
 )
 
-new_loop.auto_loop(n_iterations=4, timeout=5, initialize=True)
+new_loop.auto_loop(n_iterations=4, initialize=True)

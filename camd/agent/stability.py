@@ -556,11 +556,11 @@ class BaggedGaussianProcessStabilityAgent(StabilityAgent):
 
         steps = [('scaler', StandardScaler()), ('GP', self.GP)]
         pipeline = Pipeline(steps)
-
+        n_jobs = self.parallel if self.parallel else None
         bag_reg = BaggingRegressor(
             base_estimator=pipeline, n_estimators=self.n_estimators,
             max_samples=self.max_samples, bootstrap=self.bootstrap,
-            verbose=True, n_jobs=self.parallel)
+            verbose=True, n_jobs=n_jobs)
         self.cv_score = np.mean(
             -1.0 * cross_val_score(
                 pipeline, X_seed, y_seed, cv=KFold(3, shuffle=True),
