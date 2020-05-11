@@ -85,7 +85,7 @@ class ProtoDFTCampaign(Campaign):
         if self.initialized:
             raise ValueError(
                 "Initialization may overwrite existing loop data. Exit.")
-        self.seed_data = load_dataframe("oqmd1.2_icsd_featurized_clean_v2")
+        self.seed_data = load_dataframe("oqmd1.2_exp_based_entries_featurized_v2.pickle")
         self.initialize(random_state=random_state)
 
     def autorun(self):
