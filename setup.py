@@ -57,7 +57,7 @@ setup(
                       "taburu==2020.5.9"
                       ],
     extras_require={
-        "proto_dft": ["protosearch",
+        "proto_dft": ["protosearch==2020.5.10",
                       "ase>=3.19",
                       "shapely"],
         "tests": ["pytest",

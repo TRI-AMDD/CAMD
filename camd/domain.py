@@ -313,7 +313,7 @@ def get_structures_from_protosearch(formulas, source='icsd',
     # they may clash e.g. IrSb2O2 and Ir2SbO2 may end up producing
     # the same string, despite different substitutions on same structure.
     # We should figure out a way to get the right order from protosearch.
-    structure_uids = [_structures.iloc[i]['proto_name'].replace('_', '-') +
+    structure_uids = [_structures.iloc[i]['p_name'].replace('_', '-') +
                       '-' + '-'.join(pmg_structures[i].symbol_set) + '-' +
                       str(uuid.uuid4()).replace('-', '')[:6]
                       for i in range(len(_structures))]
