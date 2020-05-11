@@ -12,7 +12,7 @@ from camd.agent.stability import QBCStabilityAgent, GaussianProcessStabilityAgen
     BaggedGaussianProcessStabilityAgent, AgentStabilityAdaBoost
 from camd.agent.base import RandomAgent
 from camd.agent.generic import GenericGPUCB
-from camd.analysis import StabilityAnalyzer, GenericMaxAnalyze
+from camd.analysis import StabilityAnalyzer, GenericMaxAnalyzer
 from camd.experiment import ATFSampler
 from camd.campaigns.base import Campaign
 from camd.utils.data import cache_matrio_data, load_dataframe, \
@@ -260,7 +260,7 @@ class AtfGenericAgents(unittest.TestCase):
         N_query = 2  # This many experiments are requested in each iteration
         N_seed = 5  # This many samples are randomly acquired in the beginning to form a seed.
         agent = GenericGPUCB(n_query=2,kernel=ConstantKernel(100.0) + RBF(10.0) * ConstantKernel(1.0))
-        analyzer = GenericMaxAnalyze(test_df=df, threshold=58)
+        analyzer = GenericMaxAnalyzer(threshold=58)
         experiment = ATFSampler(dataframe=df)
         candidate_data = df
         new_loop = Campaign(candidate_data, agent, experiment, analyzer, create_seed=N_seed)
