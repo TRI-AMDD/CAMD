@@ -161,7 +161,7 @@ class GenericMaxAnalyzer(AnalyzerBase):
     def analyze(self, new_experimental_results, seed_data):
         new_seed = seed_data.append(new_experimental_results)
         self.score.append(np.sum(new_seed["target"] > self.threshold))
-        self.best_examples.append(new_seed.loc[np.argmax(new_seed["target"])])
+        self.best_examples.append(new_seed.loc[new_seed.target.idxmax()])
         new_stable = (
             [self.score[-1] - self.score[-2]]
             if len(self.score) > 1
