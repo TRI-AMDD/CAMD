@@ -1,16 +1,12 @@
 """
 Preliminary module for determining search spaces
 """
-import os
 import pandas as pd
 import abc
 import warnings
 import itertools
 import numpy as np
 import uuid
-
-from camd import CAMD_CACHE
-from camd.utils.data import cache_matrio_data
 
 from protosearch.build_bulk.oqmd_interface import OqmdInterface
 
@@ -142,7 +138,7 @@ class StructureDomain(DomainBase):
         if self._hypo_structures is None:
             self.get_structures()
         if self.n_max_atoms:
-            n_max_filter = [i.num_sites <= self.n_max_atoms for i in self._hypo_structures['pmg_structures']]
+            n_max_filter = [i.num_sites <= self.n_max_atoms for i in self._hypo_structures['structure']]
             if self._hypo_structures is not None:
                 return self._hypo_structures[n_max_filter]
             else:
@@ -158,7 +154,7 @@ class StructureDomain(DomainBase):
                 protosearch, filtered by n_max_atoms
 
         """
-        return self.hypo_structures["pmg_structures"].to_dict()
+        return self.hypo_structures["structure"].to_dict()
 
     @property
     def compositions(self):
@@ -177,7 +173,7 @@ class StructureDomain(DomainBase):
         # Note the redundancy here is for pandas to work
         if self.valid_structures is not None:
             return [s.composition.formula
-                    for s in self.valid_structures["pmg_structures"]]
+                    for s in self.valid_structures["structure"]]
         else:
             warnings.warn("No structures available yet.")
             return []
@@ -219,11 +215,11 @@ class StructureDomain(DomainBase):
         ])
 
         features = featurizer.featurize_many(
-            self.hypo_structures['pmg_structures'],
+            self.hypo_structures['structure'],
             ignore_errors=True, **kwargs)
 
         n_species, formula = [], []
-        for s in self.hypo_structures['pmg_structures']:
+        for s in self.hypo_structures['structure']:
             n_species.append(len(s.composition.elements))
             formula.append(s.composition.formula)
 
@@ -232,6 +228,7 @@ class StructureDomain(DomainBase):
         self._features_df.index = self.hypo_structures.index
         self._features_df['N_species'] = n_species
         self._features_df['Composition'] = formula
+        self._features_df['structure'] = self.hypo_structures['structure']
         self.features = self._features_df.dropna(axis=0, how='any')
         self.features = self.features.reindex(sorted(self.features.columns), axis=1)
 

@@ -53,13 +53,10 @@ class ProtoDFTCampaign(Campaign):
             element_list, charge_balanced=charge_balanced,
             n_max_atoms=20, **{'grid': range(1, max_coeff)})
         candidate_data = domain.candidates()
-        structure_dict = domain.hypo_structures_dict
 
         # Dump structure/candidate data
         with open('candidate_data.pickle', 'wb') as f:
             pickle.dump(candidate_data, f)
-        with open('structure_dict.pickle', 'wb') as f:
-            pickle.dump(structure_dict, f)
 
         # Set up agents and loop parameters
         agent = AgentStabilityAdaBoost(
