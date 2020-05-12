@@ -407,9 +407,12 @@ class StabilityAnalyzer(AnalyzerBase):
 
         space.compute_stabilities(phases=new_phases, ncpus=self.parallel)
 
-        # Compute new stabilities and update new seed
+        # Compute new stabilities and update new seed, note that pandas will complain
+        # if the index is not explicit due to multiple types (e. g. ints for OQMD
+        # and strs for prototypes)
         new_data = pd.DataFrame(
-            {"stability": {phase.description: phase.stability for phase in new_phases}}
+            {"stability": [phase.stability for phase in new_phases]},
+            index=[phase.description for phase in new_phases]
         )
         new_data["is_stable"] = new_data["stability"] <= self.hull_distance
 
