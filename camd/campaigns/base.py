@@ -14,10 +14,19 @@ from camd.agent.base import RandomAgent
 
 
 class Campaign(MSONable):
-    def __init__(self, candidate_data, agent, experiment, analyzer,
-                 seed_data=None, create_seed=False,
-                 heuristic_stopper=np.inf, s3_prefix=None,
-                 s3_bucket=CAMD_S3_BUCKET, path=None):
+    def __init__(
+        self,
+        candidate_data,
+        agent,
+        experiment,
+        analyzer,
+        seed_data=None,
+        create_seed=False,
+        heuristic_stopper=np.inf,
+        s3_prefix=None,
+        s3_bucket=CAMD_S3_BUCKET,
+        path=None,
+    ):
         """
         Campaign provides a sequential, workflow-like capability where an
         Agent iterates over a candidate space to choose and execute
@@ -74,8 +83,8 @@ class Campaign(MSONable):
         self._exp_raw_results = None
 
         # Check if there exists earlier iterations
-        if os.path.exists(os.path.join(self.path, 'iteration.json')):
-            self.load('iteration')
+        if os.path.exists(os.path.join(self.path, "iteration.json")):
+            self.load("iteration")
             self.initialized = True
         else:
             self.iteration = 0
@@ -83,12 +92,12 @@ class Campaign(MSONable):
 
         if self.initialized:
             self.create_seed = False
-            self.load('job_status')
+            self.load("job_status")
             self.experiment.job_status = self.job_status
-            self.load('experiment', method='pickle')
-            self.load('seed_data', method='pickle')
-            self.load('consumed_candidates')
-            self.load('loop_state', no_exist_fail=False)
+            self.load("experiment", method="pickle")
+            self.load("seed_data", method="pickle")
+            self.load("consumed_candidates")
+            self.load("loop_state", no_exist_fail=False)
             self.initialized = True
         else:
             self.submitted_experiment_requests = []
@@ -120,7 +129,7 @@ class Campaign(MSONable):
         os.chdir(self.path)
 
         # Load seed_data
-        self.load('seed_data', method='pickle')
+        self.load("seed_data", method="pickle")
 
         # Analyze new results
         print("{} {} state: Analyzing results".format(self.type, self.iteration))
@@ -133,11 +142,12 @@ class Campaign(MSONable):
         self.history = self.history.reset_index(drop=True)
         self.save("history", method="pickle")
         self.seed_data = new_seed_data
-        self.save('seed_data', method='pickle')
+        self.save("seed_data", method="pickle")
 
         # Remove candidates from candidate space
         candidate_space = self.candidate_data.index.difference(
-            new_experimental_results.index, sort=False).tolist()
+            new_experimental_results.index, sort=False
+        ).tolist()
         self.candidate_data = self.candidate_data.loc[candidate_space]
         if len(self.candidate_data) == 0:
             print("Candidate data exhausted.  Stopping loop.")
@@ -145,7 +155,7 @@ class Campaign(MSONable):
 
         # Campaign stopper if no discoveries in last few cycles.
         if self.iteration > self.heuristic_stopper:
-            new_discoveries = self.history['new_stable'][-3:].values.sum()
+            new_discoveries = self.history["new_discovery"][-3:].values.sum()
             if new_discoveries == 0:
                 self.finalize()
                 print("Not enough new discoveries. Stopping the loop.")
@@ -157,10 +167,14 @@ class Campaign(MSONable):
             return False
 
         # Agent suggests new experiments
-        print("{} {} state: Agent {} hypothesizing".format(
-            self.type, self.iteration, self.agent.__class__.__name__))
+        print(
+            "{} {} state: Agent {} hypothesizing".format(
+                self.type, self.iteration, self.agent.__class__.__name__
+            )
+        )
         suggested_experiments = self.agent.get_hypotheses(
-            self.candidate_data, self.seed_data)
+            self.candidate_data, self.seed_data
+        )
 
         # Campaign stopper if agent doesn't have anything to suggest.
         if len(suggested_experiments) == 0:
@@ -173,17 +187,18 @@ class Campaign(MSONable):
         self.job_status = self.experiment.submit(suggested_experiments)
         self.save("job_status")
 
-        self.save('experiment', method='pickle')
+        self.save("experiment", method="pickle")
 
         self.consumed_candidates += suggested_experiments.index.values.tolist()
-        self.save('consumed_candidates')
+        self.save("consumed_candidates")
 
         self.iteration += 1
         self.save("iteration")
         return True
 
-    def auto_loop(self, n_iterations=10, monitor=False,
-                  initialize=False, with_icsd=False):
+    def auto_loop(
+        self, n_iterations=10, monitor=False, initialize=False, with_icsd=False
+    ):
         """
         Runs the loop repeatedly, and locally. Pretty light weight,
         but recommended method is auto_loop_in_directories.
@@ -215,9 +230,14 @@ class Campaign(MSONable):
         # self.run(finalize=True)
         self.finalize()
 
-    def auto_loop_in_directories(self, n_iterations=10, timeout=10,
-                                 monitor=False, initialize=False,
-                                 with_icsd=False):
+    def auto_loop_in_directories(
+        self,
+        n_iterations=10,
+        timeout=10,
+        monitor=False,
+        initialize=False,
+        with_icsd=False,
+    ):
         """
         Runs the loop repeatedly in directories for each iteration
         TODO: Stopping criterion from Analyzer
@@ -235,7 +255,7 @@ class Campaign(MSONable):
 
         """
         if initialize:
-            self.loop_state = 'AGENT'
+            self.loop_state = "AGENT"
             self.save("loop_state")
 
             if with_icsd:
@@ -243,7 +263,7 @@ class Campaign(MSONable):
             else:
                 self.initialize()
 
-            self.loop_state = 'EXPERIMENTS STARTED'
+            self.loop_state = "EXPERIMENTS STARTED"
             self.save("loop_state")
 
             if monitor:
@@ -253,10 +273,10 @@ class Campaign(MSONable):
 
             if self.experiment.get_state():
                 self._exp_raw_results = self.experiment.job_status
-                self.save('_exp_raw_results')
+                self.save("_exp_raw_results")
 
-            loop_backup(self.path, '-1')
-            self.loop_state = 'EXPERIMENTS COMPLETED'
+            loop_backup(self.path, "-1")
+            self.loop_state = "EXPERIMENTS COMPLETED"
             self.save("loop_state")
 
         while n_iterations - self.iteration >= 0:
@@ -264,12 +284,12 @@ class Campaign(MSONable):
 
             if self.loop_state in ["EXPERIMENTS COMPLETED", "AGENT"]:
                 print("Iteration: {}".format(self.iteration))
-                self.loop_state = 'AGENT'
+                self.loop_state = "AGENT"
                 self.save("loop_state")
                 self.run()
                 print("  Waiting for next round ...")
 
-            self.loop_state = 'EXPERIMENTS STARTED'
+            self.loop_state = "EXPERIMENTS STARTED"
             self.save("loop_state")
             if monitor:
                 self.experiment.monitor()
@@ -277,32 +297,46 @@ class Campaign(MSONable):
             time.sleep(timeout)
             if self.experiment.get_state():
                 self._exp_raw_results = self.experiment.job_status
-                self.save('_exp_raw_results')
+                self.save("_exp_raw_results")
 
             loop_backup(self.path, str(self.iteration - 1))
-            self.loop_state = 'EXPERIMENTS COMPLETED'
+            self.loop_state = "EXPERIMENTS COMPLETED"
             self.save("loop_state")
         self.run(finalize=True)
         self.finalize()
 
     def initialize(self, random_state=42):
+        """
+        Initializes a campaign. The primary goal of initialization is to ensure a proper seed exists. If create_seed
+        is set in Campaign, it creates the seed by deploying the RandomAgent before the user-provided agent is
+        deployed in the regular campaign iterations.
+            random_state (int): ensures reproducible results.
+        """
         if self.initialized:
-            raise ValueError(
-                "Initialization may overwrite existing loop data. Exit.")
+            raise ValueError("Initialization may overwrite existing loop data. Exit.")
         if not self.seed_data.empty and not self.create_seed:
-            print("{} {} state: Agent {} hypothesizing".format(
-                self.type, 'initialization', self.agent.__class__.__name__))
+            print(
+                "{} {} state: Agent {} hypothesizing".format(
+                    self.type, "initialization", self.agent.__class__.__name__
+                )
+            )
             suggested_experiments = self.agent.get_hypotheses(
-                self.candidate_data, self.seed_data)
+                self.candidate_data, self.seed_data
+            )
         elif self.create_seed:
             np.random.seed(seed=random_state)
             _agent = RandomAgent(self.candidate_data, n_query=self.create_seed)
-            print("{} {} state: Agent {} hypothesizing".format(
-                self.type, 'initialization', _agent.__class__.__name__))
+            print(
+                "{} {} state: Agent {} hypothesizing".format(
+                    self.type, "initialization", _agent.__class__.__name__
+                )
+            )
             suggested_experiments = _agent.get_hypotheses(self.candidate_data)
         else:
             raise ValueError(
-                "No seed data available. Either supply or ask for creation.")
+                "No seed data available. Either supply or ask for creation."
+            )
+        self.analyzer._initial_seed_indices = self.seed_data.index.tolist()
 
         print("{} {} state: Running experiments".format(self.type, self.iteration))
         self.job_status = self.experiment.submit(suggested_experiments)
@@ -311,8 +345,8 @@ class Campaign(MSONable):
         self.initialized = True
 
         self.save("job_status")
-        self.save("seed_data", method='pickle')
-        self.save("experiment", method='pickle')
+        self.save("seed_data", method="pickle")
+        self.save("experiment", method="pickle")
         self.save("consumed_candidates")
         self.save("iteration")
         if self.s3_prefix:
@@ -332,8 +366,7 @@ class Campaign(MSONable):
     # TODO: move this into ProtoDFTCampaign and fix caching
     def initialize_with_icsd_seed(self, random_state=42):
         if self.initialized:
-            raise ValueError(
-                "Initialization may overwrite existing loop data. Exit.")
+            raise ValueError("Initialization may overwrite existing loop data. Exit.")
         self.seed_data = load_dataframe("oqmd1.2_exp_based_entries_featurized_v2")
         self.initialize(random_state=random_state)
 
@@ -345,17 +378,17 @@ class Campaign(MSONable):
         if self.s3_prefix:
             self.s3_sync()
 
-    def load(self, data_holder, method='json', no_exist_fail=True):
-        if method == 'pickle':
+    def load(self, data_holder, method="json", no_exist_fail=True):
+        if method == "pickle":
             m = pickle
-            mode = 'rb'
-        elif method == 'json':
+            mode = "rb"
+        elif method == "json":
             m = json
-            mode = 'r'
+            mode = "r"
         else:
             raise ValueError("Unknown data save method")
 
-        file_name = os.path.join(self.path, data_holder+'.'+method)
+        file_name = os.path.join(self.path, data_holder + "." + method)
         exists = os.path.exists(file_name)
 
         if exists:
@@ -367,17 +400,17 @@ class Campaign(MSONable):
             else:
                 self.__setattr__(data_holder, None)
 
-    def save(self, data_holder, custom_name=None, method='json'):
+    def save(self, data_holder, custom_name=None, method="json"):
         if custom_name:
             _path = os.path.join(self.path, custom_name)
         else:
-            _path = os.path.join(self.path, data_holder+'.'+method)
-        if method == 'pickle':
+            _path = os.path.join(self.path, data_holder + "." + method)
+        if method == "pickle":
             m = pickle
-            mode = 'wb'
-        elif method == 'json':
+            mode = "wb"
+        elif method == "json":
             m = json
-            mode = 'w'
+            mode = "w"
         else:
             raise ValueError("Unknown data save method")
         with open(_path, mode) as f:
