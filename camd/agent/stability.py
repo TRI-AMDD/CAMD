@@ -18,10 +18,9 @@ from sklearn.gaussian_process.kernels import RBF, ConstantKernel
 from sklearn.gaussian_process import GaussianProcessRegressor
 from sklearn.linear_model import LinearRegression
 from sklearn.model_selection import cross_val_score, KFold, train_test_split
-from sklearn.ensemble.bagging import BaggingRegressor
 from sklearn.preprocessing import StandardScaler
 from sklearn.pipeline import Pipeline
-from sklearn.ensemble import AdaBoostRegressor
+from sklearn.ensemble import AdaBoostRegressor, BaggingRegressor
 from sklearn.cluster import MiniBatchKMeans
 from sklearn.metrics import pairwise_distances
 
@@ -98,7 +97,7 @@ class StabilityAgent(HypothesisAgent, metaclass=abc.ABCMeta):
         #   drop everything we intend to.
         drop_columns = ['Composition', 'N_species', 'delta_e',
                         'pred_delta_e', 'pred_stability',
-                        'stability', 'is_stable']
+                        'stability', 'is_stable', 'structure']
         if candidate_data is not None:
             self.candidate_data = candidate_data
             X_cand = candidate_data.drop(

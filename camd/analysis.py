@@ -171,8 +171,8 @@ class GenericMaxAnalyzer(AnalyzerBase):
     def analyze(self, new_experimental_results, seed_data):
         new_seed = seed_data.append(new_experimental_results)
         self.score.append(np.sum(new_seed["target"] > self.threshold))
-        self.best_examples.append(new_seed.loc[np.argmax(new_seed["target"])])
-        new_discovery = (
+        self.best_examples.append(new_seed.loc[new_seed.target.idxmax()])
+        new_stable = (
             [self.score[-1] - self.score[-2]]
             if len(self.score) > 1
             else [self.score[-1]]
@@ -417,9 +417,12 @@ class StabilityAnalyzer(AnalyzerBase):
 
         space.compute_stabilities(phases=new_phases, ncpus=self.parallel)
 
-        # Compute new stabilities and update new seed
+        # Compute new stabilities and update new seed, note that pandas will complain
+        # if the index is not explicit due to multiple types (e. g. ints for OQMD
+        # and strs for prototypes)
         new_data = pd.DataFrame(
-            {"stability": {phase.description: phase.stability for phase in new_phases}}
+            {"stability": [phase.stability for phase in new_phases]},
+            index=[phase.description for phase in new_phases]
         )
         new_data["is_stable"] = new_data["stability"] <= self.hull_distance
 

@@ -10,14 +10,13 @@ SKIP_MSG = "Long tests disabled, set CAMD_LONG_TESTS to run long tests"
 
 
 # TODO: add lightweight version of these?
-@unittest.skipUnless(CAMD_LONG_TESTS, SKIP_MSG)
 class DomainTest(unittest.TestCase):
-
     def test_get_structures_from_protosearch(self):
         structure_df = get_structures_from_protosearch(["V3O7"], source='icsd')
 
-        self.assertEqual(structure_df.shape, (20, 4))
+        self.assertEqual(structure_df.shape, (20, 11))
 
+    @unittest.skipUnless(CAMD_LONG_TESTS, SKIP_MSG)
     def test_StructureDomain(self):
         sd = StructureDomain.from_bounds(['Ir', 'O'], charge_balanced=False)
 
@@ -54,6 +53,7 @@ class DomainTest(unittest.TestCase):
         sd.featurize_structures()
         self.assertEqual(sd.features.shape, (43, 275))
 
+    @unittest.skipUnless(CAMD_LONG_TESTS, SKIP_MSG)
     def test_heuristic_setup(self):
         element_list = ['Al', 'Fe']
         g_max, charge_balanced = heuristic_setup(element_list)

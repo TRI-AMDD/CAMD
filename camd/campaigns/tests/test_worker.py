@@ -103,7 +103,7 @@ class WorkerTest(unittest.TestCase):
 
     def test_cli(self):
         self.submit_chemsyses(["O-Ti"])
-        time.sleep(5)
+        time.sleep(10)
         output = subprocess.check_output(
             "camd_worker start --campaign oqmd-atf --loops 1",
             shell=True

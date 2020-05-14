@@ -78,7 +78,7 @@ class Worker(object):
             None
 
         """
-        if self.campaign == "proto-dft":
+        if self.campaign == "proto-dft-2":
             campaign = ProtoDFTCampaign.from_chemsys(**kwargs)
         elif self.campaign == "oqmd-atf":
             # This is more or less just a test
