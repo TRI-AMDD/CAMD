@@ -21,7 +21,7 @@ def teardown_s3():
     bucket.objects.filter(Prefix="{}".format("test")).delete()
 
 
-class LoopTest(unittest.TestCase):
+class CampaignTest(unittest.TestCase):
     def tearDown(self):
         teardown_s3()
 
@@ -29,11 +29,11 @@ class LoopTest(unittest.TestCase):
         with ScratchDir('.'):
             df = pd.read_csv(os.path.join(CAMD_TEST_FILES, 'test_df.csv'))
 
-            # Construct and start loop
-            new_loop = Campaign(df, AgentStabilityML5(), ATFSampler(df),
-                                StabilityAnalyzer(), create_seed=10,
-                                s3_prefix="test")
-            new_loop.initialize()
+            # Construct and start campaign
+            new_campaign = Campaign(df, AgentStabilityML5(), ATFSampler(df),
+                                    StabilityAnalyzer(), create_seed=10,
+                                    s3_prefix="test")
+            new_campaign.initialize()
         s3 = boto3.resource('s3')
         obj = s3.Object(CAMD_S3_BUCKET, "test/iteration.json")
         loaded = json.loads(obj.get()['Body'].read())

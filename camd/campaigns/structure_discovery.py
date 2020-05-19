@@ -24,7 +24,7 @@ class ProtoDFTCampaign(Campaign):
     and factories for constructing prototype-generation
     stability campaigns for materials discovery with DFT
     experiments
-   """
+    """
     @classmethod
     def from_chemsys(cls, chemsys):
         """
@@ -71,26 +71,21 @@ class ProtoDFTCampaign(Campaign):
         )
         analyzer = StabilityAnalyzer(hull_distance=0.2)
         experiment = OqmdDFTonMC1(timeout=30000)
+        seed_data = load_dataframe("oqmd1.2_exp_based_entries_featurized_v2")
 
         # Construct and start loop
         return cls(
-            candidate_data, agent, experiment, analyzer,
+            candidate_data=candidate_data, agent=agent, experiment=experiment,
+            analyzer=analyzer, seed_data=seed_data,
             heuristic_stopper=5, s3_prefix="proto-dft/runs/{}".format(chemsys)
         )
-
-    def initialize_with_icsd_seed(self, random_state=42):
-        if self.initialized:
-            raise ValueError(
-                "Initialization may overwrite existing loop data. Exit.")
-        self.seed_data = load_dataframe("oqmd1.2_exp_based_entries_featurized_v2")
-        self.initialize(random_state=random_state)
 
     def autorun(self):
         n_max_iter = n_max_iter_heuristics(
             len(self.candidate_data), 10)
-        self.auto_loop_in_directories(
-            n_iterations=n_max_iter, timeout=10, monitor=True,
-            initialize=True, with_icsd=True
+        self.auto_loop(
+            n_iterations=n_max_iter, monitor=True,
+            initialize=True, save_iterations=True
         )
 
 

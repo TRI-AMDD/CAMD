@@ -2,13 +2,12 @@
 import os
 import pickle
 import json
-import time
 import numpy as np
 import pandas as pd
 import shutil
 
 from monty.json import MSONable
-from camd.utils.data import load_dataframe, s3_sync
+from camd.utils.data import s3_sync
 from camd import CAMD_S3_BUCKET
 from camd.agent.base import RandomAgent
 
@@ -196,13 +195,12 @@ class Campaign(MSONable):
         self.save("iteration")
         return True
 
-    def auto_loop(
-        self, n_iterations=10, monitor=False, initialize=False, with_icsd=False
-    ):
+    def auto_loop(self, n_iterations=10, monitor=False,
+                  initialize=False, save_iterations=False):
         """
-        Runs the loop repeatedly, and locally. Pretty light weight,
-        but recommended method is auto_loop_in_directories.
-        TODO: Stopping criterion from Analyzer
+        Runs the loop repeatedly, and locally. Contains
+        option for backing up the loop in enumerated
+        subdirectories for each iteration.
 
         Args:
             n_iterations (int): Number of iterations.
@@ -210,15 +208,15 @@ class Campaign(MSONable):
                 keep track of requested experiments.
             initialize (bool): whether to initialize the loop
                 before starting
-            with_icsd (bool): whether to initialize from icsd
+            save_iterations (bool): whether or not to save
+                iterations in subdirectories of the working
+                directory
 
         """
-        # TODO: icsd seed functionality in ProtoDFT Campaign
         if initialize:
-            if with_icsd:
-                self.initialize_with_icsd_seed()
-            else:
-                self.initialize()
+            self.initialize()
+            if save_iterations:
+                loop_backup(self.path, "-1")
         while n_iterations - self.iteration >= 0:
             print("Iteration: {}".format(self.iteration))
             if not self.run():
@@ -226,82 +224,9 @@ class Campaign(MSONable):
             print("  Waiting for next round ...")
             if monitor:
                 self.experiment.monitor()
-        # TODO: is this necessary?
-        # self.run(finalize=True)
-        self.finalize()
+            if save_iterations:
+                loop_backup(self.path, str(self.iteration - 1))
 
-    def auto_loop_in_directories(
-        self,
-        n_iterations=10,
-        timeout=10,
-        monitor=False,
-        initialize=False,
-        with_icsd=False,
-    ):
-        """
-        Runs the loop repeatedly in directories for each iteration
-        TODO: Stopping criterion from Analyzer
-
-        Args:
-            n_iterations (int): Number of iterations.
-            timeout (int): Time (in seconds) to wait on idle for
-                submitted experiments to finish.
-            monitor (bool): Use Experiment's monitor method to keep
-                track of requested experiments. Note, if this is set
-                True, timeout also needs to be adjusted. If this is
-                not set True, make sure timeout is sufficiently long.
-            initialize (bool): whether to initialize the loop
-            with_icsd (bool): whether to initialize with icsd seed
-
-        """
-        if initialize:
-            self.loop_state = "AGENT"
-            self.save("loop_state")
-
-            if with_icsd:
-                self.initialize_with_icsd_seed()
-            else:
-                self.initialize()
-
-            self.loop_state = "EXPERIMENTS STARTED"
-            self.save("loop_state")
-
-            if monitor:
-                self.experiment.monitor()
-                os.chdir(self.path)
-            time.sleep(timeout)
-
-            if self.experiment.get_state():
-                self._exp_raw_results = self.experiment.job_status
-                self.save("_exp_raw_results")
-
-            loop_backup(self.path, "-1")
-            self.loop_state = "EXPERIMENTS COMPLETED"
-            self.save("loop_state")
-
-        while n_iterations - self.iteration >= 0:
-            self.load("loop_state")
-
-            if self.loop_state in ["EXPERIMENTS COMPLETED", "AGENT"]:
-                print("Iteration: {}".format(self.iteration))
-                self.loop_state = "AGENT"
-                self.save("loop_state")
-                self.run()
-                print("  Waiting for next round ...")
-
-            self.loop_state = "EXPERIMENTS STARTED"
-            self.save("loop_state")
-            if monitor:
-                self.experiment.monitor()
-                os.chdir(self.path)
-            time.sleep(timeout)
-            if self.experiment.get_state():
-                self._exp_raw_results = self.experiment.job_status
-                self.save("_exp_raw_results")
-
-            loop_backup(self.path, str(self.iteration - 1))
-            self.loop_state = "EXPERIMENTS COMPLETED"
-            self.save("loop_state")
         self.run(finalize=True)
         self.finalize()
 
@@ -355,20 +280,14 @@ class Campaign(MSONable):
     @property
     def type(self):
         """
-        Convenince property for campaign type
+        Convenience property for campaign type that
+        gets the class name, mostly for logging
 
         Returns:
-            Class name
+            (str): class name
 
         """
         return self.__class__.__name__
-
-    # TODO: move this into ProtoDFTCampaign and fix caching
-    def initialize_with_icsd_seed(self, random_state=42):
-        if self.initialized:
-            raise ValueError("Initialization may overwrite existing loop data. Exit.")
-        self.seed_data = load_dataframe("oqmd1.2_exp_based_entries_featurized_v2")
-        self.initialize(random_state=random_state)
 
     def finalize(self):
         print("Finalizing campaign.")
@@ -430,7 +349,6 @@ class Campaign(MSONable):
         s3_sync(self.s3_bucket, self.s3_prefix, self.path)
 
 
-# TODO: fix docstring
 def loop_backup(source_dir, target_dir):
     """
     Helper method to backup finished loop iterations.
