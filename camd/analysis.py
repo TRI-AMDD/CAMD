@@ -121,6 +121,9 @@ ELEMENTS = [
 
 
 class AnalyzerBase(abc.ABC):
+    def __init__(self):
+        self._initial_seed_indices = []
+
     @abc.abstractmethod
     def analyze(self, new_experimental_results, seed_data):
         """
@@ -140,6 +143,13 @@ class AnalyzerBase(abc.ABC):
             (DataFrame): dataframe corresponding to the new
                 seed data
         """
+
+    @property
+    def initial_seed_indices(self):
+        """
+        Returns: The list of indices contained in the initial seed. Intended to be set by the Campaign.
+        """
+        return self._initial_seed_indices
 
 
 class GenericMaxAnalyzer(AnalyzerBase):
@@ -162,7 +172,7 @@ class GenericMaxAnalyzer(AnalyzerBase):
         new_seed = seed_data.append(new_experimental_results)
         self.score.append(np.sum(new_seed["target"] > self.threshold))
         self.best_examples.append(new_seed.loc[new_seed.target.idxmax()])
-        new_stable = (
+        new_discovery = (
             [self.score[-1] - self.score[-2]]
             if len(self.score) > 1
             else [self.score[-1]]
@@ -171,7 +181,7 @@ class GenericMaxAnalyzer(AnalyzerBase):
             {
                 "score": [self.score[-1]],
                 "best_example": [self.best_examples[-1]],
-                "new_stable": new_stable,
+                "new_discovery": new_discovery,
             }
         )
         return summary, new_seed
@@ -427,11 +437,15 @@ class StabilityAnalyzer(AnalyzerBase):
         self.plot_hull(new_seed, new_experimental_results.index, filename="hull.png")
 
         # Compute summary metrics
-        summary = self.get_summary(new_seed, new_experimental_results.index)
+        summary = self.get_summary(
+            new_seed,
+            new_experimental_results.index,
+            initial_seed_indices=self.initial_seed_indices,
+        )
         return summary, new_seed
 
     @staticmethod
-    def get_summary(new_seed, new_ids):
+    def get_summary(new_seed, new_ids, initial_seed_indices=None):
         """
         Gets summary row for given experimental results after
         preliminary stability analysis.  This is not meant
@@ -455,11 +469,15 @@ class StabilityAnalyzer(AnalyzerBase):
         #       of experiments, so can be difficult to determine marginal
         #       value of a given experimental run
         processed_new = new_seed.loc[new_ids]
+        initial_seed_indices = initial_seed_indices if initial_seed_indices else []
+        total_discovery = new_seed.loc[
+            ~new_seed.index.isin(initial_seed_indices)
+        ].is_stable.sum()
         return pd.DataFrame(
             {
                 "new_candidates": [len(processed_new)],
-                "new_stable": [processed_new.is_stable.sum()],
-                "total_stable": [new_seed.is_stable.sum()],
+                "new_discovery": [processed_new.is_stable.sum()],
+                "total_discovery": [total_discovery],
             }
         )
 
