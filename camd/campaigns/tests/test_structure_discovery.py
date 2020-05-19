@@ -33,7 +33,7 @@ class ProtoDFTCampaignTest(unittest.TestCase):
             # Nerf agent a bit
             agent = AgentStabilityML5(n_query=2)
             campaign.agent = agent
-            campaign.run()
+            campaign.autorun()
 
 
 if __name__ == '__main__':
