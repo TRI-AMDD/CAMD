@@ -9,7 +9,7 @@ from monty.os import makedirs_p, cd
 from monty.serialization import loadfn
 from pymatgen import Composition
 from pymatgen.symmetry.analyzer import SpacegroupAnalyzer
-from camd.analysis import AnalyzeStability
+from camd.analysis import StabilityAnalyzer
 from add_structure_analysis import get_all_s3_folders, sync_s3_folder
 
 S3_SYNC = True
@@ -34,7 +34,7 @@ def process_run():
     if not all([os.path.isfile(fn) for fn in required_files]):
         print("{} ERROR: no seed data, no analysis to be done")
     else:
-        analyzer = AnalyzeStability(hull_distance=0.2, multiprocessing=True)
+        analyzer = StabilityAnalyzer(hull_distance=0.2, parallel=True)
         with open(os.path.join("seed_data.pickle"), "rb") as f:
             result_df = pickle.load(f)
 

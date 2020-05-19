@@ -3,35 +3,59 @@
 import unittest
 import os
 import pandas as pd
-import json
-from pymatgen import Composition
 from monty.serialization import loadfn
+from monty.tempfile import ScratchDir
 from camd import CAMD_TEST_FILES
-from camd.analysis import AnalyzeStability, AnalyzeStructures
+from camd.analysis import StabilityAnalyzer, AnalyzeStructures
+from camd.utils.data import filter_dataframe_by_composition
 
 
-class AnalysisTest(unittest.TestCase):
-    def test_present(self):
+class StabilityAnalyzerTest(unittest.TestCase):
+    def test_plot_hull(self):
         df = pd.read_csv(os.path.join(CAMD_TEST_FILES, "test_df_analysis.csv"),
                          index_col="id")
         df['Composition'] = df['formula']
+
         # Test 2D
-        analyzer = AnalyzeStability(df, hull_distance=0.1)
-        analyzer.present(
-            df,
-            all_result_ids=["mp-8057", "mp-882", "mp-753593", "mvc-4715"],
-            new_result_ids=["mp-685151", "mp-755875"])
+        with ScratchDir('.'):
+            analyzer = StabilityAnalyzer(hull_distance=0.1)
+            analyzer.plot_hull(df, new_result_ids=["mp-685151", "mp-755875"],
+                               filename="hull.png")
+            self.assertTrue(os.path.isfile("hull.png"))
 
         # Test 3D
-        analyzer.hull_distance = 0.05
+        with ScratchDir('.'):
+            analyzer.hull_distance = 0.05
+            analyzer.plot_hull(df, new_result_ids=["mp-776280", "mp-30998"],
+                               filename="hull.png")
+            self.assertTrue(os.path.isfile("hull.png"))
 
-        analyzer.present(
-            df,
-            all_result_ids=["mp-754790", "mvc-4715"],
-            new_result_ids=["mp-776280", "mp-30998"]
+    def test_analyze(self):
+        df = pd.read_csv(os.path.join(CAMD_TEST_FILES, "test_df_analysis.csv"),
+                         index_col="id")
+        df['Composition'] = df['formula']
+        analyzer = StabilityAnalyzer(hull_distance=0.1)
+        seed_data = filter_dataframe_by_composition(df, "TiNO")
+        # TODO: resolve drop_duplicates filtering mp data
+        seed_data = seed_data.drop_duplicates(keep='last').dropna()
+        new_exp_indices = ["mp-30998", "mp-572822"]
+        new_experimental_results = seed_data.loc[new_exp_indices]
+        seed_data = seed_data.drop(index=new_exp_indices)
+        summary, seed_data = analyzer.analyze(
+            new_experimental_results=seed_data, seed_data=pd.DataFrame(),
         )
+        summary, new_seed = analyzer.analyze(
+            new_experimental_results=new_experimental_results,
+            seed_data=seed_data
+        )
+        self.assertAlmostEqual(new_seed.loc['mp-30998', 'stability'], 0)
+        self.assertAlmostEqual(new_seed.loc["mp-572822", 'stability'], 0.52784795)
+        self.assertTrue(new_seed.loc['mp-30998', 'is_stable'])
+        self.assertFalse(new_seed.loc["mp-572822", 'is_stable'])
 
-    def test_structure_analyzer(self):
+
+class StructureAnalyzerTest(unittest.TestCase):
+    def test_analyze_vaspqmpy_jobs(self):
         jobs = loadfn(os.path.join(CAMD_TEST_FILES, "raw_results.json"))
         analyzer = AnalyzeStructures()
         self.assertEqual(analyzer.analyze_vaspqmpy_jobs(jobs, against_icsd=True, use_energies=False),
@@ -39,32 +63,6 @@ class AnalysisTest(unittest.TestCase):
 
         self.assertEqual(analyzer.analyze_vaspqmpy_jobs(jobs, against_icsd=True, use_energies=True),
                          [True, True, False, True, True, False, True, True, True])
-
-    def test_analyze(self):
-        df = pd.read_csv(os.path.join(CAMD_TEST_FILES, "test_df_analysis.csv"),
-                         index_col="id")
-        df['Composition'] = df['formula']
-        analyzer = AnalyzeStability(df, hull_distance=0.1)
-        stab_new, stab_all = analyzer.analyze(
-            df, new_result_ids=["mp-30998", "mp-572822"],
-            all_result_ids=["mp-30998", "mp-572822", "mp-754790", "mp-656850"],
-            return_within_hull=False)
-        self.assertAlmostEqual(stab_new[0], 0)
-        self.assertAlmostEqual(stab_new[1], 0.52784795)
-        stab_new, stab_all = analyzer.analyze(
-            df, new_result_ids=["mp-30998", "mp-572822"],
-            all_result_ids=["mp-30998", "mp-572822", "mp-754790", "mp-656850"],
-        )
-        self.assertTrue(stab_new[0])
-        self.assertFalse(stab_new[1])
-        self.assertTrue(stab_all[2])
-        self.assertFalse(stab_all[3])
-
-        # Test non-included result_ids, this one is "mp-1235"
-        stab_new, stab_all = analyzer.analyze(
-            df, new_result_ids=["mp-73", "mp-72", "mp-1057818", "mp-1235"],
-            all_result_ids=["mp-73", "mp-72", "mp-46", "mp-1057818"]
-        )
 
 
 if __name__ == '__main__':

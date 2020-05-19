@@ -1,10 +1,11 @@
 import unittest
 import os
-from camd.utils.data import cache_matrio_data, load_dataframe
+from camd.utils.data import cache_matrio_data, load_dataframe, \
+    partition_intercomp
 from camd import CAMD_CACHE
 
 
-class DataTest(unittest.TestCase):
+class DataCacheTest(unittest.TestCase):
     def setUp(self):
         # Remove smallest file and cache
         self.smallfile = "oqmd1.2_exp_based_entries_featurized_v2.pickle"
@@ -27,6 +28,23 @@ class DataTest(unittest.TestCase):
         df_name = self.smallfile.rsplit('.', 1)[0]
         dataframe = load_dataframe(df_name)
         self.assertEqual(len(dataframe), 36581)
+
+
+class PartitionTest(unittest.TestCase):
+    def setUp(self):
+        # Remove smallest file and cache
+        self.smallfile = "oqmd1.2_exp_based_entries_featurized_v2.pickle"
+        self.smallfile_path = os.path.join(CAMD_CACHE, self.smallfile)
+
+    def test_partition(self):
+        df_name = self.smallfile.rsplit('.', 1)[0]
+        dataframe = load_dataframe(df_name)
+        cand, seed = partition_intercomp(dataframe)
+        self.assertEqual(len(dataframe), len(cand) + len(seed))
+
+        cand, seed = partition_intercomp(dataframe, n_elements=1)
+        self.assertEqual(len(dataframe), len(cand) + len(seed))
+        self.assertGreater(len(seed), 0)
 
 
 if __name__ == '__main__':

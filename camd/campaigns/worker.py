@@ -25,11 +25,11 @@ from pathlib import Path
 from docopt import docopt
 from monty.tempfile import ScratchDir
 from camd import CAMD_S3_BUCKET, CAMD_STOP_FILE
-from camd.log import camd_traced
-from camd.campaigns.structure_discovery import run_proto_dft_campaign, run_atf_campaign
+from camd.campaigns.structure_discovery import \
+    ProtoDFTCampaign, CloudATFCampaign
+from camd.campaigns.meta_agent import MetaAgentCampaign
 
 
-@camd_traced
 class Worker(object):
     def __init__(self, campaign="proto-dft-2"):
         self.campaign = campaign
@@ -57,30 +57,38 @@ class Worker(object):
             if latest_chemsys:
                 with ScratchDir('.') as sd:
                     print("Running {} in {}".format(latest_chemsys, sd))
-                    self.run_campaign(latest_chemsys)
+                    self.run_campaign(chemsys=latest_chemsys)
             else:
                 print("No new campaigns submitted, sleeping for {} seconds".format(
                     sleep_time))
                 time.sleep(sleep_time)
 
-    def run_campaign(self, chemsys):
+    def run_campaign(self, **kwargs):
         """
         Runs the campaign for a given chemsys
 
         Args:
-            chemsys ([str]):
+            **kwargs: keyword-args for a given campaign,
+                specific to invocation method below i. e.
+
+                proto-dft/oqmd-atf require {'chemsys': CHEMSYS}
+                meta-agent requires {'name': NAME}
 
         Returns:
             None
 
         """
         if self.campaign == "proto-dft-2":
-            run_proto_dft_campaign(chemsys)
+            campaign = ProtoDFTCampaign.from_chemsys(**kwargs)
         elif self.campaign == "oqmd-atf":
             # This is more or less just a test
-            run_atf_campaign(chemsys)
+            campaign = CloudATFCampaign.from_chemsys(**kwargs)
+        elif self.campaign.startswith("meta-agent"):
+            # For meta-agent campaigns, submit with meta_agent/CAMPAIGN_NAME
+            campaign = MetaAgentCampaign.from_reserved_name(**kwargs)
         else:
             raise ValueError("Campaign {} is not valid".format(self.campaign))
+        campaign.autorun()
 
     def get_latest_chemsys(self):
         """
@@ -189,7 +197,7 @@ def main():
         worker.remove_stop_file()
         worker.start(num_loops=num_loops)
     elif args['COMMAND'] == "stop":
-        worker.write_stopfile()
+        worker.write_stop_file()
     else:
         raise ValueError("Invalid command {}.  Worker command must be 'start' or 'stop'")
 

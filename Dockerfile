@@ -14,10 +14,13 @@ WORKDIR /home/camd
 # Create camd env
 ENV PATH="/opt/conda/envs/camd/bin:$PATH"
 
-COPY . /home/camd
+COPY setup.py requirements.txt /home/camd/
 
 # Install package
-RUN pip install numpy==1.18.2 && \
-    source /opt/conda/bin/activate camd && \
+RUN source /opt/conda/bin/activate camd && \
+    pip install numpy==1.18.3 && \
     pip install -r requirements.txt && \
-    python setup.py develop
+    pip install pytest pytest-cov coveralls
+
+COPY camd /home/camd/camd
+RUN python setup.py develop
