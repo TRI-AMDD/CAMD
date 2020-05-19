@@ -9,7 +9,6 @@ CAMD_LONG_TESTS = os.environ.get("CAMD_LONG_TESTS", False)
 SKIP_MSG = "Long tests disabled, set CAMD_LONG_TESTS to run long tests"
 
 
-# TODO: add lightweight version of these?
 class DomainTest(unittest.TestCase):
     def test_get_structures_from_protosearch(self):
         structure_df = get_structures_from_protosearch(["V3O7"], source='icsd')
