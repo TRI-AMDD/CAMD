@@ -9,6 +9,7 @@ from camd.agent.meta import AGENT_PARAMS, \
     convert_parameter_table_to_dataframe
 from camd.agent.base import RandomAgent
 from camd.campaigns.base import Campaign
+from camd.analysis import AnalyzerBase
 from matplotlib import pyplot as plt
 import pickle
 import boto3
@@ -174,18 +175,7 @@ class MetaAgentCampaign(Campaign):
         self.auto_loop(n_iterations=5, initialize=True)
 
 
-class StabilityMetaAgentCampaign(MetaAgentCampaign):
-    """
-    Convenience class to construct MetaAgent
-    campaigns around stability
-    """
-    pass
-
-
 # TODO: move this into analysis
-from camd.analysis import AnalyzerBase
-
-
 # For now this is specific to stability
 class StabilityCampaignAnalyzer(AnalyzerBase):
     def __init__(self, checkpoint_indices):
@@ -195,7 +185,7 @@ class StabilityCampaignAnalyzer(AnalyzerBase):
         for key, row in new_experimental_results.iterrows():
             history = row.campaign.history
             for index in self.checkpoint_indices:
-                new_experimental_results.loc[key, "discovered_{}".format(index)] = history.loc[index, 'total_stable']
+                new_experimental_results.loc[key, "discovered_{}".format(index)] = history.loc[index, 'total_discovery']
         seed_data = seed_data.append(new_experimental_results)
         summary = new_experimental_results.loc["discovered_{}".format(self.checkpoint_indices[0]):
                                                "discovered_{}".format(self.checkpoint_indices[-1])]
@@ -210,8 +200,8 @@ class StabilityCampaignAnalyzer(AnalyzerBase):
         ax2.set_title("Cumulative")
         for idx, row in campaign_data.iterrows():
             label = "{}-{}".format(row.agent.__class__.__name__, idx)
-            ax1.plot(row.campaign.history.total_stable, label=label)
-            ax2.plot(row.campaign.history.new_stable.cumsum(), label=label)
+            ax1.plot(row.campaign.history.total_discovery, label=label)
+            ax2.plot(row.campaign.history.new_discovery.cumsum(), label=label)
         ax1.legend(loc='upper left')
         fig.savefig("campaign_summary.png")
 
