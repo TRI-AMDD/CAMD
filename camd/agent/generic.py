@@ -10,7 +10,8 @@ from camd.agent.base import HypothesisAgent
 
 class GenericGPUCB(HypothesisAgent):
     """
-    Generic Gaussian Process (GP) and upper confidence bound (UCB) based agent that tries to maximize a target that can
+    Generic Gaussian Process (GP) and upper confidence bound (UCB)
+    based agent that tries to maximize a target that can
     be used in a batch-mode Bayesian Optimization setting.
     """
 
