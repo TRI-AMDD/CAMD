@@ -29,8 +29,8 @@ mpr = MPRester('68rWEneaZFyIaKh15uKr') # provide your API key here or add it to 
 
 # Load dataset
 # ---------------------------------------------------------------------
-featurized_data = pd.read_csv('featurized_brgoch_data.csv', index_col=0)
-print(featurized_data.head(2))
+# featurized_data = pd.read_csv('featurized_brgoch_data.csv', index_col=0)
+# print(featurized_data.head(2))
 
 
 # Agent Design
@@ -46,26 +46,36 @@ print(featurized_data.head(2))
 # Analyzer
 # -----------------------------------------------------------------------
 class MultiAnalyzer():
-    def __init__(target_property, property_range):
-        self.target_property = target_property
+    def __init__(self, target_property, property_range):
+        self.target_property = target_property 
         self.property_range = property_range
         
-    def _filter_df_by_property_range(df):
+    def _filter_df_by_property_range(self, df):
         """
         Helper function to filter df by property range
         
         Args:
             df (DataFrame): dataframe to be filtered
         """
-        return df[(df < self.property_range[1]) & (df > property_range[0])]]
+        return df[(df[self.target_property] >= self.property_range[0]) & 
+                  (df[self.target_property] <= self.property_range[1])]
     
-    def analyze(new_experimental_results, seed_data):
+    def analyze(self, new_experimental_results, seed_data):
+        # new discovery during the current iteration
+        new_discovery = new_experimental_results[new_experimental_results['expt_calculated'] == 1]
+        new_discovery = self._filter_df_by_property_range(new_discovery)
+        # Uncertainty?
+        
+        # total discovery up to (& including) the current iteration
         new_seed = seed_data.append(new_experimental_results)
-        new_discovery = self._filter_df_by_property_range(new_seed)
+        total_discovery = new_seed[new_seed['expt_calculated'] == 1]
+        total_discovery = self._filter_df_by_property_range(total_discovery)
+        
         summary = pd.DataFrame(
             {
-                "percent_discovered": len(new_discovery) / len(new_seed)
-                "total_percent_discovered": len(new_discovery) / len(new_experimental_results)
+                "discovery_rate": [len(new_discovery) / len(new_experimental_results)],
+                "total_discovery_frac": [len(total_discovery) / len(new_seed)]
+                # "discoveries_per_cost": [len(new_discovery) / cost
             }
         )
         return summary, new_seed
