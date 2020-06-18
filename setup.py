@@ -17,12 +17,12 @@ based on ongoing work led by the
 [Toyota Research Institute](http://www.tri.global/accelerated-materials-design-and-discovery/).
 
 camd enables the construction of sequential learning pipelines using a set of
-abstractions that include 
-* Agents - decision making entities which select experiments to run from pre-determined 
+abstractions that include
+* Agents - decision making entities which select experiments to run from pre-determined
     candidate sets
-* Experiments - experimental procedures which augment candidate data in a way that 
+* Experiments - experimental procedures which augment candidate data in a way that
     facilitates further experiment selection
-* Analyzers - Post-processing procedures which frame experimental results in the context 
+* Analyzers - Post-processing procedures which frame experimental results in the context
     of candidate or seed datasets
 
 In addition to these abstractions, camd provides a loop construct which executes
@@ -34,13 +34,13 @@ after the fact sampling of known data.
 setup(
     name='camd',
     url="https://github.com/TRI-AMDD/CAMD",
-    version="2020.4.28-dev",
+    version="2020.5.19",
     packages=find_packages(),
     description=DESCRIPTION,
     long_description=LONG_DESCRIPTION,
     long_description_content_type='text/markdown',
     setup_requires=["numpy==1.18.3",
-                    "Django==2.2.10",
+                    "Django==2.2.13",
                     "tensorflow==1.15.2",
                     "gpflow==1.5.0"],  # For qmpy depnedency
     install_requires=["python-dateutil==2.8.0",
