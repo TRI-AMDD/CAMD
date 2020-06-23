@@ -262,6 +262,7 @@ class Campaign(MSONable):
                 "No seed data available. Either supply or ask for creation."
             )
         self.analyzer._initial_seed_indices = self.seed_data.index.tolist()
+        self.agent._initial_seed_indices = self.seed_data.index.tolist()
 
         print("{} {} state: Running experiments".format(self.type, self.iteration))
         self.job_status = self.experiment.submit(suggested_experiments)
