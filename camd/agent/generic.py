@@ -98,8 +98,7 @@ class GPBatchUCB(HypothesisAgent):
                 use the Theorem 1 from Srivanasan et al. to determine the alpha during batch composition.
                 'auto' has two parameters, 'delta' and 'premultip', which default to 0.1 and 0.05 respectively,
                 but can be modified by passing as kwargs to the agent. if mode is "naive" this can only be a flaot.
-            kernel (scikit-learn kernel): Kernel object for the GP. Defaults to ConstantKernel(1.0)*RBF(1.0).
-                    See scikit-learn.gaussian_process.kernels for details.
+            kernel (GPy kernel): Kernel object for the GP. Defaults to RBF.
         """
         self.candidate_data = candidate_data
         self.seed_data = seed_data
