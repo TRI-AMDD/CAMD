@@ -107,6 +107,7 @@ class GPBatchUCB(HypothesisAgent):
         self.alpha = alpha
         self.kernel = kernel
         self.kwargs = kwargs
+        self.cv_score = np.inf
 
         super(GPBatchUCB).__init__()
 
@@ -116,7 +117,7 @@ class GPBatchUCB(HypothesisAgent):
         )
         self.seed_data = seed_data
 
-        fb_start = max(len(self.seed_data) - len(self._initial_seed_indices), 1)
+        fb_start = max(len(self.seed_data), 1)
 
         if self.kernel is None:
             self.kernel = GPy.kern.RBF(input_dim=self.candidate_data.shape[1])
