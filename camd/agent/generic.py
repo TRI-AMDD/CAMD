@@ -1,5 +1,4 @@
 import numpy as np
-import gpflow
 import GPy
 
 from sklearn.preprocessing import StandardScaler
@@ -106,7 +105,7 @@ class GPBatchUCB(HypothesisAgent):
         super(GPBatchUCB).__init__()
 
     def get_hypotheses(self, candidate_data, seed_data=None):
-        self.candidate_data = candidate_data.drop(columns=["target"], axis=1)
+        self.candidate_data = candidate_data.drop(columns=["target"], axis=1, errors='ignore')
         self.seed_data = seed_data
 
         fb_start = max(len(self.seed_data) - len(self._initial_seed_indices), 1)
@@ -146,7 +145,7 @@ class GPBatchUCB(HypothesisAgent):
                     _t = i + fb_start
                     alpha = self.kwargs.get('premultip', 0.05) * np.sqrt(
                         2 * np.log(len(self.candidate_data) * _t ** 2 * np.pi ** 2 / 6 / self.kwargs.get('delta', 0.1)))
-                    print(alpha)
+                    print('- alpha.{}: '.format(i), alpha)
                 else:
                     alpha = self.alpha
 
@@ -154,9 +153,7 @@ class GPBatchUCB(HypothesisAgent):
                 s = np.argmax(t_pred)
 
                 name = r_candidates.index.tolist()[s]
-                print(s, (y_pred[s] * y_std + y_m)[0], t_pred[s][0], unc[s], candidate_data['target'].loc[name])
                 batch.append(name)
-                print(batch, candidate_data.loc[batch]['target'])
                 r_seed = r_seed.append(r_candidates.loc[name])
                 r_y = np.append(r_y, np.array([y_pred[s]]).reshape(1, 1), axis=0)
                 r_candidates = r_candidates.drop(name)
