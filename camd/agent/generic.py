@@ -13,8 +13,8 @@ from camd.agent.base import HypothesisAgent
 class GenericGPUCB(HypothesisAgent):
     """
     Generic Gaussian Process (GP) and upper confidence bound (UCB)
-    based agent that tries to maximize a target that can
-    be used in a batch-mode Bayesian Optimization setting.
+    based agent that tries to maximize a target. This provide a "naive" batch mode BO.
+    We strongly recommend using GPBatchUCB instead.
     """
 
     def __init__(
@@ -75,7 +75,14 @@ class GPBatchUCB(HypothesisAgent):
     """
 
     def __init__(
-            self, candidate_data=None, seed_data=None, n_query=None, mode='batch', alpha=1.0, kernel=None, **kwargs
+        self,
+        candidate_data=None,
+        seed_data=None,
+        n_query=None,
+        mode="batch",
+        alpha=1.0,
+        kernel=None,
+        **kwargs
     ):
         """
         Args:
@@ -105,7 +112,9 @@ class GPBatchUCB(HypothesisAgent):
         super(GPBatchUCB).__init__()
 
     def get_hypotheses(self, candidate_data, seed_data=None):
-        self.candidate_data = candidate_data.drop(columns=["target"], axis=1, errors='ignore')
+        self.candidate_data = candidate_data.drop(
+            columns=["target"], axis=1, errors="ignore"
+        )
         self.seed_data = seed_data
 
         fb_start = max(len(self.seed_data) - len(self._initial_seed_indices), 1)
@@ -130,22 +139,37 @@ class GPBatchUCB(HypothesisAgent):
                 x = scaler.transform(r_seed).astype(np.float64)
                 y = r_y.astype(np.float64).reshape(-1, 1)
 
-                m = GPy.models.GPRegression(x, y,
-                                            kernel=self.kernel,
-                                            noise_var=self.kwargs.get('noise_var', 1.0))
-                m.optimize(optimizer=self.kwargs.get('optimizer', 'bfgs'),
-                           max_iters=self.kwargs.get('max_iters', 1000))
+                m = GPy.models.GPRegression(
+                    x,
+                    y,
+                    kernel=self.kernel,
+                    noise_var=self.kwargs.get("noise_var", 1.0),
+                )
+                m.optimize(
+                    optimizer=self.kwargs.get("optimizer", "bfgs"),
+                    max_iters=self.kwargs.get("max_iters", 1000),
+                )
                 self.kernel = m.kern
 
-                y_pred, var = m.predict(scaler.transform(r_candidates.to_numpy().astype(np.float64)))
+                y_pred, var = m.predict(
+                    scaler.transform(r_candidates.to_numpy().astype(np.float64))
+                )
                 t_pred = y_pred * y_std + y_m
                 unc = np.sqrt(var) * y_std + y_m
 
-                if self.alpha == 'auto':
+                if self.alpha == "auto":
                     _t = i + fb_start
-                    alpha = self.kwargs.get('premultip', 0.05) * np.sqrt(
-                        2 * np.log(len(self.candidate_data) * _t ** 2 * np.pi ** 2 / 6 / self.kwargs.get('delta', 0.1)))
-                    print('- alpha.{}: '.format(i), alpha)
+                    alpha = self.kwargs.get("premultip", 0.05) * np.sqrt(
+                        2
+                        * np.log(
+                            len(self.candidate_data)
+                            * _t ** 2
+                            * np.pi ** 2
+                            / 6
+                            / self.kwargs.get("delta", 0.1)
+                        )
+                    )
+                    print("- alpha.{}: ".format(i), alpha)
                 else:
                     alpha = self.alpha
 
@@ -161,13 +185,17 @@ class GPBatchUCB(HypothesisAgent):
         elif self.mode is "naive":
             x = scaler.transform(r_seed).astype(np.float64)
             y = r_y.astype(np.float64).reshape(-1, 1)
-            m = GPy.models.GPRegression(x, y,
-                                        kernel=self.kernel,
-                                        noise_var=self.kwargs.get('noise_var', 1.0))
+            m = GPy.models.GPRegression(
+                x, y, kernel=self.kernel, noise_var=self.kwargs.get("noise_var", 1.0)
+            )
             self.kernel = m.kern
-            m.optimize(optimizer=self.kwargs.get('optimizer', 'bfgs'),
-                       max_iters=self.kwargs.get('max_iters', 1000))
-            y_pred, var = m.predict(scaler.transform(r_candidates.to_numpy().astype(np.float64)))
+            m.optimize(
+                optimizer=self.kwargs.get("optimizer", "bfgs"),
+                max_iters=self.kwargs.get("max_iters", 1000),
+            )
+            y_pred, var = m.predict(
+                scaler.transform(r_candidates.to_numpy().astype(np.float64))
+            )
             t_pred = y_pred * y_std + y_m
             unc = np.sqrt(var) * y_std + y_m
             t_pred += unc * self.alpha
