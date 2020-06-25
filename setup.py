@@ -54,6 +54,7 @@ setup(
                       "docopt==0.6.2",
                       "boto3==1.12.28",
                       "scikit-learn==0.22.1",
+                      "GPy==1.9.9",
                       "taburu==2020.5.9"
                       ],
     extras_require={
