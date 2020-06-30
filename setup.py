@@ -41,7 +41,7 @@ setup(
     long_description_content_type='text/markdown',
     setup_requires=["numpy==1.19.0",
                     "Django==2.2.13",
-                    "tensorflow==1.15.2",
+                    "tensorflow==2.2.0",
                     "gpflow==2.0.5"],  # For qmpy depnedency
     install_requires=["python-dateutil==2.8.0",
                       "networkx==2.4",
