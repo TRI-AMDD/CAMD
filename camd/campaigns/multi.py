@@ -117,7 +117,7 @@ class GenericMultiAgent(HypothesisAgent):
         exp_cands_fea = self._get_features_from_df(exp_candidates)
         
         threshold = 200 # TODO, make threshold params 
-        for idx, cand_fea in exp_cands_fea.iterrows():
+        for idx, cand_fea in exp_cands_fea.iterrows(): #TODO: fix the edge case, len(exp_cands_fea)=0
             if len(selected_hypotheses) < num_exp_query:
                 normdiff = self._calculate_similarity(cand_fea, seed_data_fea)
                 if len(normdiff <= threshold) > 1:
@@ -239,13 +239,13 @@ class GPMultiAgent(HypothesisAgent):
         # select experimental hypotheses - source from candidates with prediction
         # close to the ideal value and have low uncertainty.
         num_exp_query = self.n_query * self.exp_query_frac
-        unc_thres = np.percentile(np.array(candidate_data.pred_unc), 30)
+        unc_thres = np.percentile(np.array(candidate_data.pred_unc), 30)  #TODO
         exp_candidates = candidate_data.loc[(candidate_data.expt_data == 1)&
                                             (candidate_data.pred_unc <= unc_thres)]
         exp_cands_fea = self._get_features_from_df(exp_candidates)
         
         threshold = 200 # TODO, make threshold params 
-        for idx, cand_fea in exp_cands_fea.iterrows():
+        for idx, cand_fea in exp_cands_fea.iterrows(): #TODO: fix the edge case, len(exp_cands_fea)=0
             if len(selected_hypotheses) < num_exp_query:
                 normdiff = self._calculate_similarity(cand_fea, seed_data_fea)
                 if len(normdiff <= threshold) > 1:
