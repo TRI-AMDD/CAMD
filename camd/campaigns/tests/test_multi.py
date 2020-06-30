@@ -15,7 +15,7 @@ from sklearn.svm import SVR
 from sklearn import preprocessing
 
 from camd import CAMD_TEST_FILES, CAMD_S3_BUCKET, CAMD_CACHE
-from camd.campaigns.multi import MultiAgent, MultiAnalyzer
+from camd.campaigns.multi import GenericMultiAgent, GPMultiAgent, MultiAnalyzer
 from camd.experiment.base import ATFSampler
 
 
@@ -27,12 +27,12 @@ class MultiFidelityCampaignTest(unittest.TestCase):
         self.assertEqual((self.data.shape[0], self.seed_data.shape[0], self.candidate_data.shape[0]),
                          (1824, 1789, 35))
 
-    def test_agent_hypotheses(self):
+    def test_generic_agent(self):
 
         # # run the agent, make assertion
-        agent = MultiAgent(target_property='bandgap', ideal_property_value=1.8,
+        agent = GenericMultiAgent(target_prop='bandgap', ideal_prop_val=1.8,
                  candidate_data=self.candidate_data, seed_data=self.seed_data, n_query=25,
-                 model=SVR(C=10), preprocessor=preprocessing.StandardScaler()
+                 model=SVR(C=10)
                  )
         hypotheses = agent.get_hypotheses(self.candidate_data, self.seed_data)
 
@@ -40,7 +40,17 @@ class MultiFidelityCampaignTest(unittest.TestCase):
         self.assertEqual(hypotheses.loc[hypotheses.expt_data==1].shape[0], 5)
         self.assertEqual(hypotheses.shape[0], 25)
 
-    def test_analyzer(self):
+    def test_GP_agent(self):
+        # # run the agent, make assertion
+        GP_agent = GPMultiAgent(target_prop='bandgap', ideal_prop_val=1.8, 
+                                 candidate_data=self.candidate_data, seed_data=self.seed_data, 
+                                 preprocessor=preprocessing.StandardScaler(), 
+                                 n_query=10, exp_query_frac=0.2, cost_considered=False)
+        hypotheses = GP_agent.get_hypotheses(self.candidate_data, self.seed_data)
+
+        self.assertEqual(type(hypotheses), pd.core.frame.DataFrame)
+        self.assertEqual(hypotheses.loc[hypotheses.expt_data==1].shape[0], 2)
+        self.assertEqual(hypotheses.shape[0], 10)
 
         sample_candidate_data = self.candidate_data.loc[[1789, # good expt
                                                          1793, # good expt
@@ -50,13 +60,12 @@ class MultiFidelityCampaignTest(unittest.TestCase):
                                                          ]]
 
         # Run analyzer on seed, candidates
-        analyzer = MultiAnalyzer(target_property='bandgap', property_range=[1.6, 2.0])
+        analyzer = MultiAnalyzer(target_prop='bandgap', prop_range=[1.6, 2.0])
         summary, new_seed = analyzer.analyze(new_experimental_results=sample_candidate_data, seed_data=self.seed_data)
         self.assertEqual((summary['iteration tpr'].values[0],
-                          round(summary['iteration experiment tpr'].values[0] ,2),
                           summary['new_exp_discovery'].values[0],
                           summary['total_exp_discovery'].values[0]),
-                         (0.6, 0.67, 2, 70))
+                         (0.6, 2, 70))
 
     def test_experiment(self):
         pass
