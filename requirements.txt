@@ -2,7 +2,7 @@ numpy==1.19.0
 Django==2.2.13
 tensorflow==2.2.0
 gpflow==2.0.5
-python-dateutil==2.8.0
+python-dateutil==2.8.1
 networkx==2.4
 matplotlib==3.2.2
 pandas==1.0.5
