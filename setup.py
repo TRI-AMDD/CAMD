@@ -43,7 +43,7 @@ setup(
                     "Django==2.2.13",
                     "tensorflow==2.2.0",
                     "gpflow==2.0.5"],  # For qmpy depnedency
-    install_requires=["python-dateutil==2.8.0",
+    install_requires=["python-dateutil==2.8.1",
                       "networkx==2.4",
                       "matplotlib==3.1.1",
                       "qmpy",  # This version is constrained by the source
