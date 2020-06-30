@@ -39,7 +39,7 @@ setup(
     description=DESCRIPTION,
     long_description=LONG_DESCRIPTION,
     long_description_content_type='text/markdown',
-    setup_requires=["numpy==1.18.3",
+    setup_requires=["numpy==1.19.0",
                     "Django==2.2.13",
                     "tensorflow==1.15.2",
                     "gpflow==1.5.0"],  # For qmpy depnedency
