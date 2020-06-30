@@ -45,7 +45,7 @@ setup(
                     "gpflow==2.0.5"],  # For qmpy depnedency
     install_requires=["python-dateutil==2.8.0",
                       "networkx==2.4",
-                      "matplotlib==3.1.1",
+                      "matplotlib==3.2.2",
                       "qmpy",  # This version is constrained by the source
                       "pandas==1.0.5",
                       "matminer==0.6.3",
