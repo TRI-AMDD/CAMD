@@ -52,7 +52,7 @@ setup(
                       "autologging",
                       "awscli==1.18.28",
                       "docopt==0.6.2",
-                      "boto3==1.12.28",
+                      "boto3==1.14.14",
                       "scikit-learn==0.22.1",
                       "taburu==2020.5.9"
                       ],
