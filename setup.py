@@ -44,7 +44,7 @@ setup(
                     "tensorflow==1.15.2",
                     "gpflow==1.5.0"],  # For qmpy depnedency
     install_requires=["python-dateutil==2.8.0",
-                      "networkx==2.2",
+                      "networkx==2.4",
                       "matplotlib==3.1.1",
                       "qmpy",  # This version is constrained by the source
                       "pandas==1.0.5",
