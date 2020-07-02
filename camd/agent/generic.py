@@ -90,8 +90,9 @@ class GPBatchUCB(HypothesisAgent):
                     and at least one additional column that can be used as descriptors.
             seed_data (pandas.DataFrame):  data which to fit the Agent to.
             n_query (int): number of queries in allowed. Defaults to 1.
-            mode (str): "batch" or "naive"; corresponding to original BUCB algorithm and a naive batch algorithm
-                where batch is composed in one-shot based on ranking. "naive" is mostly for benchmarking, but is also
+            mode (str): "batch" or "naive"; corresponding to original BUCB algorithm (where batches composed iteratively)
+                and a naive batch algorithm (where batch is composed in one-shot based on ranking).
+                "naive" is mostly for benchmarking, but is also
                 faster so might be useful large, limiting dataset sizes.
             alpha (float or str): mixing parameter for uncertainties in UCB. If a float is given, agent will
                 use the same constant alpha throughout the campaign. Defaults to 1.0. Setting this as 'auto' will
@@ -115,15 +116,21 @@ class GPBatchUCB(HypothesisAgent):
         self.candidate_data = candidate_data.drop(
             columns=["target"], axis=1, errors="ignore"
         )
-        self.seed_data = seed_data
+
+        if seed_data is not None:
+            self.seed_data = seed_data
+        else:
+            raise ValueError("GPBatchUCB Agent requires a finite seed as input. "
+                             "If you are using this as part of a Campaign, consider "
+                             "the create_seed option.")
 
         fb_start = max(len(self.seed_data), 1)
 
         if self.kernel is None:
             self.kernel = GPy.kern.RBF(input_dim=self.candidate_data.shape[1])
 
-        X_seed = seed_data.drop(columns=["target"], axis=1)
-        y_seed = seed_data["target"].to_numpy().reshape(-1, 1)
+        X_seed = self.seed_data.drop(columns=["target"], axis=1)
+        y_seed = self.seed_data["target"].to_numpy().reshape(-1, 1)
 
         y_m, y_std = np.mean(y_seed), np.std(y_seed)
         y_seed = (y_seed - y_m) / y_std
