@@ -39,22 +39,21 @@ setup(
     description=DESCRIPTION,
     long_description=LONG_DESCRIPTION,
     long_description_content_type='text/markdown',
-    setup_requires=["numpy==1.18.3",
+    setup_requires=["numpy==1.19.0",
                     "Django==2.2.13",
-                    "tensorflow==1.15.2",
-                    "gpflow==1.5.0"],  # For qmpy depnedency
-    install_requires=["python-dateutil==2.8.0",
-                      "networkx==2.2",
-                      "matplotlib==3.1.1",
+                    "tensorflow==2.2.0",
+                    "gpflow==2.0.5"],  # For qmpy depnedency
+    install_requires=["python-dateutil==2.8.1",
+                      "networkx==2.4",
+                      "matplotlib==3.2.2",
                       "qmpy",  # This version is constrained by the source
-                      "pandas==1.0.1",
+                      "pandas==1.0.5",
                       "matminer==0.6.3",
                       "autologging",
-                      "awscli==1.18.28",
+                      "awscli==1.18.91",
                       "docopt==0.6.2",
-                      "boto3==1.12.28",
-                      "scikit-learn==0.22.1",
-                      "GPy==1.9.9",
+                      "boto3==1.14.14",
+                      "scikit-learn==0.23.1",
                       "taburu==2020.5.9"
                       ],
     extras_require={
