@@ -54,7 +54,8 @@ setup(
                       "docopt==0.6.2",
                       "boto3==1.14.14",
                       "scikit-learn==0.23.1",
-                      "taburu==2020.5.9"
+                      "taburu==2020.5.9",
+                      "GPy==1.9.9"
                       ],
     extras_require={
         "proto_dft": ["protosearch==2020.5.10"],
