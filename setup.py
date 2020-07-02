@@ -52,7 +52,6 @@ setup(
                       "autologging",
                       "awscli==1.18.91",
                       "docopt==0.6.2",
-                      "boto3==1.14.14",
                       "scikit-learn==0.23.1",
                       "taburu==2020.5.9"
                       ],
@@ -65,7 +64,6 @@ setup(
     },
     dependency_links=[
         "https://github.com/JosephMontoya-TRI/qmpy_py3/tarball/master#egg=qmpy",
-        "https://github.com/ToyotaResearchInstitute/protosearch/tarball/master#egg=protosearch",
     ],
     entry_points={
         "console_scripts": [
