@@ -13,10 +13,11 @@ script:
     -e CAMD_S3_BUCKET=$CAMD_S3_BUCKET
     -e AWS_ACCESS_KEY_ID=$AWS_ACCESS_KEY_ID
     -e AWS_SECRET_ACCESS_KEY=$AWS_SECRET_ACCESS_KEY
-    -v ${PWD}/artifacts:/artifacts
+    -e COVERAGE_FILE=.coverage.3.7
+    -v ${PWD}/coverage_reports:/home/camd/coverage_reports
     camd-public bash -c 'pytest --show-capture=no --maxfail=3 --disable-pytest-warnings --cov=camd --cov-report html:coverage_reports && cp -r coverage_reports /artifacts'
 after_script:
-  - mv artifacts/coverage_reports . && coveralls
+  - coveralls
   - bash deploy.sh
 env:
   global:
