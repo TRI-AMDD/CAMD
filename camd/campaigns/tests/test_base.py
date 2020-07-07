@@ -25,6 +25,7 @@ class CampaignTest(unittest.TestCase):
     def tearDown(self):
         teardown_s3()
 
+    @unittest.skipUnless(CAMD_S3_BUCKET, "CAMD S3 Bucket not set")
     def test_sync(self):
         with ScratchDir('.'):
             df = pd.read_csv(os.path.join(CAMD_TEST_FILES, 'test_df.csv'))

@@ -5,7 +5,6 @@ python:
   - '3.6'
 install:
   - docker build -t $DOCKER_TAG .
-  - pip install awscli==1.18.56
 script:
   - set -e
   - >
