@@ -18,6 +18,7 @@ def teardown_s3():
     bucket.objects.filter(Prefix="{}".format("oqmd-atf")).delete()
 
 
+@unittest.skipUnless(CAMD_S3_BUCKET, "CAMD S3 Bucket not set")
 class WorkerTest(unittest.TestCase):
     def tearDown(self):
         teardown_s3()

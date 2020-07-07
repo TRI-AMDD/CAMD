@@ -1,0 +1,13 @@
+version: 1
+update_configs:
+  - package_manager: "python"
+    directory: "/"
+    update_schedule: "daily"
+    ignored_updates:
+      # Pin tensorflow/gpflow
+      - match:
+          dependency_name: "tensorflow"
+          version_requirement: "1.15.2"
+      - match:
+          dependency_name: "gpflow"
+          version_requirement: "1.5.0"
