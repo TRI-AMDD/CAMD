@@ -30,7 +30,7 @@ class MultiFidelityCampaignTest(unittest.TestCase):
     def test_generic_agent(self):
 
         # # run the agent, make assertion
-        agent = GenericMultiAgent(target_prop='bandgap', ideal_prop_val=1.8,
+        agent = GenericMultiAgent(target_prop='bandgap', target_prop_val=1.8,
                  candidate_data=self.candidate_data, seed_data=self.seed_data, n_query=25,
                  model=SVR(C=10)
                  )
@@ -42,7 +42,7 @@ class MultiFidelityCampaignTest(unittest.TestCase):
 
     def test_GP_agent(self):
         # # run the agent, make assertion
-        GP_agent = GPMultiAgent(target_prop='bandgap', ideal_prop_val=1.8, 
+        GP_agent = GPMultiAgent(target_prop='bandgap', target_prop_val=1.8, 
                                  candidate_data=self.candidate_data, seed_data=self.seed_data, 
                                  preprocessor=preprocessing.StandardScaler(), 
                                  n_query=10, exp_query_frac=0.2, cost_considered=False)
@@ -52,20 +52,24 @@ class MultiFidelityCampaignTest(unittest.TestCase):
         self.assertEqual(hypotheses.loc[hypotheses.expt_data==1].shape[0], 2)
         self.assertEqual(hypotheses.shape[0], 10)
 
+    def test_analyzer(self):
+        # Run analyzer on seed, candidates
         sample_candidate_data = self.candidate_data.loc[[1789, # good expt
                                                          1793, # good expt
                                                          1791, # bad expt
                                                          1794, # good theory
                                                          1799  # bad theory
-                                                         ]]
-
-        # Run analyzer on seed, candidates
+                                                         ]] 
         analyzer = MultiAnalyzer(target_prop='bandgap', prop_range=[1.6, 2.0])
         summary, new_seed = analyzer.analyze(new_experimental_results=sample_candidate_data, seed_data=self.seed_data)
-        self.assertEqual((summary['iteration tpr'].values[0],
-                          summary['new_exp_discovery'].values[0],
-                          summary['total_exp_discovery'].values[0]),
-                         (0.6, 2, 70))
+        self.assertEqual(
+                         (summary['expt_queried'].values[0],
+                          summary['new_expt_discovery'].values[0],
+                          summary['iteration_cost'].values[0],
+                          summary['total_expt_discovery'].values[0],
+                          summary['total_cost'].values[0]),
+                         (3, 2, 32, 2, 32)
+                        )
 
     def test_experiment(self):
         pass
