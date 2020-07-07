@@ -16,7 +16,7 @@ script:
     -v ${PWD}/artifacts:/artifacts
     camd-public bash -c 'pytest --show-capture=no --maxfail=3 --disable-pytest-warnings --cov=camd --cov-report html:coverage_reports && cp -r coverage_reports /artifacts'
 after_script:
-  - cp artifacts/coverage_reports . && coveralls
+  - mv artifacts/coverage_reports . && coveralls
   - bash deploy.sh
 env:
   global:
