@@ -136,8 +136,9 @@ class GenericMultiAgent(HypothesisAgent):
             threshold = 200 # TODO, make threshold params
             for idx, cand_fea in exp_cands_fea.iterrows(): #TODO fix
                 if len(selected_hypotheses) < num_exp_query:
-                    normdiff = self._calculate_similarity(cand_fea, seed_data_fea)
-                    if len(normdiff <= threshold) > 1:
+                    normdiff_lst = self._calculate_similarity(cand_fea, seed_data_fea)
+                    mask = (normdiff_lst <= threshold)
+                    if len(normdiff_lst[mask]) > 1:
                         selected_hypotheses = selected_hypotheses.append(exp_candidates.loc[idx])
 
             # select DFT hypotheses
@@ -277,8 +278,9 @@ class GPMultiAgent(HypothesisAgent):
             exp_cands_fea = self._get_features_from_df(certain_exp_candidates)
             for idx, cand_fea in exp_cands_fea.iterrows():
                 if len(selected_hypotheses) < num_exp_query:
-                    normdiff = self._calculate_similarity(cand_fea, seed_data_fea)
-                    if len(normdiff <= threshold) > 1:
+                    normdiff_lst = self._calculate_similarity(cand_fea, seed_data_fea)
+                    mask = (normdiff_lst <= threshold)
+                    if len(normdiff_lst[mask]) > 1:
                         selected_hypotheses = selected_hypotheses.append(certain_exp_candidates.loc[idx])
 
             # For experimental prediction with high uncertainty, select DFT hypotheses
