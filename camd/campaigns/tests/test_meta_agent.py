@@ -53,6 +53,7 @@ RANDOM_TEST_AGENT_PARAMS = [
 ]
 
 
+@unittest.skipUnless(CAMD_S3_BUCKET, "CAMD S3 Bucket not set")
 class MetaAgentCampaignTest(unittest.TestCase):
     def tearDown(self):
         teardown_s3()
