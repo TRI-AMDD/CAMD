@@ -145,10 +145,10 @@ class GenericMultiAgent(HypothesisAgent):
             remained_exp_cands_fea = exp_cands_fea.drop(selected_hypotheses.index)
             for idx, cand_fea in remained_exp_cands_fea.iterrows():
                 if len(selected_hypotheses) < self.n_query:
-                    # TODO: fix appending normdiff to the df so we don't get a warning
-                    theor_candidates['normdiff'] = self._calculate_similarity(cand_fea, theor_cands_fea) 
-                    theor_candidates = theor_candidates.sort_values('normdiff')
-                    selected_hypotheses = selected_hypotheses.append(theor_candidates.head(4))
+                    theor_candidates_copy = theor_candidates.copy()
+                    theor_candidates_copy['normdiff'] = self._calculate_similarity(cand_fea, theor_cands_fea)
+                    theor_candidates_copy = theor_candidates_copy.sort_values('normdiff')
+                    selected_hypotheses = selected_hypotheses.append(theor_candidates_copy.head(4))
 
         return selected_hypotheses
 
@@ -288,10 +288,13 @@ class GPMultiAgent(HypothesisAgent):
             remained_exp_cands_fea = self._get_features_from_df(remained_exp_candidates)
             for idx, cand_fea in remained_exp_cands_fea.iterrows():
                 if len(selected_hypotheses) < self.n_query:
-                    # TODO: fix appending normdiff to the df so we don't get a warning
-                    theor_candidates['normdiff'] = self._calculate_similarity(cand_fea, theor_cands_fea)
-                    theor_candidates = theor_candidates.sort_values('normdiff')
-                    selected_hypotheses = selected_hypotheses.append(theor_candidates.head(4))
+                    # make a copy so we don't modify the original df
+                    theor_candidates_copy = theor_candidates.copy()
+                    theor_candidates_copy['normdiff'] = self._calculate_similarity(cand_fea, theor_cands_fea)
+                    theor_candidates_copy = theor_candidates_copy.sort_values('normdiff')
+                    selected_hypotheses = selected_hypotheses.append(theor_candidates_copy.head(4))
+            # TODO: drop duplicates 
+            # selected_hypotheses = selected_hypotheses.drop_cuplicates()
         return selected_hypotheses
 
     def _select_hypotheses_with_cost(self, candidate_data, seed_data):
