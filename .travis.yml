@@ -16,14 +16,9 @@ script:
     -e COVERAGE_FILE=.coverage.3.7
     -v ${PWD}/coverage_reports:/home/camd/coverage_reports
     camd-public bash -c 'pytest --show-capture=no --maxfail=3 --disable-pytest-warnings --cov=camd --cov-report html:coverage_reports'
+  - bash deploy.sh
 after_script:
   - coveralls
-deploy:
-  provider: script
-  script: deploy.sh
-  on:
-    all_branches: true
-    condition: $TRAVIS_BRANCH =~ ^(master|dev)$
 env:
   global:
     - DOCKER_TAG=camd-public
