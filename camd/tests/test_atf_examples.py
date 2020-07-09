@@ -251,6 +251,7 @@ class GPBatchUCBAgent(unittest.TestCase):
         shutil.rmtree(self.tempdir)
 
     def test_gp_bucb_generic(self):
+
         def f(x):
             return np.sin(x) * np.sin(x) * (x ** 2)
 
