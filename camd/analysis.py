@@ -182,8 +182,11 @@ class AnalyzeStructures(AnalyzerBase):
                     elems = set(s.composition.as_dict().keys())
                     if elems == chemsys:
                         self.icsd_structs_inchemsys.append(s)
-                except:
+                # TODO: can we make this exception more specific,
+                #  do we have an example where this fails?
+                except Exception as e:
                     warnings.warn("Unable to process structure {}".format(k))
+                    warnings.warn("Error: {}".format(e))
 
             self.matching_icsd_strs = []
             for i in range(len(structures)):
@@ -581,8 +584,10 @@ class PhaseSpaceAL(PhaseSpace):
         """
         try:
             phase.stability = phase.energy - self.gclp(phase.unit_comp)[0]
-        except:
-            print(phase)
+        # TODO: do we have an example where this fails?  Can we provide
+        #  a more concrete exception?
+        except Exception as e:
+            print(phase, "stability determination failed, error {}".format(e))
             phase.stability = np.nan
         return phase.stability
 

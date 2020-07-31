@@ -17,8 +17,7 @@ class Experiment(abc.ABC, MSONable):
     we might just want to use FireWorks for this
     """
 
-    def __init__(self, current_data=None, job_status=None,
-                 history=None):
+    def __init__(self, current_data=None, job_status=None, history=None):
         self.current_data = current_data
         self.job_status = job_status
         self._history = history or []
@@ -88,11 +87,11 @@ class ATFSampler(Experiment):
     A simple after the fact sampler that just samples
     a dataframe according to index_values
     """
+
     def __init__(self, dataframe, current_data=None, job_status=None):
         self.dataframe = dataframe
         super(ATFSampler, self).__init__(
-            current_data=current_data,
-            job_status=job_status
+            current_data=current_data, job_status=job_status
         )
 
     def get_results(self):
@@ -105,7 +104,7 @@ class ATFSampler(Experiment):
 
         """
         indices = self.current_data.index
-        return self.dataframe.loc[indices].dropna(axis=0, how='any')
+        return self.dataframe.loc[indices].dropna(axis=0, how="any")
 
     def submit(self, data):
         """This does nothing, since the "experiments" are already done"""
@@ -115,5 +114,3 @@ class ATFSampler(Experiment):
 
     def monitor(self):
         return True
-
-

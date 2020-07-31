@@ -5,8 +5,7 @@ This module provides resources for agent optimization campaigns
 import pandas as pd
 from taburu.table import ParameterTable
 from camd import CAMD_S3_BUCKET
-from camd.agent.meta import AGENT_PARAMS, \
-    convert_parameter_table_to_dataframe
+from camd.agent.meta import AGENT_PARAMS, convert_parameter_table_to_dataframe
 from camd.agent.base import RandomAgent
 from camd.campaigns.base import Campaign
 from camd.analysis import AnalyzerBase
@@ -20,8 +19,7 @@ META_AGENT_PREFIX = "meta_agent"
 
 class MetaAgentCampaign(Campaign):
     @staticmethod
-    def reserve(name, experiment, analyzer, agent_pool=None,
-                bucket=CAMD_S3_BUCKET):
+    def reserve(name, experiment, analyzer, agent_pool=None, bucket=CAMD_S3_BUCKET):
         """
         Method for making an reservation for a given campaign in s3
 
@@ -44,17 +42,14 @@ class MetaAgentCampaign(Campaign):
         client = boto3.client("s3")
         prefix = "{}/{}".format(META_AGENT_PREFIX, name)
         result = client.list_objects(Bucket=bucket, Prefix=prefix)
-        if result.get('Contents'):
-            raise ValueError(
-                "{} exists in s3, please choose another name".format(name))
+        if result.get("Contents"):
+            raise ValueError("{} exists in s3, please choose another name".format(name))
 
         # Store agent pool
         agent_pool = agent_pool or ParameterTable(AGENT_PARAMS)
         pickled_agent = pickle.dumps(agent_pool)
         client.put_object(
-            Bucket=bucket,
-            Key="{}/agent_pool.pickle".format(prefix),
-            Body=pickled_agent
+            Bucket=bucket, Key="{}/agent_pool.pickle".format(prefix), Body=pickled_agent
         )
 
         # Store experiment
@@ -62,7 +57,7 @@ class MetaAgentCampaign(Campaign):
         client.put_object(
             Bucket=bucket,
             Key="{}/experiment.pickle".format(prefix),
-            Body=pickled_experiment
+            Body=pickled_experiment,
         )
 
         # Store analyzer
@@ -70,7 +65,7 @@ class MetaAgentCampaign(Campaign):
         client.put_object(
             Bucket=bucket,
             Key="{}/analyzer.pickle".format(prefix),
-            Body=pickled_analyzer
+            Body=pickled_analyzer,
         )
 
     @staticmethod
@@ -95,9 +90,7 @@ class MetaAgentCampaign(Campaign):
 
         pickled_agent = pickle.dumps(agent_pool)
         client.put_object(
-            Bucket=bucket,
-            Key="{}/agent_pool.pickle".format(prefix),
-            Body=pickled_agent
+            Bucket=bucket, Key="{}/agent_pool.pickle".format(prefix), Body=pickled_agent
         )
 
     @staticmethod
@@ -120,12 +113,11 @@ class MetaAgentCampaign(Campaign):
         client = boto3.client("s3")
         prefix = "{}/{}".format(META_AGENT_PREFIX, name)
         all_objs = []
-        for obj_name in ['agent_pool', 'experiment', 'analyzer']:
+        for obj_name in ["agent_pool", "experiment", "analyzer"]:
             try:
                 raw_obj = client.get_object(
-                    Bucket=bucket,
-                    Key="{}/{}.pickle".format(prefix, obj_name),
-                )['Body']
+                    Bucket=bucket, Key="{}/{}.pickle".format(prefix, obj_name),
+                )["Body"]
             except botocore.exceptions.ClientError as e:
                 raise ValueError(
                     "{} does not exist in s3, cannot update agent pool".format(name)
@@ -159,9 +151,12 @@ class MetaAgentCampaign(Campaign):
         meta_agent = meta_agent or RandomAgent(n_query=1)
         return cls(
             candidate_data=candidate_data,
-            agent=meta_agent, experiment=experiment,
-            analyzer=analyzer, s3_prefix=s3_prefix, s3_bucket=bucket,
-            create_seed=1
+            agent=meta_agent,
+            experiment=experiment,
+            analyzer=analyzer,
+            s3_prefix=s3_prefix,
+            s3_bucket=bucket,
+            create_seed=1,
         )
 
     def autorun(self):
@@ -185,10 +180,15 @@ class StabilityCampaignAnalyzer(AnalyzerBase):
         for key, row in new_experimental_results.iterrows():
             history = row.campaign.history
             for index in self.checkpoint_indices:
-                new_experimental_results.loc[key, "discovered_{}".format(index)] = history.loc[index, 'total_discovery']
+                new_experimental_results.loc[
+                    key, "discovered_{}".format(index)
+                ] = history.loc[index, "total_discovery"]
         seed_data = seed_data.append(new_experimental_results)
-        summary = new_experimental_results.loc["discovered_{}".format(self.checkpoint_indices[0]):
-                                               "discovered_{}".format(self.checkpoint_indices[-1])]
+        summary = new_experimental_results.loc[
+            "discovered_{}".format(self.checkpoint_indices[0]) : "discovered_{}".format(
+                self.checkpoint_indices[-1]
+            )
+        ]
 
         return summary, seed_data
 
@@ -202,11 +202,10 @@ class StabilityCampaignAnalyzer(AnalyzerBase):
             label = "{}-{}".format(row.agent.__class__.__name__, idx)
             ax1.plot(row.campaign.history.total_discovery, label=label)
             ax2.plot(row.campaign.history.new_discovery.cumsum(), label=label)
-        ax1.legend(loc='upper left')
+        ax1.legend(loc="upper left")
         fig.savefig("campaign_summary.png")
 
     def finalize(self, path):
         # load seed data
         df = pd.read_pickle("seed_data.pickle")
         self._plot(df)
-
