@@ -1,4 +1,4 @@
-name: Testing - analysis
+name: Testing - AWS
 
 on: [push, pull_request]
 
