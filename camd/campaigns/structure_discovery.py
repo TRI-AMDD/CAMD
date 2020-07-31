@@ -12,7 +12,7 @@ from monty.serialization import dumpfn
 from camd.domain import StructureDomain, heuristic_setup
 from camd.agent.stability import AgentStabilityAdaBoost
 from camd.agent.base import RandomAgent
-from camd.experiment import ATFSampler
+from camd.experiment.base import ATFSampler
 from camd.campaigns.base import Campaign
 from camd import CAMD_TEST_FILES, CAMD_S3_BUCKET, __version__
 from camd.utils.data import load_dataframe, s3_sync
