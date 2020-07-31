@@ -1,4 +1,4 @@
-numpy==1.19.0
+numpy==1.19.1
 Django==3.0.8
 tensorflow==1.15.2
 gpflow==1.5.0
