@@ -1,3 +1,9 @@
+# Copyright Toyota Research Institute 2019
+"""
+Contains generic agents which should not be constrained
+to a particular mode of materials discovery or associated
+decision-making logic
+"""
 import numpy as np
 from sklearn.preprocessing import StandardScaler
 from sklearn.model_selection import KFold, cross_val_score
@@ -37,6 +43,19 @@ class GenericGPUCB(HypothesisAgent):
         super(GenericGPUCB).__init__()
 
     def get_hypotheses(self, candidate_data, seed_data=None):
+        """
+        Get hypotheses method for GenericGPUCB agent
+
+        Args:
+            candidate_data (pandas.DataFrame): dataframe of candidates
+            seed_data (pandas.DataFrame): dataframe of prior data on
+                which to fit GPUCB
+
+        Returns:
+            (pandas.DataFrame): top candidates from the GPUCB algorithm
+
+        """
+
         self.candidate_data = candidate_data.drop(columns=["target"], axis=1)
         self.seed_data = seed_data
         X_seed = seed_data.drop(columns=["target"], axis=1)

@@ -18,6 +18,17 @@ META_AGENT_PREFIX = "meta_agent"
 
 
 class MetaAgentCampaign(Campaign):
+    """
+    The MetaAgentCampaign is a preliminary campaign
+    which uses an array of parameters for agents
+    to test agent performance in an iterative way.
+
+    The goal of the MetaAgentCampaign is to conduct
+    sequential learning on agents themselves in various
+    scenarios as to determine pareto-optimally performing
+    agents with various cost metrics.
+
+    """
     @staticmethod
     def reserve(name, experiment, analyzer, agent_pool=None, bucket=CAMD_S3_BUCKET):
         """
@@ -173,10 +184,43 @@ class MetaAgentCampaign(Campaign):
 # TODO: move this into analysis
 # For now this is specific to stability
 class StabilityCampaignAnalyzer(AnalyzerBase):
+    """
+    The StabilityCampaignAnalyzer is an preliminary
+    analyzer intended for user in meta-agent, or
+    simulated discovery campaigns.  It should
+    aggregate results of a campaign conducted with
+    a specific agent.
+
+    """
     def __init__(self, checkpoint_indices):
+        """
+        Invokes a StabilityCampaignAnalyzer using indices
+        which to checkpoint.
+
+        Args:
+            checkpoint_indices ([int]): list of indices
+                on which to checkpoint campaign success,
+                i. e. rate of discovery
+        """
         self.checkpoint_indices = checkpoint_indices
 
     def analyze(self, new_experimental_results, seed_data):
+        """
+        Beta method for analyzing camapaign results
+
+        Args:
+            new_experimental_results (pandas.DataFrame): new experimental
+                results from Experiment class
+            seed_data (pandas.DataFrame): seed_data from prior to last
+                experiment
+
+        Returns:
+            summary (DataFrame): dataframe to be appended to "history"
+                that summarizes results
+            seed_data (DataFrame): new seed data to be carried forward
+                in campaign
+
+        """
         for key, row in new_experimental_results.iterrows():
             history = row.campaign.history
             for index in self.checkpoint_indices:
@@ -205,7 +249,14 @@ class StabilityCampaignAnalyzer(AnalyzerBase):
         ax1.legend(loc="upper left")
         fig.savefig("campaign_summary.png")
 
-    def finalize(self, path):
+    def finalize(self):
+        """
+        Quick method for plotting final results
+
+        Returns:
+            None
+
+        """
         # load seed data
         df = pd.read_pickle("seed_data.pickle")
         self._plot(df)

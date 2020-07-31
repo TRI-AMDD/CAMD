@@ -1,4 +1,8 @@
 # Copyright Toyota Research Institute 2019
+"""
+Contains agents related to crystal-structure discovery
+and hypothesizing
+"""
 
 import time
 import abc
@@ -185,6 +189,9 @@ class StabilityAgent(HypothesisAgent, metaclass=abc.ABCMeta):
 
 
 class QBCStabilityAgent(StabilityAgent):
+    """
+    Agent which uses QBC to determine optimal hypotheses
+    """
     def __init__(
         self,
         candidate_data=None,
@@ -230,6 +237,20 @@ class QBCStabilityAgent(StabilityAgent):
         )
 
     def get_hypotheses(self, candidate_data, seed_data=None, retrain_committee=True):
+        """
+        Get hypotheses method for QBCStabilityAgent
+
+        Args:
+            candidate_data (pandas.DataFrame): dataframe of candidates
+            seed_data (pandas.DataFrame): dataframe of prior data on
+                which to fit GPUCB
+            retrain_committee (bool): whether to retrain committee
+                each time
+
+        Returns:
+            (pandas.DataFrame): top candidates from the GPUCB algorithm
+
+        """
         X_cand, X_seed, y_seed = self.update_data(candidate_data, seed_data)
 
         # Retrain committee if untrained or if specified
@@ -293,6 +314,19 @@ class AgentStabilityML5(StabilityAgent):
         self.exploit_fraction = exploit_fraction
 
     def get_hypotheses(self, candidate_data, seed_data=None):
+        """
+        Get hypotheses method for AgentStabilityML5
+
+        Args:
+            candidate_data (pandas.DataFrame): dataframe of candidates
+            seed_data (pandas.DataFrame): dataframe of prior data on
+                which to fit GPUCB
+
+        Returns:
+            (pandas.DataFrame): top candidates from the GPUCB algorithm
+
+        """
+
         X_cand, X_seed, y_seed = self.update_data(candidate_data, seed_data)
         steps = [("scaler", StandardScaler()), ("ML", self.model)]
         pipeline = Pipeline(steps)
@@ -371,6 +405,19 @@ class GaussianProcessStabilityAgent(StabilityAgent):
         )
 
     def get_hypotheses(self, candidate_data, seed_data=None):
+        """
+        Get hypotheses method for GaussianProcessStabilityAgent
+
+        Args:
+            candidate_data (pandas.DataFrame): dataframe of candidates
+            seed_data (pandas.DataFrame): dataframe of prior data on
+                which to fit GPUCB
+
+        Returns:
+            (pandas.DataFrame): top candidates from the GPUCB algorithm
+
+        """
+
         X_cand, X_seed, y_seed = self.update_data(
             candidate_data=candidate_data, seed_data=seed_data
         )
@@ -473,6 +520,19 @@ class SVGProcessStabilityAgent(StabilityAgent):
         self.pred_std = None
 
     def get_hypotheses(self, candidate_data, seed_data=None):
+        """
+        Get hypotheses method for SVGProcessStabilityAgent
+
+        Args:
+            candidate_data (pandas.DataFrame): dataframe of candidates
+            seed_data (pandas.DataFrame): dataframe of prior data on
+                which to fit model
+
+        Returns:
+            (pandas.DataFrame): top candidates from the algorithm
+
+        """
+
         X_cand, X_seed, y_seed = self.update_data(candidate_data, seed_data)
 
         # Test model performance first.  Note we avoid doing CV to
@@ -578,10 +638,27 @@ class SVGProcessStabilityAgent(StabilityAgent):
         """
 
         def __init__(self, model):
+            """
+            Initialize Logger
+
+            Args:
+                model (GPFlow.model): gpflow model
+
+            """
             self.model = model
             self.logf = []
 
         def run(self, ctx):
+            """
+            Run method for gpflow Logger action
+
+            Args:
+                ctx (Context): GPflow context object which is tracking action
+
+            Returns:
+                None
+
+            """
             if (ctx.iteration % 10) == 0:
                 # Extract likelihood tensor from Tensorflow session
                 likelihood = -ctx.session.run(self.model.likelihood_tensor)
@@ -647,6 +724,19 @@ class BaggedGaussianProcessStabilityAgent(StabilityAgent):
         )
 
     def get_hypotheses(self, candidate_data, seed_data=None):
+        """
+        Get hypotheses method for BaggedGaussianProcessStabilityAgent
+
+        Args:
+            candidate_data (pandas.DataFrame): dataframe of candidates
+            seed_data (pandas.DataFrame): dataframe of prior data on
+                which to fit model
+
+        Returns:
+            (pandas.DataFrame): top candidates from the algorithm
+
+        """
+
         X_cand, X_seed, y_seed = self.update_data(candidate_data, seed_data)
 
         steps = [("scaler", StandardScaler()), ("GP", self.GP)]
@@ -771,6 +861,18 @@ class AgentStabilityAdaBoost(StabilityAgent):
         self.dynamic_alpha = dynamic_alpha
 
     def get_hypotheses(self, candidate_data, seed_data=None):
+        """
+        Get hypotheses method for AgentStabilityAdaBoost
+
+        Args:
+            candidate_data (pandas.DataFrame): dataframe of candidates
+            seed_data (pandas.DataFrame): dataframe of prior data on
+                which to fit model
+
+        Returns:
+            (pandas.DataFrame): top candidates from the algorithm
+
+        """
         X_cand, X_seed, y_seed = self.update_data(candidate_data, seed_data)
 
         steps = [("scaler", StandardScaler()), ("ML", self.model)]

@@ -1,4 +1,9 @@
 # Copyright Toyota Research Institute 2019
+"""
+Module containing DFT-related experiments, typically
+to be run asynchronously with a campaign.
+"""
+
 
 import os
 import uuid
@@ -26,6 +31,16 @@ class OqmdDFTonMC1(Experiment):
     """
 
     def __init__(self, poll_time=60, timeout=7200, current_data=None, job_status=None):
+        """
+        Initializes an OqmdDFTonMC1 instance
+
+        Args:
+            poll_time (int): time in seconds to wait in between queries of aws batch
+            timeout (int): time in seconds to wait before killing batch jobs
+            current_data (pandas.DataFrame): dataframe corrsponding to current data
+            job_status (str): job status
+        """
+
         self.poll_time = poll_time
         self.timeout = timeout
         super().__init__(current_data=current_data, job_status=job_status)

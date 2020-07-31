@@ -1,4 +1,8 @@
 # Copyright Toyota Research Institute 2019
+"""
+Module containing basic agent Abstractions
+and functionality
+"""
 
 import numpy as np
 from sklearn.linear_model import LinearRegression
@@ -12,11 +16,23 @@ import abc
 
 
 class HypothesisAgent(metaclass=abc.ABCMeta):
+    """
+    Abstract class for agents, decision-making entities
+    in a sequential learning setting.  Should implement
+    a `get_hypotheses` method that takes a list of potential
+    candidates and selects those which are most well-suited
+    to experiments
+    """
     def __init__(self):
+        """
+        Placeholder for initializing agents, should include
+        all state parameters that an agent needs to make
+        decisions
+        """
         pass
 
     @abc.abstractmethod
-    def get_hypotheses(self, candidate_data):
+    def get_hypotheses(self, candidate_data, seed_data=None):
         """
 
         Returns:
@@ -54,6 +70,18 @@ class QBC:
         self._y = None
 
     def fit(self, X, y):
+        """
+        Fits the QBC committee member models
+
+        Args:
+            X (pandas.DataFrame, np.ndarray): input X values for fitting
+            y (pandas.DataFrame, np.ndarray): output y values to regress
+                or fit to
+
+        Returns:
+            None
+
+        """
         self._X, self._y = X, y
 
         split_X = []
@@ -94,7 +122,18 @@ class QBC:
             self.cv_score = np.mean(cv_score) * -1
 
     def predict(self, X):
-        # Apply the committee of models to candidate space
+        """
+        Apply the fitted committee of models to candidate space
+
+        Args:
+            X (pandas.DataFrame, np.ndarray): input matrix or values
+                on which to predict
+
+        Returns:
+            (np.ndarray): mean values for predictions for all committee members
+            (np.ndarray): standard deviation values for predictions for all committee members
+
+        """
         committee_predictions = []
         for scaler, model in tqdm(self.committee_models):
             _X = scaler.transform(X)
@@ -110,6 +149,15 @@ class RandomAgent(HypothesisAgent):
     """
 
     def __init__(self, candidate_data=None, seed_data=None, n_query=1):
+        """
+        Initializes a random agent
+
+        Args:
+            candidate_data (pandas.DataFrame): dataframe of candidates
+            seed_data (pandas.DataFrame): seed data, in this case does nothing
+            n_query (int): number of candidates to query
+
+        """
 
         self.candidate_data = candidate_data
         self.seed_data = seed_data

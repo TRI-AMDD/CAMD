@@ -1,4 +1,8 @@
 # Copyright Toyota Research Institute 2019
+"""
+Contains basic logic and abstraction for experiments and
+generic experiments like the ATF Sampler.
+"""
 
 import abc
 
@@ -18,6 +22,15 @@ class Experiment(abc.ABC, MSONable):
     """
 
     def __init__(self, current_data=None, job_status=None, history=None):
+        """
+        Initializes an experiment.
+
+        Args:
+            current_data (pandas.DataFrame): dataframe corresponding to
+                currently submitted experiments
+            job_status (str): status of the experiment
+            history (pandas.DataFrame): history of past experiments
+        """
         self.current_data = current_data
         self.job_status = job_status
         self._history = history or []
@@ -89,6 +102,17 @@ class ATFSampler(Experiment):
     """
 
     def __init__(self, dataframe, current_data=None, job_status=None):
+        """
+        Initializes an ATFSampler Experiment
+
+        Args:
+            dataframe (pandas.DataFrame): dataframe of a-priori results
+                from which to pull
+            current_data (pandas.DataFrame): data of currently submitted
+                "experiments"
+            job_status (str): status of job
+
+        """
         self.dataframe = dataframe
         super(ATFSampler, self).__init__(
             current_data=current_data, job_status=job_status
@@ -107,10 +131,22 @@ class ATFSampler(Experiment):
         return self.dataframe.loc[indices].dropna(axis=0, how="any")
 
     def submit(self, data):
-        """This does nothing, since the "experiments" are already done"""
+        """
+        This does nothing other than update current_data,
+        since the "experiments" are already done
+        """
         self.update_current_data(data)
         self.job_status = "COMPLETED"
         return None
 
     def monitor(self):
+        """
+        ATF Sampler returns results synchronously,
+        and thus needs no monitor, so this simply
+        returns True
+
+        Returns:
+            True
+
+        """
         return True

@@ -1,3 +1,4 @@
+# Copyright Toyota Research Institute 2019
 """
 Preliminary module for determining search spaces
 """
@@ -76,12 +77,14 @@ class StructureDomain(DomainBase):
 
     Once the StructureDomain is initialized, the method candidates returns
     a fully-featurized hypothetical materials set subject to n_max_atoms.
-
-    Args:
-        formulas ([str]): list of chemical formulas to create new
-            material candidates.
     """
     def __init__(self, formulas, n_max_atoms=None):
+        """
+        Args:
+            formulas ([str]): list of chemical formulas to create new
+                material candidates.
+            n_max_atoms (int): number of max atoms
+        """
         self.formulas = formulas
         self.n_max_atoms = n_max_atoms
         self.features = None
@@ -112,6 +115,13 @@ class StructureDomain(DomainBase):
 
     @property
     def bounds(self):
+        """
+        Method to get bounds from StructureDomain
+
+        Returns:
+            ([]): list of dimensions in search space
+
+        """
         bounds = set()
         for formula in self.formulas:
             bounds = bounds.union(Composition(formula).as_dict().keys())
@@ -170,6 +180,14 @@ class StructureDomain(DomainBase):
 
     @property
     def formulas_with_valid_structures(self):
+        """
+        Quick method to filter formulas with valid structures
+
+        Returns:
+            ([str]): list of formulas with corresponding valid
+                structures
+
+        """
         # Note the redundancy here is for pandas to work
         if self.valid_structures is not None:
             return [s.composition.formula
@@ -263,6 +281,17 @@ class StructureDomain(DomainBase):
             return self.features.drop('Composition', axis=1)
 
     def sample(self, num_samples):
+        """
+        Method for sampling domain
+
+        Args:
+            num_samples (int): number of samples to return
+
+        Returns:
+            (pd.DataFrame): dataframe corresponding to sampled
+                domain with num_samples candidates
+
+        """
         self.candidates().sample(num_samples)
 
 

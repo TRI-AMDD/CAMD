@@ -31,7 +31,22 @@ from camd.campaigns.meta_agent import MetaAgentCampaign
 
 
 class Worker(object):
+    """
+    The Worker is an object that is intended to
+    persistently poll s3 for new submissions
+    from which to start campaigns.  Currently
+    primarily used for structure discovery,
+    i.e. 'proto-dft-2' campaigns.
+    """
     def __init__(self, campaign="proto-dft-2"):
+        """
+        Initialize a Worker
+
+        Args:
+            campaign (str): campaign name, e.g. 'proto-dft-2'
+
+        """
+
         self.campaign = campaign
 
     def start(self, num_loops=np.inf, sleep_time=60):
