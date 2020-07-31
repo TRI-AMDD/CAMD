@@ -503,7 +503,7 @@ class SVGProcessStabilityAgent(StabilityAgent):
         )
         print("training")
         t0 = time.time()
-        logger = self.run_adam(model, gpflow.test_util.notebook_niter(20000))
+        self.run_adam(model, gpflow.test_util.notebook_niter(20000))
         print("elapsed time: ", time.time() - t0)
 
         pred_y, pred_v = model.predict_y(scaler.transform(X_test))
@@ -530,7 +530,7 @@ class SVGProcessStabilityAgent(StabilityAgent):
             mean_function=self.mean_f,
             minibatch_size=100,
         )
-        logger = self.run_adam(model, gpflow.test_util.notebook_niter(20000))
+        self.run_adam(model, gpflow.test_util.notebook_niter(20000))
         print(self.model)
         self.model = model
 
@@ -565,7 +565,7 @@ class SVGProcessStabilityAgent(StabilityAgent):
         actions = [adam, self.logger]
 
         # Create optimisation loop that interleaves Adam with Logger
-        loop = gpflow.actions.Loop(actions, stop=iterations)()
+        gpflow.actions.Loop(actions, stop=iterations)()
 
         # Bind current TF session to model
         model.anchor(model.enquire_session())

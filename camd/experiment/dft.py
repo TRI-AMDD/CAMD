@@ -75,9 +75,9 @@ class OqmdDFTonMC1(Experiment):
                 current set of results
 
         """
-        if self.job_status is not "COMPLETED":
+        if self.job_status != "COMPLETED":
             self.update_results()
-        if self.job_status is not "COMPLETED":
+        if self.job_status != "COMPLETED":
             warnings.warn("Some calculations have not finished")
         return self.current_data
 
@@ -284,6 +284,7 @@ class OqmdDFTonMC1(Experiment):
                 "--job-id {} --reason camd_timeout".format(row["jobId"])
             )
             kill_result = subprocess.check_output(shlex.split(kill_cmd))
+            print("{} job killed: ".format(kill_result))
             self.current_data.loc[structure_id, "status"] = "FAILED"
             self.current_data.loc[structure_id, "error"] = "timeout"
         self._update_job_status()

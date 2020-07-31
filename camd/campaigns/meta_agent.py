@@ -118,7 +118,7 @@ class MetaAgentCampaign(Campaign):
                 raw_obj = client.get_object(
                     Bucket=bucket, Key="{}/{}.pickle".format(prefix, obj_name),
                 )["Body"]
-            except botocore.exceptions.ClientError as e:
+            except botocore.exceptions.ClientError:
                 raise ValueError(
                     "{} does not exist in s3, cannot update agent pool".format(name)
                 )

@@ -5,9 +5,6 @@ from sklearn.linear_model import LinearRegression
 from sklearn.preprocessing import StandardScaler
 from sklearn.model_selection import KFold, cross_val_score
 from sklearn.base import clone
-from sklearn.pipeline import Pipeline
-from sklearn.gaussian_process import GaussianProcessRegressor
-from sklearn.gaussian_process.kernels import RBF, ConstantKernel
 
 from camd import tqdm
 
