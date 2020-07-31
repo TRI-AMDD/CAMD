@@ -138,7 +138,7 @@ class OqmdDFTonMC1(Experiment):
             (str): calculation status string
 
         """
-        while self.job_status is not "COMPLETED":
+        while self.job_status != "COMPLETED":
             time.sleep(self.poll_time)
             self.update_results()
             self.print_status()
