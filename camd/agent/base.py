@@ -34,8 +34,8 @@ class QBC:
     Helper class for Uncertainty quantification using
     non-supporting regressors with Query-By-Committee
     """
-    def __init__(self, n_members, training_fraction, model=None,
-                 test_full_model=True):
+
+    def __init__(self, n_members, training_fraction, model=None, test_full_model=True):
         """
         Args:
             n_members (int): Number of committee members or models to train
@@ -65,7 +65,7 @@ class QBC:
         for i in range(self.n_members):
             a = np.arange(len(X))
             np.random.shuffle(a)
-            indices = a[:int(self.training_fraction * len(X))]
+            indices = a[: int(self.training_fraction * len(X))]
             split_X.append(X.iloc[indices])
             split_y.append(y.iloc[indices])
 
@@ -88,8 +88,12 @@ class QBC:
             full_model = clone(self.model)
             full_model.fit(_X, self._y)
             cv_score = cross_val_score(
-                full_model, _X, self._y, cv=KFold(5, shuffle=True),
-                scoring='neg_mean_absolute_error')
+                full_model,
+                _X,
+                self._y,
+                cv=KFold(5, shuffle=True),
+                scoring="neg_mean_absolute_error",
+            )
             self.cv_score = np.mean(cv_score) * -1
 
     def predict(self, X):
@@ -107,6 +111,7 @@ class RandomAgent(HypothesisAgent):
     """
     Baseline agent: Randomly picks from candidate dataset
     """
+
     def __init__(self, candidate_data=None, seed_data=None, n_query=1):
 
         self.candidate_data = candidate_data

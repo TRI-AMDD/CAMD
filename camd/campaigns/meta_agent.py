@@ -185,7 +185,7 @@ class StabilityCampaignAnalyzer(AnalyzerBase):
                 ] = history.loc[index, "total_discovery"]
         seed_data = seed_data.append(new_experimental_results)
         summary = new_experimental_results.loc[
-            "discovered_{}".format(self.checkpoint_indices[0]) : "discovered_{}".format(
+            "discovered_{}".format(self.checkpoint_indices[0]): "discovered_{}".format(
                 self.checkpoint_indices[-1]
             )
         ]
