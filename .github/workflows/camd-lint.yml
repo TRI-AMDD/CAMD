@@ -25,10 +25,6 @@ jobs:
       run: |
         pip install pycodestyle --upgrade --quiet
         pycodestyle camd
-    - name: mypy
-      run: |
-        pip install mypy --upgrade --quiet
-        mypy camd
     - name: flake8
       run: |
         pip install flake8 --upgrade --quiet
@@ -39,7 +35,3 @@ jobs:
       run: |
         pip install pydocstyle --upgrade --quiet
         pydocstyle --count camd
-    - name: pylint
-      run: |
-        pip install pylint --upgrade --quiet
-        source pylint_mod.sh
