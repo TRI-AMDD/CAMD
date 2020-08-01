@@ -1,6 +1,7 @@
 # Computational Autonomy for Materials Discovery (CAMD)
-[![Build Status](https://travis-ci.com/TRI-AMDD/CAMD.svg?branch=master)](https://travis-ci.com/TRI-AMDD/CAMD)
-[![Coverage Status](https://coveralls.io/repos/github/TRI-AMDD/CAMD/badge.svg?branch=master)](https://coveralls.io/github/TRI-AMDD/CAMD?branch=master)
+![Testing - main](https://github.com/TRI-AMDD/CAMD/workflows/Testing%20-%20main/badge.svg)
+![Linting](https://github.com/TRI-AMDD/CAMD/workflows/Linting/badge.svg)
+[![Coverage Status](https://coveralls.io/repos/github/TRI-AMDD/CAMD/badge.svg)](https://coveralls.io/github/TRI-AMDD/CAMD)
 
 
 ## Installation
