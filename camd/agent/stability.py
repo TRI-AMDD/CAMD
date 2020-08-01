@@ -521,7 +521,11 @@ class SVGProcessStabilityAgent(StabilityAgent):
 
     def get_hypotheses(self, candidate_data, seed_data=None):
         """
-        Get hypotheses method for SVGProcessStabilityAgent
+        Get hypotheses method for SVGProcessStabilityAgent.
+
+        Code used from gpflow examples for big data, see:
+
+        https://github.com/GPflow/GPflow/blob/develop/doc/source/notebooks/advanced/gps_for_big_data.pct.py
 
         Args:
             candidate_data (pandas.DataFrame): dataframe of candidates
