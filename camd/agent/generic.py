@@ -1,3 +1,9 @@
+# Copyright Toyota Research Institute 2019
+"""
+Contains generic agents which should not be constrained
+to a particular mode of materials discovery or associated
+decision-making logic
+"""
 import numpy as np
 import GPy
 
@@ -39,6 +45,19 @@ class GenericGPUCB(HypothesisAgent):
         super(GenericGPUCB).__init__()
 
     def get_hypotheses(self, candidate_data, seed_data=None):
+        """
+        Get hypotheses method for GenericGPUCB agent
+
+        Args:
+            candidate_data (pandas.DataFrame): dataframe of candidates
+            seed_data (pandas.DataFrame): dataframe of prior data on
+                which to fit GPUCB
+
+        Returns:
+            (pandas.DataFrame): top candidates from the GPUCB algorithm
+
+        """
+
         self.candidate_data = candidate_data.drop(columns=["target"], axis=1)
         self.seed_data = seed_data
         X_seed = seed_data.drop(columns=["target"], axis=1)
@@ -90,10 +109,10 @@ class GPBatchUCB(HypothesisAgent):
                     and at least one additional column that can be used as descriptors.
             seed_data (pandas.DataFrame):  data which to fit the Agent to.
             n_query (int): number of queries in allowed. Defaults to 1.
-            mode (str): "batch" or "naive"; corresponding to original BUCB algorithm (where batches composed iteratively)
-                and a naive batch algorithm (where batch is composed in one-shot based on ranking).
-                "naive" is mostly for benchmarking, but is also
-                faster so might be useful large, limiting dataset sizes.
+            mode (str): "batch" or "naive"; corresponding to original BUCB algorithm (where batches
+                composed iteratively) and a naive batch algorithm (where batch is composed in one-shot
+                based on ranking). "naive" is mostly for benchmarking, but is also faster so might be
+                useful large, limiting dataset sizes.
             alpha (float or str): mixing parameter for uncertainties in UCB. If a float is given, agent will
                 use the same constant alpha throughout the campaign. Defaults to 1.0. Setting this as 'auto' will
                 use the Theorem 1 from Srivanasan et al. to determine the alpha during batch composition.
@@ -113,6 +132,17 @@ class GPBatchUCB(HypothesisAgent):
         super(GPBatchUCB).__init__()
 
     def get_hypotheses(self, candidate_data, seed_data=None):
+        """
+        Methods for getting hypotheses according to the GPBatchUCB algorithm
+
+        Args:
+            candidate_data (pandas.DataFrame): candidate data
+            seed_data (pandas.DataFrame): seed data
+
+        Returns:
+            (pandas.DataFrame): selected hypotheses
+
+        """
         self.candidate_data = candidate_data.drop(
             columns=["target"], axis=1, errors="ignore"
         )
@@ -140,7 +170,7 @@ class GPBatchUCB(HypothesisAgent):
 
         r_seed, r_y, r_candidates = X_seed, y_seed, self.candidate_data
 
-        if self.mode is "batch":
+        if self.mode == "batch":
             batch = []
             for i in range(min(self.n_query, len(self.candidate_data))):
                 x = scaler.transform(r_seed).astype(np.float64)
@@ -189,7 +219,7 @@ class GPBatchUCB(HypothesisAgent):
                 r_y = np.append(r_y, np.array([y_pred[s]]).reshape(1, 1), axis=0)
                 r_candidates = r_candidates.drop(name)
 
-        elif self.mode is "naive":
+        elif self.mode == "naive":
             x = scaler.transform(r_seed).astype(np.float64)
             y = r_y.astype(np.float64).reshape(-1, 1)
             m = GPy.models.GPRegression(

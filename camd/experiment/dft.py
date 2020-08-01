@@ -1,4 +1,9 @@
 # Copyright Toyota Research Institute 2019
+"""
+Module containing DFT-related experiments, typically
+to be run asynchronously with a campaign.
+"""
+
 
 import os
 import uuid
@@ -15,8 +20,7 @@ from monty.os import cd
 from pymatgen.io.vasp.outputs import Vasprun
 from pymatgen import Composition
 from camd.experiment.base import Experiment
-from camd.utils.data import QMPY_REFERENCES, \
-    QMPY_REFERENCES_HUBBARD
+from camd.utils.data import QMPY_REFERENCES, QMPY_REFERENCES_HUBBARD
 
 
 class OqmdDFTonMC1(Experiment):
@@ -25,12 +29,21 @@ class OqmdDFTonMC1(Experiment):
     experiments on the MC1, an AWS-batch-based DFT-calculation
     system.
     """
-    def __init__(self, poll_time=60, timeout=7200,
-                 current_data=None, job_status=None):
+
+    def __init__(self, poll_time=60, timeout=7200, current_data=None, job_status=None):
+        """
+        Initializes an OqmdDFTonMC1 instance
+
+        Args:
+            poll_time (int): time in seconds to wait in between queries of aws batch
+            timeout (int): time in seconds to wait before killing batch jobs
+            current_data (pandas.DataFrame): dataframe corrsponding to current data
+            job_status (str): job status
+        """
+
         self.poll_time = poll_time
         self.timeout = timeout
-        super().__init__(current_data=current_data,
-                         job_status=job_status)
+        super().__init__(current_data=current_data, job_status=job_status)
 
     def _update_job_status(self):
         """
@@ -41,9 +54,10 @@ class OqmdDFTonMC1(Experiment):
             None
 
         """
-        all_job_statuses = self.current_data['status']
-        all_jobs_complete = all([status in ['SUCCEEDED', 'FAILED']
-                                 for status in all_job_statuses])
+        all_job_statuses = self.current_data["status"]
+        all_jobs_complete = all(
+            [status in ["SUCCEEDED", "FAILED"] for status in all_job_statuses]
+        )
         if all_jobs_complete:
             self.job_status = "COMPLETED"
 
@@ -76,9 +90,9 @@ class OqmdDFTonMC1(Experiment):
                 current set of results
 
         """
-        if self.job_status is not "COMPLETED":
+        if self.job_status != "COMPLETED":
             self.update_results()
-        if self.job_status is not "COMPLETED":
+        if self.job_status != "COMPLETED":
             warnings.warn("Some calculations have not finished")
         return self.current_data
 
@@ -95,14 +109,22 @@ class OqmdDFTonMC1(Experiment):
         """
         self.update_current_data(data)
         # Populate new columns
-        new_columns = ['path', 'status', 'start_time', 'jobId',
-                       'jobName', 'result', 'error', 'delta_e',
-                       'elapsed_time']
+        new_columns = [
+            "path",
+            "status",
+            "start_time",
+            "jobId",
+            "jobName",
+            "result",
+            "error",
+            "delta_e",
+            "elapsed_time",
+        ]
         for new_column in new_columns:
             self.current_data[new_column] = None
 
         self.submit_dft_calcs_to_mc1()
-        self.job_status = 'PENDING'
+        self.job_status = "PENDING"
         return self.job_status
 
     def print_status(self):
@@ -117,7 +139,8 @@ class OqmdDFTonMC1(Experiment):
         status_string = ""
         for structure_id, row in self.current_data.iterrows():
             status_string += "{}: {} {}\n".format(
-                structure_id, row["status"], row["elapsed_time"])
+                structure_id, row["status"], row["elapsed_time"]
+            )
         print("Calc status:\n{}".format(status_string))
         print("Timeout is set as {}.".format(self.timeout))
 
@@ -130,7 +153,7 @@ class OqmdDFTonMC1(Experiment):
             (str): calculation status string
 
         """
-        while self.job_status is not 'COMPLETED':
+        while self.job_status != "COMPLETED":
             time.sleep(self.poll_time)
             self.update_results()
             self.print_status()
@@ -144,23 +167,27 @@ class OqmdDFTonMC1(Experiment):
         """
         tri_path = os.environ.get("TRI_PATH")
         if not tri_path:
-            raise ValueError("TRI_PATH must be specified as env variable to "
-                             "use camd MC1 interface")
+            raise ValueError(
+                "TRI_PATH must be specified as env variable to "
+                "use camd MC1 interface"
+            )
 
         # Create run directory
-        uuid_string = str(uuid.uuid4()).replace('-', '')
-        parent_dir = os.path.join(tri_path, "model", "oqmdvasp", "3",
-                                  "u", "camd", "run{}".format(uuid_string))
-        if any(['_' in value for value in self.current_data.index]):
-            raise ValueError("Structure keys cannot contain underscores for "
-                             "mc1 compatibility")
+        uuid_string = str(uuid.uuid4()).replace("-", "")
+        parent_dir = os.path.join(
+            tri_path, "model", "oqmdvasp", "3", "u", "camd", "run{}".format(uuid_string)
+        )
+        if any(["_" in value for value in self.current_data.index]):
+            raise ValueError(
+                "Structure keys cannot contain underscores for " "mc1 compatibility"
+            )
 
         for structure_id, row in self.current_data.iterrows():
             calc_path = os.path.join(parent_dir, structure_id, "_1")
             os.makedirs(calc_path)
             with cd(calc_path):
                 # Write input cif file and python model file
-                row['structure'].to(filename="POSCAR")
+                row["structure"].to(filename="POSCAR")
                 with open("model.py", "w") as f:
                     f.write(MODEL_TEMPLATE)
 
@@ -169,18 +196,31 @@ class OqmdDFTonMC1(Experiment):
                 print("Submitting job: {}".format(structure_id))
                 try:
                     response = subprocess.check_output(
-                        ["trisub", "-q", "oqmd_test_queue",
-                         "-r", "16000", "-c", "16", "-g", "us-east-1"]
+                        [
+                            "trisub",
+                            "-q",
+                            "oqmd_test_queue",
+                            "-r",
+                            "16000",
+                            "-c",
+                            "16",
+                            "-g",
+                            "us-east-1",
+                        ]
                     )
                 except subprocess.CalledProcessError as e:
                     print(e.output)
 
-                response = response.decode('utf-8')
+                response = response.decode("utf-8")
                 response = re.findall("({.+})", response, re.DOTALL)[0]
                 data = json.loads(response)
-                data.update({"path": os.getcwd(),
-                             "status": "SUBMITTED",
-                             "start_time": datetime.utcnow()})
+                data.update(
+                    {
+                        "path": os.getcwd(),
+                        "status": "SUBMITTED",
+                        "start_time": datetime.utcnow(),
+                    }
+                )
                 update_dataframe_row(self.current_data, structure_id, data)
 
     def check_dft_calcs(self):
@@ -190,39 +230,52 @@ class OqmdDFTonMC1(Experiment):
         response.
         """
         for structure_id, calc in self.current_data.iterrows():
-            if calc['status'] in ['SUCCEEDED', 'FAILED']:
+            if calc["status"] in ["SUCCEEDED", "FAILED"]:
                 continue
-            path = calc['path']
+            path = calc["path"]
             print("Checking status of {}: {}".format(path, structure_id))
-            aws_cmd = "aws batch describe-jobs --jobs " \
-                      "--region=us-east-1 {}".format(calc['jobId'])
+            aws_cmd = "aws batch describe-jobs --jobs " "--region=us-east-1 {}".format(
+                calc["jobId"]
+            )
             result = subprocess.check_output(shlex.split(aws_cmd))
             result = json.loads(result)
             aws_status = result["jobs"][0]["status"]
             if aws_status == "SUCCEEDED":
                 os.chdir(path)
-                subprocess.call('trisync')
-                os.chdir('simulation')
+                subprocess.call("trisync")
+                os.chdir("simulation")
                 try:
-                    vr = Vasprun('static/vasprun.xml')
+                    vr = Vasprun("static/vasprun.xml")
                     vr_dict = vr.as_dict()
                     delta_e = get_qmpy_formation_energy(
-                        vr_dict['output']['final_energy_per_atom'],
-                        vr_dict['pretty_formula'], 1)
-                    data = {"status": "SUCCEEDED", "error": None, "result": vr,
-                            "delta_e": delta_e}
+                        vr_dict["output"]["final_energy_per_atom"],
+                        vr_dict["pretty_formula"],
+                        1,
+                    )
+                    data = {
+                        "status": "SUCCEEDED",
+                        "error": None,
+                        "result": vr,
+                        "delta_e": delta_e,
+                    }
                 except Exception as e:
                     error_doc = {}
-                    with open('err') as errfile:
+                    with open("err") as errfile:
                         error_doc.update({"trisub_stderr": errfile.read()})
-                    error_doc.update({"camd_exception": "{}".format(e),
-                                      "camd_traceback": traceback.format_exc()})
+                    error_doc.update(
+                        {
+                            "camd_exception": "{}".format(e),
+                            "camd_traceback": traceback.format_exc(),
+                        }
+                    )
 
                     # Dump error docs to avoid Pandas issues with dict values
                     data = {"status": "FAILED", "error": json.dumps(error_doc)}
 
             elif aws_status == "FAILED":
-                error_doc = {"aws_fail": result['jobs'][0]['attempts'][-1]['statusReason']}
+                error_doc = {
+                    "aws_fail": result["jobs"][0]["attempts"][-1]["statusReason"]
+                }
                 data = {"status": "FAILED", "error": json.dumps(error_doc)}
             else:
                 data = {"status": aws_status}
@@ -236,17 +289,21 @@ class OqmdDFTonMC1(Experiment):
         Returns:
             None
         """
-        running_jobs = self.current_data[self.current_data['status'] == 'RUNNING']
-        lapsed_jobs = running_jobs[running_jobs['elapsed_time'] > self.timeout]
+        running_jobs = self.current_data[self.current_data["status"] == "RUNNING"]
+        lapsed_jobs = running_jobs[running_jobs["elapsed_time"] > self.timeout]
 
         # Kill AWS job
         for structure_id, row in lapsed_jobs.iterrows():
-            kill_cmd = "aws batch terminate-job --region=us-east-1 " \
-                       "--job-id {} --reason camd_timeout".format(row['jobId'])
+            kill_cmd = (
+                "aws batch terminate-job --region=us-east-1 "
+                "--job-id {} --reason camd_timeout".format(row["jobId"])
+            )
             kill_result = subprocess.check_output(shlex.split(kill_cmd))
-            self.current_data.loc[structure_id, 'status'] = 'FAILED'
-            self.current_data.loc[structure_id, 'error'] = 'timeout'
+            print("{} job killed: ".format(kill_result))
+            self.current_data.loc[structure_id, "status"] = "FAILED"
+            self.current_data.loc[structure_id, "error"] = "timeout"
         self._update_job_status()
+
 
 MODEL_TEMPLATE = """
 import os
@@ -307,8 +364,7 @@ def get_qmpy_formation_energy(total_e, formula, n_atoms):
     energy = total_e / n_atoms
     for element, weight in composition.as_dict().items():
         energy -= QMPY_REFERENCES[element] * weight
-        if (element in QMPY_REFERENCES_HUBBARD) \
-                and ('O' in composition):
+        if (element in QMPY_REFERENCES_HUBBARD) and ("O" in composition):
             energy -= QMPY_REFERENCES_HUBBARD[element] * weight
     return energy
 

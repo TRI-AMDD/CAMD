@@ -1,5 +1,11 @@
-# Computational Autonomy for Materials Discovery
 # Copyright Toyota Research Institute 2019
+"""
+Computational Autonomy for Materials Discovery
+
+A python library for simulating and conducting automated
+sequential learning procedures
+
+"""
 import os
 from functools import partial
 from tqdm import tqdm as _tqdm

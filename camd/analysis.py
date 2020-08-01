@@ -1,4 +1,9 @@
 # Copyright Toyota Research Institute 2019
+"""
+Module for conducting analysis/postprocessing of
+experiments and campaigns.  Contains the Analyzer
+object, which performs this function.
+"""
 
 import abc
 import warnings
@@ -30,7 +35,17 @@ from monty.serialization import loadfn
 
 
 class AnalyzerBase(abc.ABC):
+    """
+    The AnalyzerBase class defines the contract
+    for post-processing experiments and creating
+    a new seed_data object for the agent.
+
+    """
     def __init__(self):
+        """
+        Initialize an Analyzer.  Should contain all necessary
+        state variables for consistent analysis methods
+        """
         self._initial_seed_indices = []
 
     @abc.abstractmethod
@@ -78,6 +93,20 @@ class GenericMaxAnalyzer(AnalyzerBase):
         super(GenericMaxAnalyzer, self).__init__()
 
     def analyze(self, new_experimental_results, seed_data):
+        """
+        Analyzes the results of an experiment by finding
+        the best examples and their scores
+
+        Args:
+            new_experimental_results (pandas.DataFrame): new experimental
+                results to be analyzed
+            seed_data (pandas.DataFrame): past data to include in analysis
+
+        Returns:
+            (pandas.DataFrame): one-row dataframe summarizing past results
+            (pandas.DataFrame): new seed data to be passed to agent
+
+        """
         new_seed = seed_data.append(new_experimental_results)
         self.score.append(np.sum(new_seed["target"] > self.threshold))
         self.best_examples.append(new_seed.loc[new_seed.target.idxmax()])
@@ -104,6 +133,16 @@ class AnalyzeStructures(AnalyzerBase):
     """
 
     def __init__(self, structures=None, hull_distance=None):
+        """
+        Analyzer for structural analysis of jobs
+
+        Args:
+            structures ([Structure]): list of a-priori structures to
+                compare against
+            hull_distance ([float]): hull_distance by which to filter
+                results
+
+        """
         self.structures = structures if structures else []
         self.structure_ids = None
         self.unique_structures = None
@@ -182,8 +221,11 @@ class AnalyzeStructures(AnalyzerBase):
                     elems = set(s.composition.as_dict().keys())
                     if elems == chemsys:
                         self.icsd_structs_inchemsys.append(s)
-                except:
+                # TODO: can we make this exception more specific,
+                #  do we have an example where this fails?
+                except Exception as e:
                     warnings.warn("Unable to process structure {}".format(k))
+                    warnings.warn("Error: {}".format(e))
 
             self.matching_icsd_strs = []
             for i in range(len(structures)):
@@ -242,6 +284,9 @@ class AnalyzeStructures(AnalyzerBase):
 
 
 class StabilityAnalyzer(AnalyzerBase):
+    """
+    Analyzer object for stability campaigns
+    """
     def __init__(self, hull_distance=0.05, parallel=cpu_count(), entire_space=False):
         """
         The Stability Analyzer is intended to analyze DFT-result
@@ -581,8 +626,10 @@ class PhaseSpaceAL(PhaseSpace):
         """
         try:
             phase.stability = phase.energy - self.gclp(phase.unit_comp)[0]
-        except:
-            print(phase)
+        # TODO: do we have an example where this fails?  Can we provide
+        #  a more concrete exception?
+        except Exception as e:
+            print(phase, "stability determination failed, error {}".format(e))
             phase.stability = np.nan
         return phase.stability
 

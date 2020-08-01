@@ -1,4 +1,8 @@
 #  Copyright (c) 2019 Toyota Research Institute.  All rights reserved.
+"""
+This module provides objects related to the discovery of
+new crystal structures using structural domains.
+"""
 
 import pandas as pd
 import os
@@ -8,7 +12,7 @@ from monty.serialization import dumpfn
 from camd.domain import StructureDomain, heuristic_setup
 from camd.agent.stability import AgentStabilityAdaBoost
 from camd.agent.base import RandomAgent
-from camd.experiment import ATFSampler
+from camd.experiment.base import ATFSampler
 from camd.campaigns.base import Campaign
 from camd import CAMD_TEST_FILES, CAMD_S3_BUCKET, __version__
 from camd.utils.data import load_dataframe, s3_sync
@@ -81,6 +85,13 @@ class ProtoDFTCampaign(Campaign):
         )
 
     def autorun(self):
+        """
+        Method for running this campaign automatically
+
+        Returns:
+            None
+
+        """
         n_max_iter = n_max_iter_heuristics(
             len(self.candidate_data), 10)
         self.auto_loop(
@@ -115,6 +126,13 @@ class CloudATFCampaign(Campaign):
                    create_seed=n_seed, s3_prefix=s3_prefix)
 
     def autorun(self):
+        """
+        Runs campaign with standard parameters
+
+        Returns:
+            None
+
+        """
         self.auto_loop(initialize=True, n_iterations=3)
         return True
 

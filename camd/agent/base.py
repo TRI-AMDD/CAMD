@@ -1,13 +1,14 @@
 # Copyright Toyota Research Institute 2019
+"""
+Module containing basic agent Abstractions
+and functionality
+"""
 
 import numpy as np
 from sklearn.linear_model import LinearRegression
 from sklearn.preprocessing import StandardScaler
 from sklearn.model_selection import KFold, cross_val_score
 from sklearn.base import clone
-from sklearn.pipeline import Pipeline
-from sklearn.gaussian_process import GaussianProcessRegressor
-from sklearn.gaussian_process.kernels import RBF, ConstantKernel
 
 from camd import tqdm
 
@@ -15,11 +16,23 @@ import abc
 
 
 class HypothesisAgent(metaclass=abc.ABCMeta):
+    """
+    Abstract class for agents, decision-making entities
+    in a sequential learning setting.  Should implement
+    a `get_hypotheses` method that takes a list of potential
+    candidates and selects those which are most well-suited
+    to experiments
+    """
     def __init__(self):
+        """
+        Placeholder for initializing agents, should include
+        all state parameters that an agent needs to make
+        decisions
+        """
         pass
 
     @abc.abstractmethod
-    def get_hypotheses(self, candidate_data):
+    def get_hypotheses(self, candidate_data, seed_data=None):
         """
 
         Returns:
@@ -34,8 +47,8 @@ class QBC:
     Helper class for Uncertainty quantification using
     non-supporting regressors with Query-By-Committee
     """
-    def __init__(self, n_members, training_fraction, model=None,
-                 test_full_model=True):
+
+    def __init__(self, n_members, training_fraction, model=None, test_full_model=True):
         """
         Args:
             n_members (int): Number of committee members or models to train
@@ -57,6 +70,18 @@ class QBC:
         self._y = None
 
     def fit(self, X, y):
+        """
+        Fits the QBC committee member models
+
+        Args:
+            X (pandas.DataFrame, np.ndarray): input X values for fitting
+            y (pandas.DataFrame, np.ndarray): output y values to regress
+                or fit to
+
+        Returns:
+            None
+
+        """
         self._X, self._y = X, y
 
         split_X = []
@@ -65,7 +90,7 @@ class QBC:
         for i in range(self.n_members):
             a = np.arange(len(X))
             np.random.shuffle(a)
-            indices = a[:int(self.training_fraction * len(X))]
+            indices = a[: int(self.training_fraction * len(X))]
             split_X.append(X.iloc[indices])
             split_y.append(y.iloc[indices])
 
@@ -88,12 +113,27 @@ class QBC:
             full_model = clone(self.model)
             full_model.fit(_X, self._y)
             cv_score = cross_val_score(
-                full_model, _X, self._y, cv=KFold(5, shuffle=True),
-                scoring='neg_mean_absolute_error')
+                full_model,
+                _X,
+                self._y,
+                cv=KFold(5, shuffle=True),
+                scoring="neg_mean_absolute_error",
+            )
             self.cv_score = np.mean(cv_score) * -1
 
     def predict(self, X):
-        # Apply the committee of models to candidate space
+        """
+        Apply the fitted committee of models to candidate space
+
+        Args:
+            X (pandas.DataFrame, np.ndarray): input matrix or values
+                on which to predict
+
+        Returns:
+            (np.ndarray): mean values for predictions for all committee members
+            (np.ndarray): standard deviation values for predictions for all committee members
+
+        """
         committee_predictions = []
         for scaler, model in tqdm(self.committee_models):
             _X = scaler.transform(X)
@@ -107,7 +147,17 @@ class RandomAgent(HypothesisAgent):
     """
     Baseline agent: Randomly picks from candidate dataset
     """
+
     def __init__(self, candidate_data=None, seed_data=None, n_query=1):
+        """
+        Initializes a random agent
+
+        Args:
+            candidate_data (pandas.DataFrame): dataframe of candidates
+            seed_data (pandas.DataFrame): seed data, in this case does nothing
+            n_query (int): number of candidates to query
+
+        """
 
         self.candidate_data = candidate_data
         self.seed_data = seed_data

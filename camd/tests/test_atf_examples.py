@@ -13,9 +13,9 @@ from camd.agent.stability import QBCStabilityAgent, GaussianProcessStabilityAgen
 from camd.agent.base import RandomAgent
 from camd.agent.generic import GenericGPUCB, GPBatchUCB
 from camd.analysis import StabilityAnalyzer, GenericMaxAnalyzer
-from camd.experiment import ATFSampler
+from camd.experiment.base import ATFSampler
 from camd.campaigns.base import Campaign
-from camd.utils.data import cache_matrio_data, load_dataframe, \
+from camd.utils.data import load_dataframe, \
     load_default_atf_data
 from camd import CAMD_TEST_FILES
 
