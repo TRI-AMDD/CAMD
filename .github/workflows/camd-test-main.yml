@@ -28,9 +28,13 @@ jobs:
         python -m pip install --upgrade pip
         pip install `grep numpy requirements.txt`
         pip install -r requirements.txt
-        pip install -e .
+        pip install -e .[tests]
     - name: pytest
       env:
         MPLBACKEND: "Agg"
       run: |
-        pytest camd --color=yes
+        pytest camd --color=yes --cov=camd --cov-report html:coverage_reports
+    - name: Coveralls
+      uses: coverallsapp/github-action@master
+      with:
+        github-token: ${{ secrets.GITHUB_TOKEN }}
