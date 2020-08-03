@@ -1,5 +1,5 @@
 numpy==1.19.1
-Django==3.0.8
+Django==3.0.9
 tensorflow==1.15.2
 gpflow==1.5.0
 python-dateutil==2.8.1
