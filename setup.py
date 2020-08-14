@@ -53,7 +53,7 @@ setup(
                       "awscli==1.18.109",
                       "boto3==1.14.32",
                       "docopt==0.6.2",
-                      "scikit-learn==0.23.1",
+                      "scikit-learn==0.23.2",
                       "taburu==2020.5.9",
                       "GPy==1.9.9"
                       ],
