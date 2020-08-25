@@ -327,7 +327,6 @@ def run_oqmd_calculation(poscar_filename):
     calc.setup(starting_structure, "relaxation")
     os.system("mpirun -n 16 vasp_std")
     # Just in case the mysql server process dies
-    # Kids, don't try this at home
     os.system("sudo -u mysql mysqld &")
     relaxed_structure = io.poscar.read("CONTCAR")
     os.chdir('..')
