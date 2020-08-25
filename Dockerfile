@@ -18,9 +18,8 @@ COPY setup.py requirements.txt /home/camd/
 
 # Install package
 RUN source /opt/conda/bin/activate camd && \
-    pip install numpy==1.18.3 && \
-    pip install -r requirements.txt && \
-    pip install pytest pytest-cov coveralls
+    pip install `grep numpy requirements.txt` && \
+    pip install -r requirements.txt
 
 COPY camd /home/camd/camd
-RUN python setup.py develop
+RUN pip install -e .
