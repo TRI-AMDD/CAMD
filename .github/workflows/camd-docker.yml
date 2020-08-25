@@ -34,6 +34,6 @@ jobs:
         run: |
           GIT_HASH=$(git rev-parse --short "$GITHUB_SHA")
           GIT_BRANCH=${GITHUB_REF##*/}
-          IMAGE_TAG=$GIT_BRANCH-$GIT_HASH
-          docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG .
-          docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
+          IMAGE_TAG=$ECR_REGISTRY/$ECR_REPOSITORY:$GIT_BRANCH
+          docker build -t $IMAGE_TAG -t $IMAGE_TAG-$GIT_HASH .
+          docker push $IMAGE_TAG
