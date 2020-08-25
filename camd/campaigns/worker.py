@@ -36,7 +36,7 @@ class Worker(object):
     persistently poll s3 for new submissions
     from which to start campaigns.  Currently
     primarily used for structure discovery,
-    i.e. 'proto-dft-2' campaigns.
+    i.e. 'proto-dft' campaigns.
     """
     def __init__(self, campaign="proto-dft-2"):
         """
@@ -68,44 +68,44 @@ class Worker(object):
         for loop_num in itertools.count(1):
             if loop_num > num_loops or self.check_stop_file():
                 return loop_num - 1
-            latest_chemsys = self.get_latest_chemsys()
-            if latest_chemsys:
+            latest_submission = self.get_latest_submission()
+            if latest_submission:
                 with ScratchDir('.') as sd:
-                    print("Running {} in {}".format(latest_chemsys, sd))
-                    self.run_campaign(chemsys=latest_chemsys)
+                    print("Running {} in {}".format(latest_submission, sd))
+                    self.run_campaign(latest_submission)
             else:
                 print("No new campaigns submitted, sleeping for {} seconds".format(
                     sleep_time))
                 time.sleep(sleep_time)
 
-    def run_campaign(self, **kwargs):
+    def run_campaign(self, **args):
         """
         Runs the campaign for a given chemsys
 
         Args:
-            **kwargs: keyword-args for a given campaign,
+            **args: args for a given campaign,
                 specific to invocation method below i. e.
 
-                proto-dft/oqmd-atf require {'chemsys': CHEMSYS}
-                meta-agent requires {'name': NAME}
+                proto-dft/oqmd-atf require CHEMSYS
+                meta-agent requires NAME
 
         Returns:
             None
 
         """
-        if self.campaign == "proto-dft-2":
-            campaign = ProtoDFTCampaign.from_chemsys(**kwargs)
-        elif self.campaign == "oqmd-atf":
+        if self.campaign.startswith("proto-dft"):
+            campaign = ProtoDFTCampaign.from_chemsys(**args)
+        elif self.campaign.startswith("oqmd-atf"):
             # This is more or less just a test
-            campaign = CloudATFCampaign.from_chemsys(**kwargs)
+            campaign = CloudATFCampaign.from_chemsys(**args)
         elif self.campaign.startswith("meta-agent"):
             # For meta-agent campaigns, submit with meta_agent/CAMPAIGN_NAME
-            campaign = MetaAgentCampaign.from_reserved_name(**kwargs)
+            campaign = MetaAgentCampaign.from_reserved_name(**args)
         else:
             raise ValueError("Campaign {} is not valid".format(self.campaign))
         campaign.autorun()
 
-    def get_latest_chemsys(self):
+    def get_latest_submission(self):
         """
         Gets the last submitted chemsys
 
