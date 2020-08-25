@@ -3,7 +3,7 @@ Django==3.1
 tensorflow==1.15.2
 gpflow==1.5.0
 python-dateutil==2.8.1
-networkx==2.4
+networkx==2.5
 matplotlib==3.3.1
 pandas==1.1.0
 matminer==0.6.3
