@@ -78,12 +78,12 @@ class Worker(object):
                     sleep_time))
                 time.sleep(sleep_time)
 
-    def run_campaign(self, **args):
+    def run_campaign(self, *args):
         """
         Runs the campaign for a given chemsys
 
         Args:
-            **args: args for a given campaign,
+            *args: args for a given campaign,
                 specific to invocation method below i. e.
 
                 proto-dft/oqmd-atf require CHEMSYS
@@ -94,13 +94,13 @@ class Worker(object):
 
         """
         if self.campaign.startswith("proto-dft"):
-            campaign = ProtoDFTCampaign.from_chemsys(**args)
+            campaign = ProtoDFTCampaign.from_chemsys(*args)
         elif self.campaign.startswith("oqmd-atf"):
             # This is more or less just a test
-            campaign = CloudATFCampaign.from_chemsys(**args)
+            campaign = CloudATFCampaign.from_chemsys(*args)
         elif self.campaign.startswith("meta-agent"):
             # For meta-agent campaigns, submit with meta_agent/CAMPAIGN_NAME
-            campaign = MetaAgentCampaign.from_reserved_name(**args)
+            campaign = MetaAgentCampaign.from_reserved_name(*args)
         else:
             raise ValueError("Campaign {} is not valid".format(self.campaign))
         campaign.autorun()
