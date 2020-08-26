@@ -1015,6 +1015,7 @@ def diverse_quant(points, target_length, df, quantiles=None):
         "delta_e",
         "pred_delta_e",
         "pred_stability",
+        "structure"
     ]
     scaler = StandardScaler()
     X = scaler.fit_transform(_df.drop(drop_columns, axis=1, errors="ignore"))
