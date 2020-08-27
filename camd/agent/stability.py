@@ -600,7 +600,7 @@ class SVGProcessStabilityAgent(StabilityAgent):
 
         print("training")
         t0 = time.time()
-        run_adam(model, gpflow.ci_util.ci_niter(20000))
+        run_adam(model, gpflow.ci_utils.ci_niter(20000))
         print("elapsed time: ", time.time() - t0)
 
         pred_y, pred_v = model.predict_y(scaler.transform(X_test))

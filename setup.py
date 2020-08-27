@@ -40,9 +40,9 @@ setup(
     long_description=LONG_DESCRIPTION,
     long_description_content_type='text/markdown',
     setup_requires=["numpy==1.19.1",
-                    "Django==3.0.8",  # For qmpy depnedency
-                    "tensorflow==1.15.2",
-                    "gpflow==1.5.0"],
+                    "Django==3.0.8",  # For qmpy dependency
+                    "tensorflow==2.3.0"
+                    ],
     install_requires=["python-dateutil==2.8.1",
                       "networkx==2.4",
                       "matplotlib==3.3.0",
@@ -55,7 +55,8 @@ setup(
                       "docopt==0.6.2",
                       "scikit-learn==0.23.1",
                       "taburu==2020.5.9",
-                      "GPy==1.9.9"
+                      "GPy==1.9.9",
+                      "gpflow==2.0.5"
                       ],
     extras_require={
         "proto_dft": ["protosearch==2020.5.10"],
