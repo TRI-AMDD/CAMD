@@ -647,60 +647,6 @@ class SVGProcessStabilityAgent(StabilityAgent):
 
         return within_hull.head(self.n_query)
 
-    def run_adam(self, model, iterations):
-        """
-        Adam optimizer as implemented in:
-        https://github.com/GPflow/GPflow/blob/develop/doc/source/notebooks/advanced/gps_for_big_data.ipynb
-        """
-        # Create an Adam Optimiser action
-        adam = gpflow.train.AdamOptimizer().make_optimize_action(model)
-
-        # Create a Logger action
-        self.logger = self.Logger(model)
-        actions = [adam, self.logger]
-
-        # Create optimisation loop that interleaves Adam with Logger
-        gpflow.actions.Loop(actions, stop=iterations)()
-
-        # Bind current TF session to model
-        model.anchor(model.enquire_session())
-        return self.logger
-
-    class Logger(gpflow.actions.Action):
-        """
-        Logger class as implemented in
-        https://github.com/GPflow/GPflow/blob/develop/doc/source/notebooks/advanced/gps_for_big_data.ipynb
-        """
-
-        def __init__(self, model):
-            """
-            Initialize Logger
-
-            Args:
-                model (GPFlow.model): gpflow model
-
-            """
-            self.model = model
-            self.logf = []
-
-        def run(self, ctx):
-            """
-            Run method for gpflow Logger action
-
-            Args:
-                ctx (Context): GPflow context object which is tracking action
-
-            Returns:
-                None
-
-            """
-            if (ctx.iteration % 10) == 0:
-                # Extract likelihood tensor from Tensorflow session
-                likelihood = -ctx.session.run(self.model.likelihood_tensor)
-
-                # Append likelihood value to list
-                self.logf.append(likelihood)
-
 
 class BaggedGaussianProcessStabilityAgent(StabilityAgent):
     """
