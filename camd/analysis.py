@@ -687,7 +687,6 @@ def update_run_w_structure(folder, hull_distance=0.2, parallel=True):
         if not all([os.path.isfile(fn) for fn in required_files]):
             print("{} ERROR: no seed data, no analysis to be done")
         else:
-            iteration = -1
             with open("seed_data.pickle", "rb") as f:
                 df = pickle.load(f)
 
