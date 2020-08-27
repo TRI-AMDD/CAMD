@@ -128,7 +128,7 @@ class ATFSampler(Experiment):
 
         """
         indices = self.current_data.index
-        return self.dataframe.loc[indices].dropna(axis=0, how="any")
+        return self.dataframe.loc[indices]
 
     def submit(self, data):
         """

@@ -159,7 +159,7 @@ class Campaign(MSONable):
 
         # Remove candidates from candidate space
         candidate_space = self.candidate_data.index.difference(
-            new_experimental_results.index, sort=False
+            self.consumed_candidates, sort=False
         ).tolist()
         self.candidate_data = self.candidate_data.loc[candidate_space]
         if len(self.candidate_data) == 0:

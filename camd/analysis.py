@@ -262,19 +262,20 @@ class AnalyzeStructures(AnalyzerBase):
         Useful for analysis integrated as part of a campaign itself
 
         Args:
-            jobs:
-            against_icsd:
+            jobs (pd.DataFrame): dataframe of DFT experiment results
+            against_icsd (bool): whether to validate against ICSD or not
 
         Returns:
         """
         self.structure_ids = []
         self.structures = []
         self.energies = []
-        for j, r in jobs.items():
+        for j, r in jobs.iterrows():
             if r["status"] == "SUCCEEDED":
-                self.structures.append(r["result"]["output"]["crystal"])
+                rdict = r['result'].as_dict()
+                self.structures.append(r['result'].final_structure)
                 self.structure_ids.append(j)
-                self.energies.append(r["result"]["output"]["final_energy_per_atom"])
+                self.energies.append(rdict["output"]["final_energy_per_atom"])
         if use_energies:
             return self.analyze(
                 self.structures, self.structure_ids, against_icsd, self.energies
@@ -287,7 +288,8 @@ class StabilityAnalyzer(AnalyzerBase):
     """
     Analyzer object for stability campaigns
     """
-    def __init__(self, hull_distance=0.05, parallel=cpu_count(), entire_space=False):
+    def __init__(self, hull_distance=0.05, parallel=cpu_count(), entire_space=False,
+                 plot=True):
         """
         The Stability Analyzer is intended to analyze DFT-result
         data in the context of a global compositional seed in
@@ -303,11 +305,14 @@ class StabilityAnalyzer(AnalyzerBase):
             entire_space (bool): flag for whether to analyze
                 entire space of results or just new chemical
                 space
+            plot (bool): whether to generate plot as part of
+                standard analyze sequence
         """
         self.hull_distance = hull_distance
         self.parallel = parallel
         self.entire_space = entire_space
         self.space = None
+        self.plot = plot
         super(StabilityAnalyzer, self).__init__()
 
     @staticmethod
@@ -354,9 +359,9 @@ class StabilityAnalyzer(AnalyzerBase):
 
         """
         # Aggregate seed_data and new experimental results
-        new_seed = seed_data.append(new_experimental_results)
+        common_columns = set(new_experimental_results.columns) & set(seed_data.columns)
+        new_seed = seed_data.append(new_experimental_results[common_columns])
         include_columns = ["Composition", "delta_e"]
-        # TODO: resolve this issue with drop_duplicates
         filtered = new_seed[include_columns].drop_duplicates(keep="last").dropna()
 
         if not self.entire_space:
@@ -388,7 +393,8 @@ class StabilityAnalyzer(AnalyzerBase):
             new_seed.update(new_data)
 
         # Write hull figure to disk
-        self.plot_hull(new_seed, new_experimental_results.index, filename="hull.png")
+        if self.plot:
+            self.plot_hull(new_seed, new_experimental_results.index, filename="hull.png")
 
         # Compute summary metrics
         summary = self.get_summary(
@@ -451,12 +457,14 @@ class StabilityAnalyzer(AnalyzerBase):
             (pyplot): plotter instance
         """
         # Generate all entries
+        # Add test for bad data
         total_comp = df.loc[new_result_ids]["Composition"].dropna().sum()
         total_comp = Composition(total_comp)
         if len(total_comp) > 4:
             warnings.warn("Number of elements too high for phase diagram plotting")
             return None
         filtered = filter_dataframe_by_composition(df, total_comp)
+        filtered = filtered.dropna()
 
         # Create computed entry column with un-normalized energies
         filtered["entry"] = [
@@ -680,23 +688,15 @@ def update_run_w_structure(folder, hull_distance=0.2, parallel=True):
             print("{} ERROR: no seed data, no analysis to be done")
         else:
             iteration = -1
-            jobs = {}
-            while True:
-                if os.path.isdir(str(iteration)):
-                    jobs.update(
-                        loadfn(os.path.join(str(iteration), "_exp_raw_results.json"))
-                    )
-                    iteration += 1
-                else:
-                    break
             with open("seed_data.pickle", "rb") as f:
                 df = pickle.load(f)
 
             with open("experiment.pickle", "rb") as f:
                 experiment = pickle.load(f)
             all_submitted, all_results = experiment.agg_history
-            st_a = StabilityAnalyzer(hull_distance=hull_distance, parallel=parallel)
-            summary, new_seed = st_a.analyze(df, pd.DataFrame())
+            st_a = StabilityAnalyzer(
+                hull_distance=hull_distance, parallel=parallel, entire_space=True, plot=False)
+            summary, new_seed = st_a.analyze(pd.DataFrame(), df)
 
             # Having calculated stabilities again, we plot the overall hull.
             st_a.plot_hull(
@@ -706,9 +706,9 @@ def update_run_w_structure(folder, hull_distance=0.2, parallel=True):
                 finalize=True,
             )
 
-            stable_discovered = new_seed[new_seed["is_stable"]]
+            stable_discovered = new_seed[new_seed["is_stable"].fillna(False)]
             s_a = AnalyzeStructures()
-            s_a.analyze_vaspqmpy_jobs(jobs, against_icsd=True, use_energies=True)
+            s_a.analyze_vaspqmpy_jobs(all_results, against_icsd=True, use_energies=True)
             unique_s_dict = {}
             for i in range(len(s_a.structures)):
                 if s_a.structure_is_unique[i] and (
