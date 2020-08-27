@@ -40,8 +40,7 @@ setup(
     long_description=LONG_DESCRIPTION,
     long_description_content_type='text/markdown',
     setup_requires=["numpy==1.19.1",
-                    "tensorflow==2.3.0",
-                    "gpflow==2.0.5"
+                    "gpflow==2.1.0"
                     ],
     install_requires=["python-dateutil==2.8.1",
                       "networkx==2.4",
