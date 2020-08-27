@@ -12,6 +12,7 @@ from copy import deepcopy
 from multiprocessing import cpu_count
 from collections import OrderedDict
 
+import tensorflow as tf
 import gpflow
 import numpy as np
 from qmpy.analysis.thermodynamics.phase import Phase, PhaseData
@@ -521,7 +522,11 @@ class SVGProcessStabilityAgent(StabilityAgent):
 
     def get_hypotheses(self, candidate_data, seed_data=None):
         """
-        Get hypotheses method for SVGProcessStabilityAgent
+        Get hypotheses method for SVGProcessStabilityAgent.
+
+        Code used from gpflow examples for big data, see:
+
+        https://github.com/GPflow/GPflow/blob/develop/doc/source/notebooks/advanced/gps_for_big_data.pct.py
 
         Args:
             candidate_data (pandas.DataFrame): dataframe of candidates
@@ -553,17 +558,49 @@ class SVGProcessStabilityAgent(StabilityAgent):
         print(Z, _y.shape)
         print(sig, mu)
         model = gpflow.models.SVGP(
-            X_train_scaled,
-            ((_y - mu) / sig).reshape(-1, 1),
             self.kernel,
             gpflow.likelihoods.Gaussian(),
             Z,
             mean_function=self.mean_f,
-            minibatch_size=100,
         )
+        minibatch_size = 100
+
+        # We turn off training for inducing point locations
+        gpflow.utilities.set_trainable(model.inducing_variable, False)
+
+        train_dataset = tf.data.Dataset.from_tensor_slices((X_train_scaled, y_train)) \
+            .repeat() \
+            .shuffle(len(X_train_scaled))
+
+        @tf.function(autograph=False)
+        def optimization_step(optimizer, model: gpflow.models.SVGP, batch):
+            with tf.GradientTape(watch_accessed_variables=False) as tape:
+                tape.watch(model.trainable_variables)
+                objective = - model.elbo(batch)
+                grads = tape.gradient(objective, model.trainable_variables)
+            optimizer.apply_gradients(zip(grads, model.trainable_variables))
+            return objective
+
+        def run_adam(model, iterations):
+            """
+            Utility function running the Adam optimizer
+
+            :param model: GPflow model
+            :param interations: number of iterations
+            """
+            # Create an Adam Optimizer action
+            logf = []
+            train_it = iter(train_dataset.batch(minibatch_size))
+            adam = tf.optimizers.Adam()
+            for step in range(iterations):
+                elbo = - optimization_step(adam, model, next(train_it))
+                if step % 10 == 0:
+                    logf.append(elbo.numpy())
+            return logf
+
         print("training")
         t0 = time.time()
-        self.run_adam(model, gpflow.test_util.notebook_niter(20000))
+        run_adam(model, gpflow.ci_utils.ci_niter(20000))
         print("elapsed time: ", time.time() - t0)
 
         pred_y, pred_v = model.predict_y(scaler.transform(X_test))
@@ -576,21 +613,19 @@ class SVGProcessStabilityAgent(StabilityAgent):
         scaler = StandardScaler()
         X_scaled = scaler.fit_transform(X_seed)
         cls = MiniBatchKMeans(n_clusters=self.M, batch_size=200)
-        cls.fit(X_train_scaled)
+        cls.fit(X_scaled)
         Z = cls.cluster_centers_
         _y = np.array(y_seed.to_list())
         mu = np.mean(_y)
         sig = np.std(_y)
         model = gpflow.models.SVGP(
-            X_scaled,
-            ((_y - mu) / sig).reshape(-1, 1),
             self.kernel,
             gpflow.likelihoods.Gaussian(),
             Z,
             mean_function=self.mean_f,
-            minibatch_size=100,
         )
-        self.run_adam(model, gpflow.test_util.notebook_niter(20000))
+        maxiter = gpflow.ci_utils.ci_niter(20000)
+        self.run_adam(model, maxiter)
         print(self.model)
         self.model = model
 
@@ -611,60 +646,6 @@ class SVGProcessStabilityAgent(StabilityAgent):
         within_hull = self.candidate_data[stability_filter]
 
         return within_hull.head(self.n_query)
-
-    def run_adam(self, model, iterations):
-        """
-        Adam optimizer as implemented in:
-        https://github.com/GPflow/GPflow/blob/develop/doc/source/notebooks/advanced/gps_for_big_data.ipynb
-        """
-        # Create an Adam Optimiser action
-        adam = gpflow.train.AdamOptimizer().make_optimize_action(model)
-
-        # Create a Logger action
-        self.logger = self.Logger(model)
-        actions = [adam, self.logger]
-
-        # Create optimisation loop that interleaves Adam with Logger
-        gpflow.actions.Loop(actions, stop=iterations)()
-
-        # Bind current TF session to model
-        model.anchor(model.enquire_session())
-        return self.logger
-
-    class Logger(gpflow.actions.Action):
-        """
-        Logger class as implemented in
-        https://github.com/GPflow/GPflow/blob/develop/doc/source/notebooks/advanced/gps_for_big_data.ipynb
-        """
-
-        def __init__(self, model):
-            """
-            Initialize Logger
-
-            Args:
-                model (GPFlow.model): gpflow model
-
-            """
-            self.model = model
-            self.logf = []
-
-        def run(self, ctx):
-            """
-            Run method for gpflow Logger action
-
-            Args:
-                ctx (Context): GPflow context object which is tracking action
-
-            Returns:
-                None
-
-            """
-            if (ctx.iteration % 10) == 0:
-                # Extract likelihood tensor from Tensorflow session
-                likelihood = -ctx.session.run(self.model.likelihood_tensor)
-
-                # Append likelihood value to list
-                self.logf.append(likelihood)
 
 
 class BaggedGaussianProcessStabilityAgent(StabilityAgent):
