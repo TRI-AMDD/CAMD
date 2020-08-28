@@ -135,6 +135,13 @@ class OqmdDFTonMC1(Experiment):
         return self.job_status
 
     def clean_current_paths(self):
+        """
+        Helper method to clean simulation results in current paths
+
+        Returns:
+            None
+
+        """
         for idx, row in self.current_data.iterrows():
             # Clean simulation directories
             sim_path = row['path'].replace("model", "simulation")
