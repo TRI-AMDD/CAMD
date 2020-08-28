@@ -48,30 +48,30 @@ class WorkerTest(unittest.TestCase):
     def test_get_latest_chemsys(self):
         self.submit_chemsyses(["O-V", "O-Ti", "Fe-O"])
         worker = Worker("oqmd-atf")
-        latest_chemsys = worker.get_latest_chemsys()
+        latest_chemsys = worker.get_latest_submission()
         self.assertEqual(latest_chemsys, "Fe-O")
 
         self.put_runs(["Fe-O"])
-        latest_chemsys = worker.get_latest_chemsys()
+        latest_chemsys = worker.get_latest_submission()
         self.assertEqual(latest_chemsys, "O-Ti")
 
         self.put_runs(["O-V", "O-Ti"])
-        latest_chemsys = worker.get_latest_chemsys()
+        latest_chemsys = worker.get_latest_submission()
         self.assertIsNone(latest_chemsys)
 
     def test_run_atf_campaign(self):
         self.submit_chemsyses(["O-Ti", "Fe-O"])
         worker = Worker("oqmd-atf")
 
-        latest_chemsys = worker.get_latest_chemsys()
+        latest_chemsys = worker.get_latest_submission()
         self.assertEqual(latest_chemsys, "Fe-O")
 
         worker.start(num_loops=1)
-        latest_chemsys = worker.get_latest_chemsys()
+        latest_chemsys = worker.get_latest_submission()
         self.assertEqual(latest_chemsys, "O-Ti")
 
         worker.start(num_loops=1)
-        latest_chemsys = worker.get_latest_chemsys()
+        latest_chemsys = worker.get_latest_submission()
         self.assertIsNone(latest_chemsys)
 
     # TODO: This test is super slow, could make a
@@ -116,7 +116,7 @@ def worker_process(index):
     if index == 0:
         print("index 0")
         worker = Worker("oqmd-atf")
-        latest = worker.get_latest_chemsys()
+        latest = worker.get_latest_submission()
         result = worker.start(sleep_time=7)
         print("returning {} {}".format(result, latest))
         return result
