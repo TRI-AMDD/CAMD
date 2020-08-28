@@ -1,3 +1,6 @@
+Change log
+==========
+
 v2020.8.28
 ----------
 * multi-purpose GPy-bsed batch-mode agent

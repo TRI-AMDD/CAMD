@@ -10,11 +10,12 @@ import json
 import requests
 import re
 import subprocess
-import datetime
 
 from camd import __version__ as CURRENT_VER
+from camd.utils import get_new_version
 
-NEW_VER = datetime.datetime.today().strftime("%Y.%-m.%-d")
+NEW_VER = get_new_version(CURRENT_VER)
+EDITOR = os.environ.get("EDITOR", "vim")
 
 
 @task
