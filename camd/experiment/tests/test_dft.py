@@ -2,6 +2,7 @@
 
 import unittest
 import os
+import time
 
 from pymatgen.util.testing import PymatgenTest
 from pymatgen import MPRester
@@ -40,6 +41,22 @@ class Mc1Test(unittest.TestCase):
 
         self.assertAlmostEqual(results.loc['good', 'delta_e'], 0, 5)
         self.assertIsNone(results.loc['bad', 'result'])
+
+        # Test cleanup functionality
+        experiment.poll_time = 1
+        experiment.timeout = 1
+        old_paths = experiment.current_data['path']
+        data = pd.DataFrame(
+            {"structure": {
+                "newgood": good_silicon,
+                "newbad": bad_silicon
+            }
+            }
+        )
+        experiment.submit(data)
+        experiment.monitor()
+        for path in old_paths:
+            self.assertFalse(os.path.exists(path.replace("model", "simulation")))
 
     @unittest.skipUnless(CAMD_DFT_TESTS, SKIP_MSG)
     def test_structure_suite(self):
