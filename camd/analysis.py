@@ -358,10 +358,12 @@ class StabilityAnalyzer(AnalyzerBase):
                 seed data according to the experimental results
 
         """
-        # TODO: This is too tightly coupled to the DFT experiment
-        drop_columns = [""]
-        # Aggregate seed_data and new experimental results
+        # Check for new results
+        new_comp = new_experimental_results['Composition'].sum()
+        new_experimental_results = new_experimental_results.dropna(subset=['delta_e'])
         new_seed = seed_data.append(new_experimental_results)
+
+        # Aggregate seed_data and new experimental results
         include_columns = ["Composition", "delta_e"]
         filtered = new_seed[include_columns].drop_duplicates(keep="last").dropna()
 
@@ -369,8 +371,7 @@ class StabilityAnalyzer(AnalyzerBase):
             # Constrains the phase space to that of the target compounds.
             # More efficient when searching in a specified chemistry,
             # less efficient if larger spaces are without specified chemistry.
-            total_comp = new_experimental_results["Composition"].dropna().sum()
-            filtered = filter_dataframe_by_composition(filtered, total_comp)
+            filtered = filter_dataframe_by_composition(filtered, new_comp)
 
         space = self.get_phase_space(filtered)
         new_phases = [p for p in space.phases if p.description in filtered.index]
@@ -418,7 +419,8 @@ class StabilityAnalyzer(AnalyzerBase):
                 new processed seed
             new_ids ([]): list of index values for those
                 experiments that are "new"
-
+            initial_seed_indices ([]): indices of the initial
+                seed
 
         Returns:
             (DataFrame): dataframe summarizing processed
@@ -458,9 +460,12 @@ class StabilityAnalyzer(AnalyzerBase):
             (pyplot): plotter instance
         """
         # Generate all entries
-        # Add test for bad data
-        total_comp = df.loc[new_result_ids]["Composition"].dropna().sum()
-        total_comp = Composition(total_comp)
+        # if len(new_result_ids) > 0:
+        #     total_comp = df.loc[new_result_ids]["Composition"].dropna().sum()
+        # else:
+        #     total_comp = df.drop(self.initial_seed_indices)["Composition"].dropna().sum()
+        # df['Composition'].sum()
+        total_comp = Composition(df['Composition'].sum())
         if len(total_comp) > 4:
             warnings.warn("Number of elements too high for phase diagram plotting")
             return None
@@ -693,10 +698,15 @@ def update_run_w_structure(folder, hull_distance=0.2, parallel=True):
 
             with open("experiment.pickle", "rb") as f:
                 experiment = pickle.load(f)
+                # Hack to update agg_history
+                experiment.update_current_data(None)
+
             all_submitted, all_results = experiment.agg_history
+            old_results = df.drop(all_results.index, errors='ignore')
+            new_results = df.drop(old_results.index)
             st_a = StabilityAnalyzer(
                 hull_distance=hull_distance, parallel=parallel, entire_space=True, plot=False)
-            summary, new_seed = st_a.analyze(pd.DataFrame(), df)
+            summary, new_seed = st_a.analyze(new_results, old_results)
 
             # Having calculated stabilities again, we plot the overall hull.
             st_a.plot_hull(
