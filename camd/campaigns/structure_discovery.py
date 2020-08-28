@@ -30,20 +30,21 @@ class ProtoDFTCampaign(Campaign):
     experiments
     """
     @classmethod
-    def from_chemsys(cls, chemsys):
+    def from_chemsys(cls, chemsys, prefix="proto-dft-2/runs"):
         """
         Class factory method for constructing campaign from
         chemsys.
 
         Args:
             chemsys (str): chemical system for the campaign
+            prefix (str): prefix for s3
 
         Returns:
             (ProtoDFTCampaign): Standard proto-dft campaign from
                 the chemical system
 
         """
-        s3_prefix = "proto-dft-2/runs/{}".format(chemsys)
+        s3_prefix = "{}/{}".format(prefix, chemsys)
 
         # Initialize s3
         dumpfn({"started": datetime.now().isoformat(),
@@ -82,7 +83,7 @@ class ProtoDFTCampaign(Campaign):
         return cls(
             candidate_data=candidate_data, agent=agent, experiment=experiment,
             analyzer=analyzer, seed_data=seed_data,
-            heuristic_stopper=5, s3_prefix="proto-dft/runs/{}".format(chemsys)
+            heuristic_stopper=5, s3_prefix=s3_prefix
         )
 
     def autorun(self):
