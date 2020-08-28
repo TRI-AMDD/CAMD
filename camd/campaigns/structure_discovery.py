@@ -61,6 +61,7 @@ class ProtoDFTCampaign(Campaign):
         # Dump structure/candidate data
         with open('candidate_data.pickle', 'wb') as f:
             pickle.dump(candidate_data, f)
+        s3_sync(s3_bucket=CAMD_S3_BUCKET, s3_prefix=s3_prefix, sync_path='.')
 
         # Set up agents and loop parameters
         agent = AgentStabilityAdaBoost(
