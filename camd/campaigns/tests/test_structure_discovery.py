@@ -28,9 +28,6 @@ def teardown_s3():
 
 
 class ProtoDFTCampaignTest(unittest.TestCase):
-    def tearDown(self):
-        teardown_s3()
-
     def test_simulated(self):
         exp_dataframe = pd.read_pickle(os.path.join(CAMD_TEST_FILES, "mn-ni-o-sb.pickle"))
         experiment = ATFSampler(exp_dataframe)
@@ -56,6 +53,7 @@ class ProtoDFTCampaignTest(unittest.TestCase):
             agent = AgentStabilityML5(n_query=2)
             campaign.agent = agent
             campaign.autorun()
+            teardown_s3()
 
 
 if __name__ == '__main__':
