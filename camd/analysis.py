@@ -460,11 +460,6 @@ class StabilityAnalyzer(AnalyzerBase):
             (pyplot): plotter instance
         """
         # Generate all entries
-        # if len(new_result_ids) > 0:
-        #     total_comp = df.loc[new_result_ids]["Composition"].dropna().sum()
-        # else:
-        #     total_comp = df.drop(self.initial_seed_indices)["Composition"].dropna().sum()
-        # df['Composition'].sum()
         total_comp = Composition(df['Composition'].sum())
         if len(total_comp) > 4:
             warnings.warn("Number of elements too high for phase diagram plotting")

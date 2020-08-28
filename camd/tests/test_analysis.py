@@ -19,14 +19,16 @@ class StabilityAnalyzerTest(unittest.TestCase):
         # Test 2D
         with ScratchDir('.'):
             analyzer = StabilityAnalyzer(hull_distance=0.1)
-            analyzer.plot_hull(df, new_result_ids=["mp-685151", "mp-755875"],
+            filtered = filter_dataframe_by_composition(df, "TiO")
+            analyzer.plot_hull(filtered, new_result_ids=["mp-685151", "mp-755875"],
                                filename="hull.png")
             self.assertTrue(os.path.isfile("hull.png"))
 
         # Test 3D
         with ScratchDir('.'):
             analyzer.hull_distance = 0.05
-            analyzer.plot_hull(df, new_result_ids=["mp-776280", "mp-30998"],
+            filtered = filter_dataframe_by_composition(df, "TiNO")
+            analyzer.plot_hull(filtered, new_result_ids=["mp-776280", "mp-30998"],
                                filename="hull.png")
             self.assertTrue(os.path.isfile("hull.png"))
 
@@ -56,13 +58,13 @@ class StabilityAnalyzerTest(unittest.TestCase):
 
 class StructureAnalyzerTest(unittest.TestCase):
     def test_analyze_vaspqmpy_jobs(self):
-        jobs = loadfn(os.path.join(CAMD_TEST_FILES, "raw_results.json"))
+        jobs = pd.read_pickle(os.path.join(CAMD_TEST_FILES, "mn-ni-o-sb.pickle"))
         analyzer = AnalyzeStructures()
         self.assertEqual(analyzer.analyze_vaspqmpy_jobs(jobs, against_icsd=True, use_energies=False),
-                         [True, True, True, False, True, False, True, True, True])
+                         [True, True, True])
 
         self.assertEqual(analyzer.analyze_vaspqmpy_jobs(jobs, against_icsd=True, use_energies=True),
-                         [True, True, False, True, True, False, True, True, True])
+                         [True, True, True])
 
 
 if __name__ == '__main__':
