@@ -7,13 +7,13 @@ import pandas as pd
 
 os.environ['CAMD_S3_BUCKET'] = 'camd-test'
 from camd.campaigns.structure_discovery import ProtoDFTCampaign
-from camd.agent.stability import AgentStabilityML5
-from camd.agent.base import RandomAgent
+from camd.agent.stability import AgentStabilityML5, AgentStabilityAdaBoost
 from camd.analysis import StabilityAnalyzer
 from camd.experiment.base import ATFSampler
 from camd import CAMD_S3_BUCKET, CAMD_TEST_FILES
 from camd.utils.data import filter_dataframe_by_composition, load_dataframe
 from monty.tempfile import ScratchDir
+from sklearn.neural_network import MLPRegressor
 
 CAMD_DFT_TESTS = os.environ.get("CAMD_DFT_TESTS", False)
 SKIP_MSG = "Long tests disabled, set CAMD_DFT_TESTS to run long tests"
@@ -32,7 +32,17 @@ class ProtoDFTCampaignTest(unittest.TestCase):
         exp_dataframe = pd.read_pickle(os.path.join(CAMD_TEST_FILES, "mn-ni-o-sb.pickle"))
         experiment = ATFSampler(exp_dataframe)
         candidate_data = exp_dataframe.iloc[:, :-11]
-        agent = RandomAgent(n_query=2)
+        # Set up agents and loop parameters
+        agent = AgentStabilityAdaBoost(
+            model=MLPRegressor(hidden_layer_sizes=(84, 50)),
+            n_query=2,
+            hull_distance=0.2,
+            exploit_fraction=1.0,
+            uncertainty=True,
+            alpha=0.5,
+            diversify=True,
+            n_estimators=20
+        )
         analyzer = StabilityAnalyzer(hull_distance=0.2)
         # Reduce seed_data
         seed_data = load_dataframe("oqmd1.2_exp_based_entries_featurized_v2")

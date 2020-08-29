@@ -404,6 +404,11 @@ class StabilityAnalyzer(AnalyzerBase):
             new_experimental_results.index,
             initial_seed_indices=self.initial_seed_indices,
         )
+        # Drop excess columns from experiment
+        new_seed = new_seed.drop([
+            'path', 'status', 'start_time', 'jobId', 'jobName',
+            'result', 'error', 'elapsed_time'
+        ], axis="columns", errors="ignore")
         return summary, new_seed
 
     @staticmethod
