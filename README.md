@@ -8,7 +8,7 @@ CAMD provides a flexible software framework for sequential / Bayesian optimizati
 * **Experiments**: Entities responsible for carrying out the experiments requested by Agents and reporting back the results.
 * **Analyzers**: Post-processing procedures which frame experimental results in the context of candidate or seed datasets.
 * **Campaigns**: Loop construct which executes the sequence of hypothesize-experiment-analyze by the Agent, Experiment, and Analyzer, respectively, and facilitates the communication between these entities.
-* **Simulations**: Agent performance can simulated using after-the-fact sampling of known existing data. This allows systematic design and tuning of agents before their deployment using actual Experiments.
+* **Simulations**: Agent performance can be simulated using after-the-fact sampling of known existing data. This allows systematic design and tuning of agents before their deployment using actual Experiments.
 
 A more in-depth description of the scientific framework can be found in [this recent open-access article](https://doi.org/10.1039/D0SC01101K), which demonstrates  an end-to-end CAMD-based framework for autonomous inorganic materials discovery using cloud-based density functional theory calculations.
 

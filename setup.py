@@ -34,7 +34,7 @@ after the fact sampling of known data.
 setup(
     name='camd',
     url="https://github.com/TRI-AMDD/CAMD",
-    version="2020.5.19",
+    version="2020.8.28",
     packages=find_packages(),
     description=DESCRIPTION,
     long_description=LONG_DESCRIPTION,
@@ -50,7 +50,7 @@ setup(
                       "matminer==0.6.3",
                       "autologging",
                       "awscli==1.18.127",
-                      "boto3==1.14.50",
+                      "boto3==1.14.51",
                       "docopt==0.6.2",
                       "scikit-learn==0.23.2",
                       "taburu==2020.5.9",

@@ -1,4 +1,11 @@
+Change log
+==========
 
+v2020.8.28
+----------
+* multi-purpose GPy-bsed batch-mode agent
+* various bugs fixed in current DFT workflow
+* various dependency updates
 
 v2020.5.19
 ----------
