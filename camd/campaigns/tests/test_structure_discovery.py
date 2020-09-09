@@ -45,8 +45,12 @@ class ProtoDFTCampaignTest(unittest.TestCase):
         )
         analyzer = StabilityAnalyzer(hull_distance=0.2)
         # Reduce seed_data
-        seed_data = load_dataframe("oqmd1.2_exp_based_entries_featurized_v2")
-        seed_data = filter_dataframe_by_composition(seed_data, "MnNiOSb")
+        icsd_data = load_dataframe("oqmd1.2_exp_based_entries_featurized_v2")
+        seed_data = filter_dataframe_by_composition(icsd_data, "MnNiOSb")
+        leftover = ~icsd_data.index.isin(seed_data.index)
+        # Add some random other data to test compositional flexibility
+        seed_data = seed_data.append(icsd_data.loc[leftover].sample(30))
+        del icsd_data
         with ScratchDir('.'):
             campaign = ProtoDFTCampaign(
                 candidate_data=candidate_data, agent=agent, experiment=experiment,
@@ -54,6 +58,7 @@ class ProtoDFTCampaignTest(unittest.TestCase):
                 heuristic_stopper=5
             )
             campaign.autorun()
+            self.assertTrue(os.path.isfile('hull_finalized.png'))
 
     @unittest.skipUnless(CAMD_DFT_TESTS, SKIP_MSG)
     def test_simple_dft(self):
