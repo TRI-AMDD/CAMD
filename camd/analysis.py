@@ -404,6 +404,11 @@ class StabilityAnalyzer(AnalyzerBase):
             new_experimental_results.index,
             initial_seed_indices=self.initial_seed_indices,
         )
+        # Drop excess columns from experiment
+        new_seed = new_seed.drop([
+            'path', 'status', 'start_time', 'jobId', 'jobName',
+            'result', 'error', 'elapsed_time'
+        ], axis="columns", errors="ignore")
         return summary, new_seed
 
     @staticmethod
@@ -465,6 +470,7 @@ class StabilityAnalyzer(AnalyzerBase):
             warnings.warn("Number of elements too high for phase diagram plotting")
             return None
         filtered = filter_dataframe_by_composition(df, total_comp)
+        filtered = filtered[['delta_e', 'Composition']]
         filtered = filtered.dropna()
 
         # Create computed entry column with un-normalized energies
@@ -704,8 +710,11 @@ def update_run_w_structure(folder, hull_distance=0.2, parallel=True):
             summary, new_seed = st_a.analyze(new_results, old_results)
 
             # Having calculated stabilities again, we plot the overall hull.
+            # Filter by chemsys
+            new_comp = new_results['Composition'].sum()
+            filtered = filter_dataframe_by_composition(new_seed, new_comp)
             st_a.plot_hull(
-                new_seed,
+                filtered,
                 all_submitted.index,
                 filename="hull_finalized.png",
                 finalize=True,

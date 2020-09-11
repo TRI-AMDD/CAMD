@@ -11,6 +11,7 @@ import json
 import re
 import time
 import shlex
+import shutil
 import subprocess
 import traceback
 import warnings
@@ -30,7 +31,8 @@ class OqmdDFTonMC1(Experiment):
     system.
     """
 
-    def __init__(self, poll_time=60, timeout=7200, current_data=None, job_status=None):
+    def __init__(self, poll_time=60, timeout=7200, current_data=None, job_status=None,
+                 cleanup_directories=True):
         """
         Initializes an OqmdDFTonMC1 instance
 
@@ -39,10 +41,13 @@ class OqmdDFTonMC1(Experiment):
             timeout (int): time in seconds to wait before killing batch jobs
             current_data (pandas.DataFrame): dataframe corrsponding to current data
             job_status (str): job status
+            cleanup_directories (bool): flag to enable cleaning up of DFT results after
+                runs are over
         """
 
         self.poll_time = poll_time
         self.timeout = timeout
+        self.cleanup_directories = cleanup_directories
         super().__init__(current_data=current_data, job_status=job_status)
 
     def _update_job_status(self):
@@ -107,6 +112,8 @@ class OqmdDFTonMC1(Experiment):
             (str): string corresponding to job status
 
         """
+        if self.current_data is not None and self.cleanup_directories:
+            self.clean_current_paths()
         self.update_current_data(data)
         # Populate new columns
         new_columns = [
@@ -126,6 +133,20 @@ class OqmdDFTonMC1(Experiment):
         self.submit_dft_calcs_to_mc1()
         self.job_status = "PENDING"
         return self.job_status
+
+    def clean_current_paths(self):
+        """
+        Helper method to clean simulation results in current paths
+
+        Returns:
+            None
+
+        """
+        for idx, row in self.current_data.iterrows():
+            # Clean simulation directories
+            sim_path = row['path'].replace("model", "simulation")
+            if os.path.exists(sim_path):
+                shutil.rmtree(sim_path)
 
     def print_status(self):
         """
@@ -271,6 +292,7 @@ class OqmdDFTonMC1(Experiment):
 
                     # Dump error docs to avoid Pandas issues with dict values
                     data = {"status": "FAILED", "error": json.dumps(error_doc)}
+                os.chdir(path)
 
             elif aws_status == "FAILED":
                 error_doc = {
