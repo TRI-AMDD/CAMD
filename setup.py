@@ -39,7 +39,7 @@ setup(
     description=DESCRIPTION,
     long_description=LONG_DESCRIPTION,
     long_description_content_type='text/markdown',
-    setup_requires=["numpy==1.19.1",
+    setup_requires=["numpy==1.19.2",
                     "gpflow==2.1.0"
                     ],
     install_requires=["python-dateutil==2.8.1",
