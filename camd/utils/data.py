@@ -50,7 +50,7 @@ def load_default_atf_data():
     return df[df['N_species'] == 2].sample(frac=0.2)
 
 
-def filter_dataframe_by_composition(df, composition):
+def filter_dataframe_by_composition(df, composition, formula_column="Composition"):
     """
     Filters dataframe by composition, i. e. finds all
     rows in dataframe where the Composition contains a
@@ -60,6 +60,8 @@ def filter_dataframe_by_composition(df, composition):
         df (DataFrame): dataframe
         composition (Composition or str): composition
             or formula by which to filter
+        formula_column (str): formula column name, defaults
+            to "Composition"
 
     Returns:
         (DataFrame): dataframe where every composition is sampled such
@@ -68,7 +70,7 @@ def filter_dataframe_by_composition(df, composition):
     """
     # Get elements in formula, composition, then filter
     chemsys = set(Composition(composition).keys())
-    all_comps = df['Composition'].apply(Composition)
+    all_comps = df[formula_column].apply(Composition)
     indices_to_include = [ind for ind, comp in all_comps.items()
                           if comp.keys() <= chemsys]
     return df.loc[indices_to_include]
