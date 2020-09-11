@@ -113,6 +113,12 @@ def update_changelog(ctx):
         f.write(toks[0] + l + "".join(toks[1:]))
     ctx.run("open CHANGES.md")
 
+@task
+def check_creds(ctx):
+    req_env_vars = ["TWINE_USERNAME", "TWINE_PASSWORD", "GITHUB_RELEASES_TOKEN"]
+    for env_var in req_env_vars:
+        assert os.environ.get(env_var), "{} is not set".format(env_var)
+
 
 @task
 def release(ctx, notest=False, nover=False):
@@ -123,6 +129,7 @@ def release(ctx, notest=False, nover=False):
     :param notest: Whether to skip tests.
     :param notest: Whether to skip autoversion (e. g. if tagging version).
     """
+    check_creds(ctx)
     ctx.run("rm -r dist build camd.egg-info", warn=True)
     if not nover:
         set_ver(ctx)

@@ -1,6 +1,12 @@
 Change log
 ==========
 
+v2020.9.11
+----------
+* Update dependencies
+* Fix minor pathing bug in DFT experiments
+* Update runner (beta) for running named campaigns
+
 v2020.8.28
 ----------
 * multi-purpose GPy-bsed batch-mode agent
