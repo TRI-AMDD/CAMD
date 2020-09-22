@@ -503,7 +503,7 @@ class StabilityAnalyzer(AnalyzerBase):
             plotkwargs.update({"linestyle": "--"})
         else:
             plotkwargs.update({"linestyle": "-"})
-        plotter = PDPlotter(pd, **plotkwargs)
+        plotter = PDPlotter(pd, backend='matplotlib', **plotkwargs)
 
         getplotkwargs = {"label_stable": False} if finalize else {}
         plot = plotter.get_plot(**getplotkwargs)
