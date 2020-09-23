@@ -520,7 +520,7 @@ class StabilityAnalyzer(AnalyzerBase):
             # measure stabilities wrt. the ultimate hull.
             pd = PhaseDiagram(filtered["entry"].values, elements=pg_elements)
             plotter = PDPlotter(
-                pd, **{"markersize": 0, "linestyle": "-", "linewidth": 2}
+                pd, backend="matplotlib", **{"markersize": 0, "linestyle": "-", "linewidth": 2}
             )
             plot = plotter.get_plot(plt=plot)
 
