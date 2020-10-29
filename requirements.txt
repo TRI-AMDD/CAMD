@@ -1,4 +1,4 @@
-numpy==1.19.2
+numpy==1.19.3
 Django==3.1.1
 gpflow==2.1.1
 python-dateutil==2.8.1
