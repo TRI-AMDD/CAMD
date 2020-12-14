@@ -263,6 +263,8 @@ class OqmdDFTonMC1(Experiment):
             aws_status = result["jobs"][0]["status"]
             if aws_status == "SUCCEEDED":
                 os.chdir(path)
+                # Pad this to give s3 a bit of time to update
+                time.sleep(10)
                 subprocess.call("trisync")
                 os.chdir("simulation")
                 try:
@@ -281,8 +283,9 @@ class OqmdDFTonMC1(Experiment):
                     }
                 except Exception as e:
                     error_doc = {}
-                    with open("err") as errfile:
-                        error_doc.update({"trisub_stderr": errfile.read()})
+                    if os.path.isfile("err"):
+                        with open("err") as errfile:
+                            error_doc.update({"trisub_stderr": errfile.read()})
                     error_doc.update(
                         {
                             "camd_exception": "{}".format(e),

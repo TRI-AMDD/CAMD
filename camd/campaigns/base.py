@@ -230,7 +230,7 @@ class Campaign(MSONable):
         if initialize:
             self.initialize()
             if save_iterations:
-                loop_backup(self.path, "-1")
+                self.loop_backup(self.path, "-1")
         while n_iterations - self.iteration >= 0:
             print("Iteration: {}".format(self.iteration))
             if not self.run():
@@ -239,7 +239,7 @@ class Campaign(MSONable):
             if monitor:
                 self.experiment.monitor()
             if save_iterations:
-                loop_backup(self.path, str(self.iteration - 1))
+                self.loop_backup(self.path, str(self.iteration - 1))
 
         self.run(finalize=True)
         self.finalize()
@@ -393,22 +393,24 @@ class Campaign(MSONable):
         """
         s3_sync(self.s3_bucket, self.s3_prefix, self.path)
 
+    def loop_backup(self, source_dir, target_dir):
+        """
+        Helper method to backup finished loop iterations.
 
-def loop_backup(source_dir, target_dir):
-    """
-    Helper method to backup finished loop iterations.
+        Args:
+            source_dir (str, Path): directory to be backed up
+            target_dir (str, Path): directory to back up to
 
-    Args:
-        source_dir (str, Path): directory to be backed up
-        target_dir (str, Path): directory to back up to
+        Returns:
+            (None)
 
-    Returns:
-        (None)
+        """
+        os.mkdir(os.path.join(source_dir, target_dir))
+        _files = os.listdir(source_dir)
+        for file_name in _files:
+            full_file_name = os.path.join(source_dir, file_name)
+            if os.path.isfile(full_file_name):
+                shutil.copy(full_file_name, target_dir)
 
-    """
-    os.mkdir(os.path.join(source_dir, target_dir))
-    _files = os.listdir(source_dir)
-    for file_name in _files:
-        full_file_name = os.path.join(source_dir, file_name)
-        if os.path.isfile(full_file_name):
-            shutil.copy(full_file_name, target_dir)
+        if self.s3_prefix:
+            self.s3_sync()
