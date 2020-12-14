@@ -44,7 +44,7 @@ setup(
                     ],
     install_requires=["python-dateutil==2.8.1",
                       "networkx==2.5",
-                      "matplotlib==3.3.2",
+                      "matplotlib==3.3.3",
                       "qmpy",  # This version is constrained by the source
                       "pandas==1.1.2",
                       "matminer==0.6.3",
