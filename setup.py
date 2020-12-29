@@ -49,7 +49,7 @@ setup(
                       "pandas==1.1.5",
                       "matminer==0.6.4",
                       "autologging",
-                      "awscli==1.18.196",
+                      "awscli==1.18.204",
                       "boto3==1.16.36",
                       "docopt==0.6.2",
                       "scikit-learn==0.23.2",
