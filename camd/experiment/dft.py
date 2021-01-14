@@ -263,8 +263,6 @@ class OqmdDFTonMC1(Experiment):
             aws_status = result["jobs"][0]["status"]
             if aws_status == "SUCCEEDED":
                 os.chdir(path)
-                # Pad this to give s3 a bit of time to update
-                time.sleep(10)
                 subprocess.call("trisync")
                 os.chdir("simulation")
                 try:
