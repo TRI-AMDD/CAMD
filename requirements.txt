@@ -7,7 +7,7 @@ matplotlib==3.3.3
 pandas==1.2.0
 matminer==0.6.4
 autologging
-awscli==1.18.196
+awscli==1.18.214
 boto3==1.16.54
 docopt==0.6.2
 scikit-learn==0.24.0
