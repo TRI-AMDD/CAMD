@@ -36,6 +36,6 @@ jobs:
         pytest camd --color=yes --cov=camd --cov-report html:coverage_reports
     - name: Coveralls
       env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        github-token: ${{ secrets.GITHUB_TOKEN }}
       run: |
         coveralls
