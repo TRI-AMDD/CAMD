@@ -83,7 +83,7 @@ class ProtoDFTCampaign(Campaign):
         return cls(
             candidate_data=candidate_data, agent=agent, experiment=experiment,
             analyzer=analyzer, seed_data=seed_data,
-            heuristic_stopper=5, s3_prefix=s3_prefix
+            heuristic_stopper=5, s3_prefix=s3_prefix,
         )
 
     def autorun(self):

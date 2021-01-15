@@ -281,8 +281,9 @@ class OqmdDFTonMC1(Experiment):
                     }
                 except Exception as e:
                     error_doc = {}
-                    with open("err") as errfile:
-                        error_doc.update({"trisub_stderr": errfile.read()})
+                    if os.path.isfile("err"):
+                        with open("err") as errfile:
+                            error_doc.update({"trisub_stderr": errfile.read()})
                     error_doc.update(
                         {
                             "camd_exception": "{}".format(e),
