@@ -4,22 +4,24 @@ This module provides objects related to the discovery of
 new crystal structures using structural domains.
 """
 
-import pandas as pd
+import logging
 import os
-
+import pickle
+import pandas as pd
 from datetime import datetime
 from monty.serialization import dumpfn
+from camd import CAMD_TEST_FILES
+from camd.agent.base import RandomAgent
 from camd.domain import StructureDomain, heuristic_setup
 from camd.agent.stability import AgentStabilityAdaBoost
-from camd.agent.base import RandomAgent
-from camd.experiment.base import ATFSampler
 from camd.campaigns.base import Campaign
-from camd import CAMD_TEST_FILES, CAMD_S3_BUCKET, __version__
+from camd import CAMD_S3_BUCKET, __version__
 from camd.utils.data import load_dataframe, s3_sync
 from camd.analysis import StabilityAnalyzer
 from camd.experiment.dft import OqmdDFTonMC1
+from camd.experiment.base import ATFSampler
 from sklearn.neural_network import MLPRegressor
-import pickle
+from watchtower import CloudWatchLogHandler
 
 
 class ProtoDFTCampaign(Campaign):
@@ -30,7 +32,10 @@ class ProtoDFTCampaign(Campaign):
     experiments
     """
     @classmethod
-    def from_chemsys(cls, chemsys, prefix="proto-dft-2/runs"):
+    def from_chemsys(cls, chemsys, prefix="proto-dft-2/runs",
+                     n_max_atoms=20, agent=None, analyzer=None,
+                     experiment=None, log_file="campaign.log",
+                     cloudwatch_group="/camd/test/"):
         """
         Class factory method for constructing campaign from
         chemsys.
@@ -38,12 +43,32 @@ class ProtoDFTCampaign(Campaign):
         Args:
             chemsys (str): chemical system for the campaign
             prefix (str): prefix for s3
+            n_max_atoms (int): number of maximum atoms
+            agent (Agent): agent for stability campaign
+            analyzer (Analyzer): analyzer for stability campaign
+            experiment (Agent): experiment for stability campaign
+            log_file (str): log filename
+            cloudwatch_group (str): cloudwatch group to log to
 
         Returns:
             (ProtoDFTCampaign): Standard proto-dft campaign from
                 the chemical system
 
         """
+        logger = logging.Logger("camd")
+        logger.setLevel("INFO")
+        file_handler = logging.FileHandler(log_file)
+        cw_handler = CloudWatchLogHandler(
+            log_group=cloudwatch_group,
+            stream_name=chemsys
+        )
+        logger.addHandler(file_handler)
+        logger.addHandler(cw_handler)
+        logger.addHandler(logging.StreamHandler())
+
+        logger.info("Starting campaign factory from_chemsys {}".format(
+            chemsys)
+        )
         s3_prefix = "{}/{}".format(prefix, chemsys)
 
         # Initialize s3
@@ -56,16 +81,17 @@ class ProtoDFTCampaign(Campaign):
         max_coeff, charge_balanced = heuristic_setup(element_list)
         domain = StructureDomain.from_bounds(
             element_list, charge_balanced=charge_balanced,
-            n_max_atoms=20, **{'grid': range(1, max_coeff)})
+            n_max_atoms=n_max_atoms, **{'grid': range(1, max_coeff)})
         candidate_data = domain.candidates()
 
         # Dump structure/candidate data
         with open('candidate_data.pickle', 'wb') as f:
             pickle.dump(candidate_data, f)
         s3_sync(s3_bucket=CAMD_S3_BUCKET, s3_prefix=s3_prefix, sync_path='.')
+        logger.info("Candidates generated")
 
         # Set up agents and loop parameters
-        agent = AgentStabilityAdaBoost(
+        agent = agent or AgentStabilityAdaBoost(
             model=MLPRegressor(hidden_layer_sizes=(84, 50)),
             n_query=10,
             hull_distance=0.2,
@@ -75,8 +101,8 @@ class ProtoDFTCampaign(Campaign):
             diversify=True,
             n_estimators=20
         )
-        analyzer = StabilityAnalyzer(hull_distance=0.2)
-        experiment = OqmdDFTonMC1(timeout=30000)
+        analyzer = analyzer or StabilityAnalyzer(hull_distance=0.2)
+        experiment = experiment or OqmdDFTonMC1(timeout=30000)
         seed_data = load_dataframe("oqmd1.2_exp_based_entries_featurized_v2")
 
         # Construct and start loop
@@ -84,7 +110,26 @@ class ProtoDFTCampaign(Campaign):
             candidate_data=candidate_data, agent=agent, experiment=experiment,
             analyzer=analyzer, seed_data=seed_data,
             heuristic_stopper=5, s3_prefix=s3_prefix,
+            logger=logger
         )
+
+    @classmethod
+    def from_chemsys_high_quality(cls, chemsys):
+        """
+        Factory method for generating higher-tier campaigns,
+        i.e. with longer walltime, higher quality batch queue,
+        and higher number of maximum atoms in candidates
+
+        Args:
+            chemsys (str): chemical system for the campaign
+
+        Returns:
+            (ProtoDFTCampaign) for campaign corresponding to chemical system
+
+        """
+        experiment = OqmdDFTonMC1(timeout=120000, batch_queue="oqmd_prod")
+        return cls.from_chemsys(
+            chemsys, n_max_atoms=40, experiment=experiment)
 
     def autorun(self):
         """
@@ -109,12 +154,9 @@ class CloudATFCampaign(Campaign):
     @classmethod
     def from_chemsys(cls, chemsys):
         """
-
         Args:
             chemsys:
-
         Returns:
-
         """
         s3_prefix = "oqmd-atf/runs/{}".format(chemsys)
         df = pd.read_csv(os.path.join(CAMD_TEST_FILES, 'test_df.csv'))
@@ -130,10 +172,8 @@ class CloudATFCampaign(Campaign):
     def autorun(self):
         """
         Runs campaign with standard parameters
-
         Returns:
             None
-
         """
         self.auto_loop(initialize=True, n_iterations=3)
         return True

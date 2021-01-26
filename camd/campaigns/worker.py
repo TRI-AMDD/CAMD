@@ -93,7 +93,9 @@ class Worker(object):
             None
 
         """
-        if self.campaign.startswith("proto-dft"):
+        if self.campaign.startswith("proto-dft-high"):
+            campaign = ProtoDFTCampaign.from_chemsys_high_quality(*args)
+        elif self.campaign.startswith("proto-dft"):
             campaign = ProtoDFTCampaign.from_chemsys(*args)
         elif self.campaign.startswith("oqmd-atf"):
             # This is more or less just a test
