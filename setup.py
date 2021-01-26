@@ -46,13 +46,13 @@ setup(
                       "networkx==2.5",
                       "matplotlib==3.3.3",
                       "qmpy",  # This version is constrained by the source
-                      "pandas==1.2.0",
+                      "pandas==1.2.1",
                       "matminer==0.6.4",
                       "autologging",
-                      "awscli==1.18.214",
-                      "boto3==1.16.54",
+                      "awscli==1.18.219",
+                      "boto3==1.16.59",
                       "docopt==0.6.2",
-                      "scikit-learn==0.24.0",
+                      "scikit-learn==0.24.1",
                       "taburu==2020.5.9",
                       "GPy==1.9.9",
                       "watchtower==1.0.6"
