@@ -14,6 +14,7 @@ scikit-learn==0.24.0
 taburu==2020.5.9
 protosearch==2020.5.10
 GPy==1.9.9
+watchtower==1.0.6
 
 # Temporary qmpy3 dependency
 git+git://github.com/JosephMontoya-TRI/qmpy_py3@master#egg=qmpy
