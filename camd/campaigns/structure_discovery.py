@@ -35,7 +35,7 @@ class ProtoDFTCampaign(Campaign):
     def from_chemsys(cls, chemsys, prefix="proto-dft-2/runs",
                      n_max_atoms=20, agent=None, analyzer=None,
                      experiment=None, log_file="campaign.log",
-                     cloudwatch_group="/camd/test/"):
+                     cloudwatch_group="/camd/worker/dev/"):
         """
         Class factory method for constructing campaign from
         chemsys.
@@ -114,7 +114,7 @@ class ProtoDFTCampaign(Campaign):
         )
 
     @classmethod
-    def from_chemsys_high_quality(cls, chemsys):
+    def from_chemsys_high_quality(cls, chemsys, **kwargs):
         """
         Factory method for generating higher-tier campaigns,
         i.e. with longer walltime, higher quality batch queue,
@@ -129,7 +129,7 @@ class ProtoDFTCampaign(Campaign):
         """
         experiment = OqmdDFTonMC1(timeout=120000, batch_queue="oqmd_prod")
         return cls.from_chemsys(
-            chemsys, n_max_atoms=40, experiment=experiment)
+            chemsys, n_max_atoms=40, experiment=experiment, **kwargs)
 
     def autorun(self):
         """
