@@ -12,8 +12,10 @@ from copy import deepcopy
 from multiprocessing import cpu_count
 from collections import OrderedDict
 
+import pandas as pd
 import tensorflow as tf
 import gpflow
+from gpflow.ci_utils import ci_niter
 import numpy as np
 from qmpy.analysis.thermodynamics.phase import Phase, PhaseData
 from camd.analysis import PhaseSpaceAL, ELEMENTS
@@ -487,6 +489,7 @@ class SVGProcessStabilityAgent(StabilityAgent):
         parallel=cpu_count(),
         alpha=0.5,
         M=600,
+        maxiter=20000
     ):
         """
         Args:
@@ -501,6 +504,8 @@ class SVGProcessStabilityAgent(StabilityAgent):
                 best-case predictions of the stability
             M (int): number of inducing points associated with the
                 SVGProcess
+            maxiter (int): number of maximum iterations of the SVG
+                process
         """
         super(SVGProcessStabilityAgent, self).__init__(
             candidate_data=candidate_data,
@@ -511,6 +516,7 @@ class SVGProcessStabilityAgent(StabilityAgent):
         )
         self.alpha = alpha
         self.M = M
+        self.maxiter = maxiter
 
         # Define non-argument SVG-specific attributes
         self.kernel = gpflow.kernels.RBF(273) * gpflow.kernels.Constant(273)
@@ -537,7 +543,6 @@ class SVGProcessStabilityAgent(StabilityAgent):
             (pandas.DataFrame): top candidates from the algorithm
 
         """
-
         X_cand, X_seed, y_seed = self.update_data(candidate_data, seed_data)
 
         # Test model performance first.  Note we avoid doing CV to
@@ -563,23 +568,20 @@ class SVGProcessStabilityAgent(StabilityAgent):
             Z,
             mean_function=self.mean_f,
         )
+        elbo = tf.function(model.elbo)
+
+        # TensorFlow re-traces & compiles a `tf.function`-wrapped method at *every* call
+        # if the arguments are numpy arrays instead of tf.Tensors. Hence:
+        tensor_data = tuple(map(tf.convert_to_tensor, (X_seed, pd.DataFrame(y_seed))))
+        elbo(tensor_data)  # run it once to trace & compile
         minibatch_size = 100
 
         # We turn off training for inducing point locations
         gpflow.utilities.set_trainable(model.inducing_variable, False)
 
-        train_dataset = tf.data.Dataset.from_tensor_slices((X_train_scaled, y_train)) \
+        train_dataset = tf.data.Dataset.from_tensor_slices((X_train_scaled, pd.DataFrame(y_train))) \
             .repeat() \
             .shuffle(len(X_train_scaled))
-
-        @tf.function(autograph=False)
-        def optimization_step(optimizer, model: gpflow.models.SVGP, batch):
-            with tf.GradientTape(watch_accessed_variables=False) as tape:
-                tape.watch(model.trainable_variables)
-                objective = - model.elbo(batch)
-                grads = tape.gradient(objective, model.trainable_variables)
-            optimizer.apply_gradients(zip(grads, model.trainable_variables))
-            return objective
 
         def run_adam(model, iterations):
             """
@@ -590,17 +592,24 @@ class SVGProcessStabilityAgent(StabilityAgent):
             """
             # Create an Adam Optimizer action
             logf = []
-            train_it = iter(train_dataset.batch(minibatch_size))
-            adam = tf.optimizers.Adam()
+            train_iter = iter(train_dataset.batch(minibatch_size))
+            training_loss = model.training_loss_closure(train_iter, compile=True)
+            optimizer = tf.optimizers.Adam()
+
+            @tf.function
+            def optimization_step():
+                optimizer.minimize(training_loss, model.trainable_variables)
+
             for step in range(iterations):
-                elbo = - optimization_step(adam, model, next(train_it))
+                optimization_step()
                 if step % 10 == 0:
-                    logf.append(elbo.numpy())
+                    elbo = -training_loss().numpy()
+                    logf.append(elbo)
             return logf
 
         print("training")
         t0 = time.time()
-        run_adam(model, gpflow.ci_utils.ci_niter(20000))
+        run_adam(model, ci_niter(self.maxiter))
         print("elapsed time: ", time.time() - t0)
 
         pred_y, pred_v = model.predict_y(scaler.transform(X_test))
@@ -624,16 +633,16 @@ class SVGProcessStabilityAgent(StabilityAgent):
             Z,
             mean_function=self.mean_f,
         )
-        maxiter = gpflow.ci_utils.ci_niter(20000)
-        self.run_adam(model, maxiter)
+        maxiter = gpflow.ci_utils.ci_niter(self.maxiter)
+        run_adam(model, maxiter)
         print(self.model)
         self.model = model
 
         # GP makes predictions for Hf and uncertainty*alpha on candidate data
         pred_y, pred_v = model.predict_y(scaler.transform(X_cand))
         pred_y = pred_y * sig + mu
-        self.pred_y = pred_y.reshape(-1,)
-        self.pred_std = (pred_v ** 0.5).reshape(-1,)
+        self.pred_y = np.array(pred_y).reshape(-1,)
+        self.pred_std = (np.array(pred_v) ** 0.5).reshape(-1,)
 
         expected = self.pred_y - self.pred_std * self.alpha
         print("expected improv", expected)
@@ -696,9 +705,9 @@ class BaggedGaussianProcessStabilityAgent(StabilityAgent):
         )
 
         self.alpha = alpha
-        self.n_estimators = n_estimators if n_estimators else 8
-        self.max_samples = max_samples if max_samples else 5000
-        self.bootstrap = bootstrap if bootstrap else False
+        self.n_estimators = n_estimators
+        self.max_samples = max_samples
+        self.bootstrap = bootstrap
 
         self.GP = GaussianProcessRegressor(
             kernel=ConstantKernel(1) * RBF(1), alpha=0.002
