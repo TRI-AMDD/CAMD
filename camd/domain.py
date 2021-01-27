@@ -369,8 +369,11 @@ def get_structures_from_protosearch(formulas, source="icsd", db_interface=None):
         for i in range(len(_structures))
     ]
     _structures["structure"] = pmg_structures
+    # This is for compatibility with Mc1, which doesn't allow
+    # underscores
     structure_uids = [
-        _structures.iloc[i]["structure_name"] for i in range(len(_structures))
+        _structures.iloc[i]["structure_name"].replace('_', '-')
+        for i in range(len(_structures))
     ]
     _structures.index = structure_uids
     return _structures
