@@ -7,7 +7,6 @@ import abc
 import warnings
 import itertools
 import numpy as np
-import uuid
 
 from protosearch.build_bulk.oqmd_interface import OqmdInterface
 
