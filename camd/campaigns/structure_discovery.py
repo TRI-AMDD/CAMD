@@ -56,7 +56,7 @@ class ProtoDFTCampaign(Campaign):
         max_coeff, charge_balanced = heuristic_setup(element_list)
         domain = StructureDomain.from_bounds(
             element_list, charge_balanced=charge_balanced,
-            n_max_atoms=20, **{'grid': range(1, max_coeff)})
+            n_max_atoms=40, **{'grid': range(1, max_coeff)})
         candidate_data = domain.candidates()
 
         # Dump structure/candidate data
