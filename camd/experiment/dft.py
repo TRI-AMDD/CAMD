@@ -32,7 +32,8 @@ class OqmdDFTonMC1(Experiment):
     """
 
     def __init__(self, poll_time=60, timeout=7200, current_data=None, job_status=None,
-                 cleanup_directories=True):
+                 cleanup_directories=True, container_version="oqmdvasp/3",
+                 batch_queue="oqmd_test_queue"):
         """
         Initializes an OqmdDFTonMC1 instance
 
@@ -43,11 +44,16 @@ class OqmdDFTonMC1(Experiment):
             job_status (str): job status
             cleanup_directories (bool): flag to enable cleaning up of DFT results after
                 runs are over
+            container_version (str): container for mc1, e.g. "oqmdvasp/3" or "gpaw/1" which
+                dictates where things will be run
+            batch_queue (str): name of aws batch queue to submit to
         """
 
         self.poll_time = poll_time
         self.timeout = timeout
         self.cleanup_directories = cleanup_directories
+        self.container_version = container_version
+        self.batch_queue = batch_queue
         super().__init__(current_data=current_data, job_status=job_status)
 
     def _update_job_status(self):
@@ -195,8 +201,10 @@ class OqmdDFTonMC1(Experiment):
 
         # Create run directory
         uuid_string = str(uuid.uuid4()).replace("-", "")
+        container, version = self.container_version.split('/')
         parent_dir = os.path.join(
-            tri_path, "model", "oqmdvasp", "3", "u", "camd", "run{}".format(uuid_string)
+            tri_path, "model", container, version, "u",
+            "camd", "run{}".format(uuid_string)
         )
         if any(["_" in value for value in self.current_data.index]):
             raise ValueError(
@@ -220,7 +228,7 @@ class OqmdDFTonMC1(Experiment):
                         [
                             "trisub",
                             "-q",
-                            "oqmd_test_queue",
+                            self.batch_queue,
                             "-r",
                             "16000",
                             "-c",

@@ -14,6 +14,7 @@ import json
 import numpy as np
 import pandas as pd
 import shutil
+import logging
 
 from monty.json import MSONable
 from camd.utils.data import s3_sync
@@ -47,6 +48,7 @@ class Campaign(MSONable):
         s3_prefix=None,
         s3_bucket=CAMD_S3_BUCKET,
         path=None,
+        logger=None
     ):
         """
         Invokes a campaign from candidates, seed, agent, and other supporting
@@ -70,6 +72,7 @@ class Campaign(MSONable):
                 CAMD will sync to the specified environment variable.
             path (str): local path in which to execute the loop, defaults
                 to current folder if path is not provided
+            logger (logging.Logger): logger for campaign progress
         """
         # Cloud parameters
         self.s3_prefix = s3_prefix
@@ -119,6 +122,12 @@ class Campaign(MSONable):
             self.initialized = False
             self.loop_state = "UNSTARTED"
 
+        if logger is None:
+            self.logger = logging.Logger("camd")
+            self.logger.addHandler(logging.StreamHandler())
+        else:
+            self.logger = logger
+
     def run(self, finalize=False):
         """
         This method applies a single iteration of the loop, and
@@ -136,7 +145,7 @@ class Campaign(MSONable):
             raise ValueError("Campaign must be initialized.")
 
         # Get new results
-        print("{} {} state: Getting new results".format(self.type, self.iteration))
+        self.logger.info("{} {} state: Getting new results".format(self.type, self.iteration))
         self.experiment.monitor()
         new_experimental_results = self.experiment.get_results()
         os.chdir(self.path)
@@ -145,7 +154,7 @@ class Campaign(MSONable):
         self.load("seed_data", method="pickle")
 
         # Analyze new results
-        print("{} {} state: Analyzing results".format(self.type, self.iteration))
+        self.logger.info("{} {} state: Analyzing results".format(self.type, self.iteration))
         summary, new_seed_data = self.analyzer.analyze(
             new_experimental_results, self.seed_data
         )
@@ -163,7 +172,7 @@ class Campaign(MSONable):
         ).tolist()
         self.candidate_data = self.candidate_data.loc[candidate_space]
         if len(self.candidate_data) == 0:
-            print("Candidate data exhausted.  Stopping loop.")
+            self.logger.info("Candidate data exhausted.  Stopping loop.")
             return False
 
         # Campaign stopper if no discoveries in last few cycles.
@@ -171,7 +180,7 @@ class Campaign(MSONable):
             new_discoveries = self.history["new_discovery"][-3:].values.sum()
             if new_discoveries == 0:
                 self.finalize()
-                print("Not enough new discoveries. Stopping the loop.")
+                self.logger.info("Not enough new discoveries. Stopping the loop.")
                 return False
 
         # Campaign stopper if finalization is desired but will be done
@@ -180,7 +189,7 @@ class Campaign(MSONable):
             return False
 
         # Agent suggests new experiments
-        print(
+        self.logger.info(
             "{} {} state: Agent {} hypothesizing".format(
                 self.type, self.iteration, self.agent.__class__.__name__
             )
@@ -192,11 +201,11 @@ class Campaign(MSONable):
         # Campaign stopper if agent doesn't have anything to suggest.
         if len(suggested_experiments) == 0:
             self.finalize()
-            print("No agent suggestions. Stopping the loop.")
+            self.logger.info("No agent suggestions. Stopping the loop.")
             return False
 
         # Experiments submitted
-        print("{} {} state: Running experiments".format(self.type, self.iteration))
+        self.logger.info("{} {} state: Running experiments".format(self.type, self.iteration))
         self.job_status = self.experiment.submit(suggested_experiments)
         self.save("job_status")
 
@@ -232,10 +241,10 @@ class Campaign(MSONable):
             if save_iterations:
                 self.loop_backup(self.path, "-1")
         while n_iterations - self.iteration >= 0:
-            print("Iteration: {}".format(self.iteration))
+            self.logger.info("Iteration: {}".format(self.iteration))
             if not self.run():
                 break
-            print("  Waiting for next round ...")
+            self.logger.info("  Waiting for next round ...")
             if monitor:
                 self.experiment.monitor()
             if save_iterations:
@@ -254,7 +263,7 @@ class Campaign(MSONable):
         if self.initialized:
             raise ValueError("Initialization may overwrite existing loop data. Exit.")
         if not self.seed_data.empty and not self.create_seed:
-            print(
+            self.logger.info(
                 "{} {} state: Agent {} hypothesizing".format(
                     self.type, "initialization", self.agent.__class__.__name__
                 )
@@ -265,7 +274,7 @@ class Campaign(MSONable):
         elif self.create_seed:
             np.random.seed(seed=random_state)
             _agent = RandomAgent(self.candidate_data, n_query=self.create_seed)
-            print(
+            self.logger.info(
                 "{} {} state: Agent {} hypothesizing".format(
                     self.type, "initialization", _agent.__class__.__name__
                 )
@@ -277,7 +286,7 @@ class Campaign(MSONable):
             )
         self.analyzer._initial_seed_indices = self.seed_data.index.tolist()
 
-        print("{} {} state: Running experiments".format(self.type, self.iteration))
+        self.logger.info("{} {} state: Running experiments".format(self.type, self.iteration))
         self.job_status = self.experiment.submit(suggested_experiments)
         self.consumed_candidates = suggested_experiments.index.values.tolist()
         self.create_seed = False
@@ -312,7 +321,7 @@ class Campaign(MSONable):
             None
 
         """
-        print("Finalizing campaign.")
+        self.logger.info("Finalizing campaign.")
         os.chdir(self.path)
         if hasattr(self.analyzer, "finalize"):
             self.analyzer.finalize(self.path)

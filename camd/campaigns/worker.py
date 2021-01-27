@@ -20,7 +20,9 @@ import boto3
 import itertools
 import os
 import numpy as np
+import traceback
 
+from monty.serialization import dumpfn
 from pathlib import Path
 from docopt import docopt
 from monty.tempfile import ScratchDir
@@ -93,7 +95,9 @@ class Worker(object):
             None
 
         """
-        if self.campaign.startswith("proto-dft"):
+        if self.campaign.startswith("proto-dft-high"):
+            campaign = ProtoDFTCampaign.from_chemsys_high_quality(*args)
+        elif self.campaign.startswith("proto-dft"):
             campaign = ProtoDFTCampaign.from_chemsys(*args)
         elif self.campaign.startswith("oqmd-atf"):
             # This is more or less just a test
@@ -103,7 +107,18 @@ class Worker(object):
             campaign = MetaAgentCampaign.from_reserved_name(*args)
         else:
             raise ValueError("Campaign {} is not valid".format(self.campaign))
-        campaign.autorun()
+
+        # Capture errors and store
+        try:
+            campaign.autorun()
+        except Exception as e:
+            error_msg = {"error": "{}".format(e),
+                         "traceback": traceback.format_exc()}
+            campaign.logger.info("Error: {}".format(e))
+            campaign.logger.info("Traceback: {}".format(traceback.format_exc()))
+            dumpfn(error_msg, "error.json")
+            dumpfn({"status": "error"}, "job_status.json")
+            campaign.s3_sync()
 
     def get_latest_submission(self):
         """
