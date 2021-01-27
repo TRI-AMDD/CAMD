@@ -20,7 +20,9 @@ import boto3
 import itertools
 import os
 import numpy as np
+import traceback
 
+from monty.serialization import dumpfn
 from pathlib import Path
 from docopt import docopt
 from monty.tempfile import ScratchDir
@@ -28,6 +30,7 @@ from camd import CAMD_S3_BUCKET, CAMD_STOP_FILE
 from camd.campaigns.structure_discovery import \
     ProtoDFTCampaign, CloudATFCampaign
 from camd.campaigns.meta_agent import MetaAgentCampaign
+from camd.utils.data import s3_sync
 
 
 class Worker(object):
@@ -105,7 +108,18 @@ class Worker(object):
             campaign = MetaAgentCampaign.from_reserved_name(*args)
         else:
             raise ValueError("Campaign {} is not valid".format(self.campaign))
-        campaign.autorun()
+
+        # Capture errors and store
+        try:
+            campaign.autorun()
+        except Exception as e:
+            error_msg = {"error": "{}".format(e),
+                         "traceback": traceback.format_exc()}
+            campaign.logger.info("Error: {}".format(e))
+            campaign.logger.info("Traceback: {}".format(traceback.format_exc()))
+            dumpfn(error_msg, "error.json")
+            dumpfn({"status": "error"}, "job_status.json")
+            s3_sync(s3_bucket=CAMD_S3_BUCKET, s3_prefix=campaign.s3_prefix, sync_path='.')
 
     def get_latest_submission(self):
         """
