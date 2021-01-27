@@ -350,9 +350,6 @@ def get_structures_from_protosearch(formulas, source="icsd", db_interface=None):
     Returns:
         (pandas.DataFrame) hypothetical pymatgen structures
             generated and their unique ids from protosearch
-
-    TODO:
-        - Handle n_max_atoms within OqmdInterface
     """
 
     if db_interface is None:
@@ -373,12 +370,6 @@ def get_structures_from_protosearch(formulas, source="icsd", db_interface=None):
         for i in range(len(_structures))
     ]
     _structures["structure"] = pmg_structures
-
-    # The uuid below is probably an overkill. But want the strings
-    # to be unique. Sometimes in spaces with similar stoichiometries
-    # they may clash e.g. IrSb2O2 and Ir2SbO2 may end up producing
-    # the same string, despite different substitutions on same structure.
-    # We should figure out a way to get the right order from protosearch.
     structure_uids = [
         _structures.iloc[i]["structure_name"] for i in range(len(_structures))
     ]
