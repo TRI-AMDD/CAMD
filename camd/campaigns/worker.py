@@ -8,6 +8,7 @@ Usage:
 Options:
     --campaign CAMPAIGN  campaign name  [default: proto-dft-2]
     --loops NUM_LOOPS    number of loops to run
+    --catch_errors       whether or not to catch errors
     -h --help            Show this screen
     --version            Show version
 
@@ -40,7 +41,8 @@ class Worker(object):
     primarily used for structure discovery,
     i.e. 'proto-dft' campaigns.
     """
-    def __init__(self, campaign="proto-dft-2"):
+    def __init__(self, campaign="proto-dft-2",
+                 catch_errors=False):
         """
         Initialize a Worker
 
@@ -50,6 +52,7 @@ class Worker(object):
         """
 
         self.campaign = campaign
+        self.catch_errors = catch_errors
 
     def start(self, num_loops=np.inf, sleep_time=60):
         """
@@ -109,16 +112,19 @@ class Worker(object):
             raise ValueError("Campaign {} is not valid".format(self.campaign))
 
         # Capture errors and store
-        try:
+        if self.catch_errors:
+            try:
+                campaign.autorun()
+            except Exception as e:
+                error_msg = {"error": "{}".format(e),
+                             "traceback": traceback.format_exc()}
+                campaign.logger.info("Error: {}".format(e))
+                campaign.logger.info("Traceback: {}".format(traceback.format_exc()))
+                dumpfn(error_msg, "error.json")
+                dumpfn({"status": "error"}, "job_status.json")
+                campaign.s3_sync()
+        else:
             campaign.autorun()
-        except Exception as e:
-            error_msg = {"error": "{}".format(e),
-                         "traceback": traceback.format_exc()}
-            campaign.logger.info("Error: {}".format(e))
-            campaign.logger.info("Traceback: {}".format(traceback.format_exc()))
-            dumpfn(error_msg, "error.json")
-            dumpfn({"status": "error"}, "job_status.json")
-            campaign.s3_sync()
 
     def get_latest_submission(self):
         """
@@ -215,7 +221,8 @@ def main():
     """
     args = docopt(__doc__)
     campaign = args['--campaign']
-    worker = Worker(campaign)
+    catch_errors = args['--catch_errors']
+    worker = Worker(campaign, catch_errors=catch_errors)
     num_loops = args['--loops']
     if num_loops is not None:
         num_loops = int(num_loops)
