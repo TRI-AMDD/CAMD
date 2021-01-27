@@ -129,7 +129,8 @@ class ProtoDFTCampaign(Campaign):
         """
         experiment = OqmdDFTonMC1(timeout=120000, batch_queue="oqmd_prod")
         return cls.from_chemsys(
-            chemsys, n_max_atoms=40, experiment=experiment, **kwargs)
+            chemsys, n_max_atoms=40, experiment=experiment,
+            prefix="proto-dft-high/runs", **kwargs)
 
     def autorun(self):
         """
