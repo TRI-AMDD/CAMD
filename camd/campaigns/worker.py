@@ -30,7 +30,6 @@ from camd import CAMD_S3_BUCKET, CAMD_STOP_FILE
 from camd.campaigns.structure_discovery import \
     ProtoDFTCampaign, CloudATFCampaign
 from camd.campaigns.meta_agent import MetaAgentCampaign
-from camd.utils.data import s3_sync
 
 
 class Worker(object):
@@ -119,7 +118,7 @@ class Worker(object):
             campaign.logger.info("Traceback: {}".format(traceback.format_exc()))
             dumpfn(error_msg, "error.json")
             dumpfn({"status": "error"}, "job_status.json")
-            s3_sync(s3_bucket=CAMD_S3_BUCKET, s3_prefix=campaign.s3_prefix, sync_path='.')
+            campaign.s3_sync()
 
     def get_latest_submission(self):
         """
