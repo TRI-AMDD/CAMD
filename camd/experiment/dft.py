@@ -128,6 +128,7 @@ class OqmdDFTonMC1(Experiment):
             "start_time",
             "jobId",
             "jobName",
+            "jobArn",
             "result",
             "error",
             "delta_e",

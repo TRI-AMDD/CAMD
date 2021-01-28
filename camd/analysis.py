@@ -406,7 +406,7 @@ class StabilityAnalyzer(AnalyzerBase):
         )
         # Drop excess columns from experiment
         new_seed = new_seed.drop([
-            'path', 'status', 'start_time', 'jobId', 'jobName',
+            'path', 'status', 'start_time', 'jobId', 'jobName', 'jobArn',
             'result', 'error', 'elapsed_time'
         ], axis="columns", errors="ignore")
         return summary, new_seed
