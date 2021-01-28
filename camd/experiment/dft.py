@@ -212,7 +212,8 @@ class OqmdDFTonMC1(Experiment):
             )
 
         for structure_id, row in self.current_data.iterrows():
-            calc_path = os.path.join(parent_dir, structure_id, "_1")
+            # Replace structure id in path to avoid confusing mc1
+            calc_path = os.path.join(parent_dir, structure_id.replace('-', ''), "_1")
             os.makedirs(calc_path)
             with cd(calc_path):
                 # Write input cif file and python model file
@@ -237,20 +238,24 @@ class OqmdDFTonMC1(Experiment):
                             "us-east-1",
                         ]
                     )
+                    response = response.decode("utf-8")
+                    response = re.findall("({.+})", response, re.DOTALL)[0]
+                    data = json.loads(response)
+                    data.update(
+                        {
+                            "path": os.getcwd(),
+                            "status": "SUBMITTED",
+                            "start_time": datetime.utcnow(),
+                        }
+                    )
                 except subprocess.CalledProcessError as e:
                     print(e.output)
+                    data = {"path": os.getcwd(),
+                            "status": "FAILED",
+                            "error": "failed submission {}".format(e.output)}
 
-                response = response.decode("utf-8")
-                response = re.findall("({.+})", response, re.DOTALL)[0]
-                data = json.loads(response)
-                data.update(
-                    {
-                        "path": os.getcwd(),
-                        "status": "SUBMITTED",
-                        "start_time": datetime.utcnow(),
-                    }
-                )
                 update_dataframe_row(self.current_data, structure_id, data)
+
 
     def check_dft_calcs(self):
         """

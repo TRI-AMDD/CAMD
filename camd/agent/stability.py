@@ -20,6 +20,8 @@ import numpy as np
 from qmpy.analysis.thermodynamics.phase import Phase, PhaseData
 from camd.analysis import PhaseSpaceAL, ELEMENTS
 from camd.agent.base import HypothesisAgent, QBC
+from camd.utils.data import filter_dataframe_by_composition
+from pymatgen import Composition
 
 from sklearn.gaussian_process.kernels import RBF, ConstantKernel
 from sklearn.gaussian_process import GaussianProcessRegressor
@@ -74,14 +76,26 @@ class StabilityAgent(HypothesisAgent, metaclass=abc.ABCMeta):
         # These might be able to go into the base class
         self.cv_score = np.nan
 
-    def get_pd(self):
+    def get_pd(self, chemsys=None):
         """
         Refresh the phase diagram associated with the seed_data
+
+        Args:
+            chemsys (str): chemical system for which to filter
+                seed data to provide partial phase diagram
 
         Returns:
             None
         """
         self.pd = PhaseData()
+        # Filter seed data by relevant chemsys
+        if chemsys:
+            total_comp = Composition(chemsys.replace('-', ''))
+            filtered = filter_dataframe_by_composition(
+                self.seed_data, total_comp)
+        else:
+            filtered = self.seed_data
+
         phases = [
             Phase(
                 row["Composition"],
@@ -89,7 +103,7 @@ class StabilityAgent(HypothesisAgent, metaclass=abc.ABCMeta):
                 per_atom=True,
                 description=row_index,
             )
-            for row_index, row in self.seed_data.iterrows()
+            for row_index, row in filtered.iterrows()
         ]
         phases.extend([Phase(el, 0.0, per_atom=True) for el in ELEMENTS])
         self.pd.add_phases(phases)
@@ -174,8 +188,9 @@ class StabilityAgent(HypothesisAgent, metaclass=abc.ABCMeta):
             for m_id, data in self.candidate_data.iterrows()
         ]
 
-        # Refresh and copy seed PD
-        pd_ml = deepcopy(self.get_pd())
+        # Refresh and copy seed PD filtered by candidates
+        all_comp = self.candidate_data['Composition'].sum()
+        pd_ml = deepcopy(self.get_pd(all_comp))
         pd_ml.add_phases(candidate_phases)
         space_ml = PhaseSpaceAL(bounds=ELEMENTS, data=pd_ml)
 
