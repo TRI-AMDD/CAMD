@@ -257,7 +257,6 @@ class OqmdDFTonMC1(Experiment):
 
                 update_dataframe_row(self.current_data, structure_id, data)
 
-
     def check_dft_calcs(self):
         """
         Helper function to check DFT calculations via polling
