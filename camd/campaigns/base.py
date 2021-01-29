@@ -17,6 +17,7 @@ import shutil
 import logging
 
 from monty.json import MSONable
+from monty.os import cd
 from camd.utils.data import s3_sync
 from camd import CAMD_S3_BUCKET
 from camd.agent.base import RandomAgent
@@ -246,6 +247,7 @@ class Campaign(MSONable):
                 break
             self.logger.info("  Waiting for next round ...")
             if monitor:
+                self.logger.info("Monitoring experiments")
                 self.experiment.monitor()
             if save_iterations:
                 self.loop_backup(self.path, str(self.iteration - 1))
@@ -402,24 +404,25 @@ class Campaign(MSONable):
         """
         s3_sync(self.s3_bucket, self.s3_prefix, self.path)
 
-    def loop_backup(self, source_dir, target_dir):
+    def loop_backup(self, target_dir):
         """
         Helper method to backup finished loop iterations.
 
         Args:
-            source_dir (str, Path): directory to be backed up
             target_dir (str, Path): directory to back up to
 
         Returns:
             (None)
 
         """
-        os.mkdir(os.path.join(source_dir, target_dir))
-        _files = os.listdir(source_dir)
-        for file_name in _files:
-            full_file_name = os.path.join(source_dir, file_name)
-            if os.path.isfile(full_file_name):
-                shutil.copy(full_file_name, target_dir)
+        with cd(self.path):
+            self.logger.info("Backing loop up to s3")
+            os.mkdir(os.path.join(self.path, target_dir))
+            _files = os.listdir(self.path)
+            for file_name in _files:
+                full_file_name = os.path.join(self.path, file_name)
+                if os.path.isfile(full_file_name):
+                    shutil.copy(full_file_name, target_dir)
 
-        if self.s3_prefix:
-            self.s3_sync()
+            if self.s3_prefix:
+                self.s3_sync()
