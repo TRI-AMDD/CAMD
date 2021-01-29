@@ -239,7 +239,7 @@ class Campaign(MSONable):
         if initialize:
             self.initialize()
             if save_iterations:
-                self.loop_backup(self.path, "-1")
+                self.loop_backup("-1")
         while n_iterations - self.iteration >= 0:
             self.logger.info("Iteration: {}".format(self.iteration))
             if not self.run():
@@ -249,7 +249,7 @@ class Campaign(MSONable):
                 self.logger.info("Monitoring experiments")
                 self.experiment.monitor()
             if save_iterations:
-                self.loop_backup(self.path, str(self.iteration - 1))
+                self.loop_backup(str(self.iteration - 1))
 
         self.run(finalize=True)
         self.finalize()
