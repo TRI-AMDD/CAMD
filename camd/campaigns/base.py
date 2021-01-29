@@ -17,7 +17,6 @@ import shutil
 import logging
 
 from monty.json import MSONable
-from monty.os import cd
 from camd.utils.data import s3_sync
 from camd import CAMD_S3_BUCKET
 from camd.agent.base import RandomAgent
@@ -415,14 +414,13 @@ class Campaign(MSONable):
             (None)
 
         """
-        with cd(self.path):
-            self.logger.info("Backing loop up to s3")
-            os.mkdir(os.path.join(self.path, target_dir))
-            _files = os.listdir(self.path)
-            for file_name in _files:
-                full_file_name = os.path.join(self.path, file_name)
-                if os.path.isfile(full_file_name):
-                    shutil.copy(full_file_name, target_dir)
+        self.logger.info("Backing loop up to s3")
+        os.mkdir(os.path.join(self.path, target_dir))
+        _files = os.listdir(self.path)
+        for file_name in _files:
+            full_file_name = os.path.join(self.path, file_name)
+            if os.path.isfile(full_file_name):
+                shutil.copy(full_file_name, os.path.join(self.path, target_dir))
 
-            if self.s3_prefix:
-                self.s3_sync()
+        if self.s3_prefix:
+            self.s3_sync()
