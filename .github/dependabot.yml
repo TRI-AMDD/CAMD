@@ -1,5 +1,6 @@
 version: 1
-update_configs:
-  - package_manager: "python"
+updates:
+  - package_ecosystem: "pip"
     directory: "/"
-    update_schedule: "weekly"
+    schedule:
+      interval: "weekly"
