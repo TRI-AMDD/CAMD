@@ -14,6 +14,7 @@ class DomainTest(unittest.TestCase):
         structure_df = get_structures_from_protosearch(["V3O7"], source='icsd')
 
         self.assertEqual(structure_df.shape, (20, 11))
+        self.assertTrue(['_' not in index for index in structure_df.index])
 
     @unittest.skipUnless(CAMD_LONG_TESTS, SKIP_MSG)
     def test_StructureDomain(self):
