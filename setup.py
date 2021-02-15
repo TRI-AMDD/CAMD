@@ -46,7 +46,7 @@ setup(
                       "networkx==2.5",
                       "matplotlib==3.3.4",
                       "qmpy",  # This version is constrained by the source
-                      "pandas==1.2.1",
+                      "pandas==1.2.2",
                       "matminer==0.6.4",
                       "autologging",
                       "awscli==1.18.223",
