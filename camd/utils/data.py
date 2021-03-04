@@ -10,7 +10,7 @@ import boto3
 import requests
 import pandas as pd
 import numpy as np
-from pymatgen import Composition
+from pymatgen import Composition, Structure
 from monty.os import makedirs_p
 from camd import CAMD_CACHE, tqdm
 
@@ -335,6 +335,28 @@ MATRIO_DATA_KEYS = {
     "oqmd_ver3.db": "5e39ce96d9f13e075b7dfab3",
     "oqmd1.2_exp_based_entries_structures.json": "5e45befef23b399192b35242"
 }
+
+
+def get_chemsys(formula_or_structure, seperator='-'):
+    """
+    Gets a sorted, character-delimited set of elements, e.g.
+    Fe-Ni-O or O-Ti
+
+    Args:
+        formula_or_structure (str, Structure): formula or structure
+            for which to get chemical system
+        separator (str): separator for the chemsys elements
+
+    Returns:
+        (str): separated
+
+    """
+    if isinstance(formula_or_structure, Structure):
+        formula = formula_or_structure.composition.reduced_formula
+    else:
+        formula = formula_or_structure
+    elements = [str(el) for el in Composition(formula)]
+    return seperator.join(sorted(elements))
 
 
 def cache_matrio_data(filename):
