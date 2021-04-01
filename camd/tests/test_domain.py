@@ -1,6 +1,7 @@
 import unittest
 import os
 from pymatgen import Structure
+from pymatgen.symmetry.analyzer import SpacegroupAnalyzer
 
 from camd.domain import StructureDomain, get_structures_from_protosearch, heuristic_setup
 

@@ -7,10 +7,11 @@ for CAMD, mostly in the form of dataframes
 import os
 
 import boto3
+import botocore
 import requests
 import pandas as pd
 import numpy as np
-from pymatgen import Composition
+from pymatgen import Composition, Structure
 from monty.os import makedirs_p
 from camd import CAMD_CACHE, tqdm
 
@@ -337,6 +338,28 @@ MATRIO_DATA_KEYS = {
 }
 
 
+def get_chemsys(formula_or_structure, seperator='-'):
+    """
+    Gets a sorted, character-delimited set of elements, e.g.
+    Fe-Ni-O or O-Ti
+
+    Args:
+        formula_or_structure (str, Structure): formula or structure
+            for which to get chemical system
+        separator (str): separator for the chemsys elements
+
+    Returns:
+        (str): separated
+
+    """
+    if isinstance(formula_or_structure, Structure):
+        formula = formula_or_structure.composition.reduced_formula
+    else:
+        formula = formula_or_structure
+    elements = [str(el) for el in Composition(formula)]
+    return seperator.join(sorted(elements))
+
+
 def cache_matrio_data(filename):
     """
     Helper function to cache data hosted on data.matr.io
@@ -410,3 +433,30 @@ def s3_sync(s3_bucket, s3_prefix, sync_path="."):
         for file in files:
             file_key = os.path.join(prefix, file)
             bucket.upload_file(os.path.join(path, file), file_key)
+
+
+def s3_key_exists(key, bucket):
+    """
+    Quick utility to determine whether key exists in bucket
+
+    Args:
+        key (str): key to check
+        bucket (str): bucket to check in
+
+    Returns:
+        (bool): whether the key was found in the bucket
+
+    """
+    s3 = boto3.resource('s3')
+    try:
+        s3.Object(bucket, key).load()
+    except botocore.exceptions.ClientError as e:
+        if e.response['Error']['Code'] == "404":
+            # The object does not exist.
+            return False
+        else:
+            # Something else has gone wrong.
+            raise e
+    else:
+        # The object does exist.
+        return True

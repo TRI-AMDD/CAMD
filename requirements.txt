@@ -1,4 +1,4 @@
-numpy==1.19.5
+numpy==1.19.2
 Django==3.1.6
 gpflow==2.1.4
 python-dateutil==2.8.1
@@ -7,14 +7,22 @@ matplotlib==3.3.4
 pandas==1.2.1
 matminer==0.6.4
 autologging
-awscli==1.18.223
-boto3==1.16.59
+awscli==1.19.3
+boto3==1.17.3
 docopt==0.6.2
 scikit-learn==0.24.1
 taburu==2020.5.9
 protosearch==2020.5.10
 GPy==1.9.9
 watchtower==1.0.6
+
+# Pinned dependencies to help pip
+tensorflow==2.4.0
+sympy==1.7.0
+sqlparse==0.4.0
+spglib==1.16.0
+scipy==1.5.4
+pymatgen==2020.12.31
 
 # Temporary qmpy3 dependency
 git+git://github.com/JosephMontoya-TRI/qmpy_py3@master#egg=qmpy
