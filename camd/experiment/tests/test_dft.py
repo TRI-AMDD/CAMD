@@ -59,6 +59,7 @@ class Mc1Test(unittest.TestCase):
         for path in old_paths:
             self.assertFalse(os.path.exists(path.replace("model", "simulation")))
 
+    @unittest.skipUnless(CAMD_DFT_TESTS, SKIP_MSG)
     def test_caching(self):
         good_silicon = PymatgenTest.get_structure("Si")
         bad_silicon = good_silicon.copy()
@@ -71,7 +72,6 @@ class Mc1Test(unittest.TestCase):
             {"structure": {
                 "good": good_silicon,
                 "bad": bad_silicon,
-                "unknown": bad_silicon
             }
             }
         )
@@ -82,12 +82,11 @@ class Mc1Test(unittest.TestCase):
         # results = experiment.get_results()
 
         experiment.update_current_data(data)
-        results = experiment.fetch_cached()
+        results = experiment.fetch_cached(data)
 
         self.assertAlmostEqual(results.loc['good', 'delta_e'], 0, 5)
         self.assertIsNone(results.loc['bad', 'result'])
         self.assertEqual(results.loc['bad', 'status'], "FAILED")
-        self.assertIsNone(results.loc['unknown', 'status'], None)
 
     @unittest.skipUnless(CAMD_DFT_TESTS, SKIP_MSG)
     def test_structure_suite(self):
