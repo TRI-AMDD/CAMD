@@ -256,7 +256,7 @@ class OqmdDFTonMC1(Experiment):
                         # import pdb; pdb.set_trace()
                         vr_path = os.path.join(calc_path, "static", "vasprun.xml")
                         cmd = "aws s3 cp s3://{}/{} .".format(tri_bucket, vr_path)
-                        result = subprocess.call(shlex.split(cmd))
+                        subprocess.call(shlex.split(cmd))
                         vr = Vasprun("vasprun.xml")
                         vr_dict = vr.as_dict()
                         delta_e = get_qmpy_formation_energy(
