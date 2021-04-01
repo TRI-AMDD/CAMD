@@ -22,6 +22,7 @@ sympy==1.7.0
 sqlparse==0.4.0
 spglib==1.16.0
 scipy==1.5.4
+pymatgen==2021.2.8.1
 
 # Temporary qmpy3 dependency
 git+git://github.com/JosephMontoya-TRI/qmpy_py3@master#egg=qmpy
