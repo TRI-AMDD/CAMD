@@ -63,7 +63,7 @@ class ProtoDFTCampaignTest(unittest.TestCase):
     @unittest.skipUnless(CAMD_DFT_TESTS, SKIP_MSG)
     def test_cached_campaign(self):
         with ScratchDir('.'):
-            campaign = ProtoDFTCampaign.from_chemsys("Si")
+            campaign = ProtoDFTCampaign.from_chemsys_high_quality("Si")
             # Test seed data has other data
             self.assertGreater(len(campaign.seed_data), 36581)
 
