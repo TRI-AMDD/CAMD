@@ -111,7 +111,7 @@ class ProtoDFTCampaign(Campaign):
             n_estimators=20
         )
         analyzer = analyzer or StabilityAnalyzer(hull_distance=0.2)
-        experiment = experiment or OqmdDFTonMC1(timeout=30000, prefix_append="proto-dft-high")
+        experiment = experiment or OqmdDFTonMC1(timeout=30000, prefix_append="proto-dft")
         seed_data = load_dataframe("oqmd1.2_exp_based_entries_featurized_v2")
 
         # Load cached experiments
@@ -149,7 +149,8 @@ class ProtoDFTCampaign(Campaign):
             (ProtoDFTCampaign) for campaign corresponding to chemical system
 
         """
-        experiment = OqmdDFTonMC1(timeout=120000, batch_queue="oqmd_prod")
+        experiment = OqmdDFTonMC1(timeout=120000, batch_queue="oqmd_prod",
+                                  prefix_append="proto-dft-high")
         return cls.from_chemsys(
             chemsys, n_max_atoms=40, experiment=experiment,
             prefix="proto-dft-high/runs", **kwargs)
