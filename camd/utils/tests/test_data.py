@@ -3,6 +3,7 @@ import os
 from camd.utils.data import cache_matrio_data, load_dataframe, \
     partition_intercomp, get_chemsys
 from pymatgen.core.structure import Structure
+from pymatgen.core.lattice import Lattice
 from camd import CAMD_CACHE
 
 
@@ -51,7 +52,7 @@ class PartitionTest(unittest.TestCase):
 class GeneralUtilsTest(unittest.TestCase):
     def test_get_chemsys(self):
         # Test with structure
-        struct = Structure.from_spacegroup('Fm-3m', ['Ni', 'O'],
+        struct = Structure.from_spacegroup('Fm-3m', Lattice.cubic(5.0), ['Ni', 'O'],
                                            [[0, 0, 0], [0.75, 0.25, 0.75]])
         self.assertEqual(get_chemsys(struct), 'Ni-O')
 
