@@ -7,6 +7,7 @@ for CAMD, mostly in the form of dataframes
 import os
 
 import boto3
+import botocore
 import requests
 import pandas as pd
 import numpy as np
@@ -432,3 +433,30 @@ def s3_sync(s3_bucket, s3_prefix, sync_path="."):
         for file in files:
             file_key = os.path.join(prefix, file)
             bucket.upload_file(os.path.join(path, file), file_key)
+
+
+def s3_key_exists(key, bucket):
+    """
+    Quick utility to determine whether key exists in bucket
+
+    Args:
+        key (str): key to check
+        bucket (str): bucket to check in
+
+    Returns:
+        (bool): whether the key was found in the bucket
+
+    """
+    s3 = boto3.resource('s3')
+    try:
+        s3.Object(bucket, key).load()
+    except botocore.exceptions.ClientError as e:
+        if e.response['Error']['Code'] == "404":
+            # The object does not exist.
+            return False
+        else:
+            # Something else has gone wrong.
+            raise e
+    else:
+        # The object does exist.
+        return True

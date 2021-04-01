@@ -18,6 +18,7 @@ from datetime import datetime
 
 import boto3
 from botocore.errorfactory import ClientError
+import pandas as pd
 from monty.os import cd
 from monty.tempfile import ScratchDir
 from pymatgen.io.vasp.outputs import Vasprun
@@ -51,6 +52,7 @@ class OqmdDFTonMC1(Experiment):
             container_version (str): container for mc1, e.g. "oqmdvasp/3" or "gpaw/1" which
                 dictates where things will be run
             batch_queue (str): name of aws batch queue to submit to
+            use_cached (bool): whether to used cached results from prior campaigns
             prefix_append (str): appended prefix to use for caching and data organization,
                 e.g. proto-dft-1
         """
@@ -219,15 +221,22 @@ class OqmdDFTonMC1(Experiment):
 
         return self.job_status
 
-    def fetch_cached(self):
+    def fetch_cached(self, candidate_data):
         """
+        Fetches cached data based on candidate data
+
+        Args:
+            candidate_data (pd.DataFrame): Pandas dataframe
+
         Returns:
+            (pandas.DataFrame) dataframe with data filled out
 
         """
         tri_path = os.environ.get("TRI_PATH")
         tri_bucket = os.environ.get("TRI_BUCKET")
         s3_client = boto3.client("s3")
-        for structure_id, row in self.current_data.iterrows():
+        cached_experiments = pd.DataFrame()
+        for structure_id, row in candidate_data.iterrows():
             calc_path = os.path.join(
                 self.parent_dir, get_chemsys(row['structure']),
                 structure_id.replace('-', ''), "_1/")
@@ -235,14 +244,14 @@ class OqmdDFTonMC1(Experiment):
             # to get s3 key
             calc_path = calc_path.replace(tri_path + '/', "")
             calc_path = calc_path.replace('model', 'simulation')
-            import pdb; pdb.set_trace()
             with ScratchDir('.'):
                 # Figure out whether prior submission exists
                 response = s3_client.list_objects_v2(
                     Bucket=tri_bucket, Prefix=calc_path, Delimiter='/')
                 if response.get('Contents'):
+                    cached_experiments = cached_experiments.append(row)
                     # TODO: figure out whether file exists in s3
-                    # TODO: this is a little janky, should probably use boto3
+                    # TODO: this is a little crude, could use boto3
                     try:
                         # import pdb; pdb.set_trace()
                         vr_path = os.path.join(calc_path, "static", "vasprun.xml")
@@ -280,8 +289,8 @@ class OqmdDFTonMC1(Experiment):
                         )
                         # Dump error docs to avoid Pandas issues with dict values
                         data = {"status": "FAILED", "error": json.dumps(error_doc)}
-                    update_dataframe_row(self.current_data, structure_id, data, add_columns=True)
-        return self.current_data
+                    update_dataframe_row(cached_experiments, structure_id, data, add_columns=True)
+        return cached_experiments
 
     def submit_dft_calcs_to_mc1(self):
         """

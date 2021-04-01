@@ -76,14 +76,18 @@ class Mc1Test(unittest.TestCase):
             }
         )
         experiment = OqmdDFTonMC1(poll_time=30, timeout=150, prefix_append="camd-cache-test")
-        experiment.update_current_data(data)
+        # This generates the data if needed in the future
         # experiment.submit(data)
-        results = experiment.fetch_cached()
         # status = experiment.monitor()
         # results = experiment.get_results()
 
+        experiment.update_current_data(data)
+        results = experiment.fetch_cached()
+
         self.assertAlmostEqual(results.loc['good', 'delta_e'], 0, 5)
         self.assertIsNone(results.loc['bad', 'result'])
+        self.assertEqual(results.loc['bad', 'status'], "FAILED")
+        self.assertIsNone(results.loc['unknown', 'status'], None)
 
     @unittest.skipUnless(CAMD_DFT_TESTS, SKIP_MSG)
     def test_structure_suite(self):

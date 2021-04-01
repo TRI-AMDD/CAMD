@@ -16,7 +16,7 @@ from camd.domain import StructureDomain, heuristic_setup
 from camd.agent.stability import AgentStabilityAdaBoost
 from camd.campaigns.base import Campaign
 from camd import CAMD_S3_BUCKET, __version__
-from camd.utils.data import load_dataframe, s3_sync
+from camd.utils.data import load_dataframe, s3_sync, s3_key_exists
 from camd.analysis import StabilityAnalyzer
 from camd.experiment.dft import OqmdDFTonMC1
 from camd.experiment.base import ATFSampler
@@ -77,18 +77,28 @@ class ProtoDFTCampaign(Campaign):
         s3_sync(s3_bucket=CAMD_S3_BUCKET, s3_prefix=s3_prefix, sync_path='.')
 
         # Get structure domain
-        element_list = chemsys.split('-')
-        max_coeff, charge_balanced = heuristic_setup(element_list)
-        domain = StructureDomain.from_bounds(
-            element_list, charge_balanced=charge_balanced,
-            n_max_atoms=n_max_atoms, **{'grid': range(1, max_coeff)})
-        candidate_data = domain.candidates()
+        # Check cache
+        cache_key = "protosearch_cache/v1/{}/{}/candidates.pickle".format(chemsys, n_max_atoms)
+        # TODO: create test of isfile
+        if s3_key_exists(bucket=CAMD_S3_BUCKET, key=cache_key):
+            logger.info("Found cached protosearch domain.")
+            candidate_data = pd.read_pickle("s3://{}/{}".format(CAMD_S3_BUCKET, cache_key))
+            logger.info("Loaded cached {}.".format(cache_key))
+        else:
+            logger.info("Generating domain with max {} atoms.".format(n_max_atoms))
+            element_list = chemsys.split('-')
+            max_coeff, charge_balanced = heuristic_setup(element_list)
+            domain = StructureDomain.from_bounds(
+                element_list, charge_balanced=charge_balanced,
+                n_max_atoms=n_max_atoms, **{'grid': range(1, max_coeff)})
+            candidate_data = domain.candidates()
+            logger.info("Candidates generated")
+            candidate_data.to_pickle("s3://{}/{}".format(CAMD_S3_BUCKET, cache_key))
+            logger.info("Cached protosearch domain at {}.".format(cache_key))
 
         # Dump structure/candidate data
-        with open('candidate_data.pickle', 'wb') as f:
-            pickle.dump(candidate_data, f)
+        candidate_data.to_pickle("candidate_data.pickle")
         s3_sync(s3_bucket=CAMD_S3_BUCKET, s3_prefix=s3_prefix, sync_path='.')
-        logger.info("Candidates generated")
 
         # Set up agents and loop parameters
         agent = agent or AgentStabilityAdaBoost(
@@ -102,8 +112,21 @@ class ProtoDFTCampaign(Campaign):
             n_estimators=20
         )
         analyzer = analyzer or StabilityAnalyzer(hull_distance=0.2)
-        experiment = experiment or OqmdDFTonMC1(timeout=30000)
+        experiment = experiment or OqmdDFTonMC1(timeout=30000, prefix_append="proto-dft-high")
         seed_data = load_dataframe("oqmd1.2_exp_based_entries_featurized_v2")
+
+        # Load cached experiments
+        logger.info("Loading cached experiments")
+        cached_experiments = experiment.fetch_cached(candidate_data)
+        logger.info("Found {} experiments.".format(len(cached_experiments)))
+        if len(cached_experiments) > 0:
+            summary, seed_data = analyzer.analyze(cached_experiments, seed_data)
+            # Remove cached experiments from candidate_data
+            candidate_space = candidate_data.index.difference(
+                cached_experiments.index, sort=False
+            ).tolist()
+            candidate_data = candidate_data.loc[candidate_space]
+            logger.info("Cached experiments added to seed.")
 
         # Construct and start loop
         return cls(

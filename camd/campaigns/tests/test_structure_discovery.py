@@ -61,6 +61,13 @@ class ProtoDFTCampaignTest(unittest.TestCase):
             self.assertTrue(os.path.isfile('hull_finalized.png'))
 
     @unittest.skipUnless(CAMD_DFT_TESTS, SKIP_MSG)
+    def test_cached_campaign(self):
+        with ScratchDir('.'):
+            campaign = ProtoDFTCampaign.from_chemsys("Si")
+            # Test seed data has other data
+            self.assertGreater(len(campaign.seed_data), 36581)
+
+    @unittest.skipUnless(CAMD_DFT_TESTS, SKIP_MSG)
     def test_simple_dft(self):
         with ScratchDir('.'):
             campaign = ProtoDFTCampaign.from_chemsys("Si")
