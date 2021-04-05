@@ -56,7 +56,8 @@ setup(
                       "taburu==2020.5.9",
                       "GPy==1.9.9",
                       "watchtower==1.0.6",
-                      "fsspec==0.9.0"
+                      "fsspec==0.9.0",
+                      "s3fs==0.6.0"
                       ],
     extras_require={
         "proto_dft": ["protosearch==2020.5.10"],
