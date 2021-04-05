@@ -43,7 +43,7 @@ setup(
                     "gpflow==2.1.4"
                     ],
     install_requires=["python-dateutil==2.8.1",
-                      "networkx==2.5",
+                      "networkx==2.5.1",
                       "matplotlib==3.4.1",
                       "qmpy",  # This version is constrained by the source
                       "pandas==1.2.3",
