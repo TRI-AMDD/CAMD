@@ -43,14 +43,14 @@ setup(
                     "gpflow==2.1.4"
                     ],
     install_requires=["python-dateutil==2.8.1",
-                      "networkx==2.5",
-                      "matplotlib==3.3.4",
+                      "networkx==2.5.1",
+                      "matplotlib==3.4.1",
                       "qmpy",  # This version is constrained by the source
                       "pandas==1.2.3",
-                      "matminer==0.6.4",
+                      "matminer==0.6.5",
                       "autologging",
                       "awscli==1.19.44",
-                      "boto3==1.17.3",
+                      "boto3==1.17.44",
                       "docopt==0.6.2",
                       "scikit-learn==0.24.1",
                       "taburu==2020.5.9",
