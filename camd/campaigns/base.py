@@ -252,6 +252,9 @@ class Campaign(MSONable):
                 self.loop_backup(str(self.iteration - 1))
 
         self.run(finalize=True)
+        if monitor:
+            self.logger.info("Monitoring experiments")
+            self.experiment.monitor()
         self.finalize()
 
     def initialize(self, random_state=42):

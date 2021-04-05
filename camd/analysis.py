@@ -706,7 +706,7 @@ def update_run_w_structure(folder, hull_distance=0.2, parallel=True):
             old_results = df.drop(all_results.index, errors='ignore')
             new_results = df.drop(old_results.index)
             st_a = StabilityAnalyzer(
-                hull_distance=hull_distance, parallel=parallel, entire_space=True, plot=False)
+                hull_distance=hull_distance, parallel=parallel, entire_space=False, plot=False)
             summary, new_seed = st_a.analyze(new_results, old_results)
 
             # Having calculated stabilities again, we plot the overall hull.
@@ -729,7 +729,7 @@ def update_run_w_structure(folder, hull_distance=0.2, parallel=True):
                 unique_s_dict = {}
                 for i in range(len(s_a.structures)):
                     if s_a.structure_is_unique[i] and (
-                        s_a.structure_ids[i] in stable_discovered
+                        s_a.structure_ids[i] in stable_discovered.index
                     ):
                         unique_s_dict[s_a.structure_ids[i]] = s_a.structures[i]
 
