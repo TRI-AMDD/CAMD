@@ -47,7 +47,7 @@ setup(
                       "matplotlib==3.3.4",
                       "qmpy",  # This version is constrained by the source
                       "pandas==1.2.3",
-                      "matminer==0.6.4",
+                      "matminer==0.6.5",
                       "autologging",
                       "awscli==1.19.44",
                       "boto3==1.17.3",
