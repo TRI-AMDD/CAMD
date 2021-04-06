@@ -15,7 +15,8 @@ from camd.domain import StructureDomain, heuristic_setup
 from camd.agent.stability import AgentStabilityAdaBoost
 from camd.campaigns.base import Campaign
 from camd import CAMD_S3_BUCKET, __version__
-from camd.utils.data import load_dataframe, s3_sync, s3_key_exists
+from camd.utils.data import load_dataframe, s3_sync, s3_key_exists, \
+    upload_s3_file, download_s3_file
 from camd.analysis import StabilityAnalyzer
 from camd.experiment.dft import OqmdDFTonMC1
 from camd.experiment.base import ATFSampler
@@ -77,11 +78,12 @@ class ProtoDFTCampaign(Campaign):
 
         # Get structure domain
         # Check cache
-        cache_key = "protosearch_cache/v1/{}/{}/candidates.pickle".format(chemsys, n_max_atoms)
+        cache_key = "protosearch_cache/v1/{}/{}/candidate_data.pickle".format(chemsys, n_max_atoms)
         # TODO: create test of isfile
         if s3_key_exists(bucket=CAMD_S3_BUCKET, key=cache_key):
             logger.info("Found cached protosearch domain.")
-            candidate_data = pd.read_pickle("s3://{}/{}".format(CAMD_S3_BUCKET, cache_key))
+            download_s3_file(cache_key, CAMD_S3_BUCKET, "candidate_data.pickle")
+            candidate_data = pd.read_pickle("candidate_data.pickle")
             logger.info("Loaded cached {}.".format(cache_key))
         else:
             logger.info("Generating domain with max {} atoms.".format(n_max_atoms))
@@ -92,11 +94,12 @@ class ProtoDFTCampaign(Campaign):
                 n_max_atoms=n_max_atoms, **{'grid': range(1, max_coeff)})
             candidate_data = domain.candidates()
             logger.info("Candidates generated")
-            candidate_data.to_pickle("s3://{}/{}".format(CAMD_S3_BUCKET, cache_key))
+            candidate_data.to_pickle("candidate_data.pickle")
+            upload_s3_file(cache_key, CAMD_S3_BUCKET, "candidate_data.pickle")
             logger.info("Cached protosearch domain at {}.".format(cache_key))
 
         # Dump structure/candidate data
-        candidate_data.to_pickle("candidate_data.pickle")
+
         s3_sync(s3_bucket=CAMD_S3_BUCKET, s3_prefix=s3_prefix, sync_path='.')
 
         # Set up agents and loop parameters

@@ -460,3 +460,39 @@ def s3_key_exists(key, bucket):
     else:
         # The object does exist.
         return True
+
+
+def download_s3_file(key, bucket, output_filename):
+    """
+    Quick utility to download s3 file
+
+    Args:
+        key (str): key to download
+        bucket (str): bucket from which to download
+        output_filename (str): output filename for object
+
+    Returns:
+        (bool): whether the key was found in the bucket
+
+    """
+    s3_client = boto3.client('s3')
+    s3_client.download_file(bucket, key, output_filename)
+    return True
+
+
+def upload_s3_file(key, bucket, filename):
+    """
+    Quick utility to upload s3 file
+
+    Args:
+        key (str): key to download
+        bucket (str): bucket from which to download
+        filename (str): output filename for object
+
+    Returns:
+        (bool): whether the key was found in the bucket
+
+    """
+    s3_client = boto3.client('s3')
+    s3_client.upload_file(filename, bucket, key)
+    return True
