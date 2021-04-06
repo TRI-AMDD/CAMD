@@ -496,3 +496,25 @@ def upload_s3_file(key, bucket, filename):
     s3_client = boto3.client('s3')
     s3_client.upload_file(filename, bucket, key)
     return True
+
+
+def get_common_prefixes(bucket, prefix):
+    """
+    Helper function to get common "subfolders" of folders
+    in S3
+
+    Args:
+        bucket (str): bucket name
+        prefix (str): prefix for which to list common prefixes
+
+    Returns:
+
+    """
+    if not prefix.endswith('/'):
+        prefix += "/"
+    client = boto3.client('s3')
+    paginator = client.get_paginator('list_objects')
+    result = paginator.paginate(Bucket=bucket, Delimiter='/', Prefix=prefix)
+    return [common_prefix['Prefix'].split('/')[-2]
+            for common_prefix in result.search("CommonPrefixes")
+            if common_prefix]
