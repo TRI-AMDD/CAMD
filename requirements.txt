@@ -22,7 +22,7 @@ tensorflow==2.4.0
 sympy==1.7.1
 sqlparse==0.4.0
 spglib==1.16.0
-scipy==1.5.4
+scipy==1.6.2
 pymatgen==2020.12.31
 
 # Temporary qmpy3 dependency
