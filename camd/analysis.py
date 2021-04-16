@@ -720,6 +720,103 @@ def update_run_w_structure(folder, hull_distance=0.2, parallel=True):
                 finalize=True,
             )
 
+<<<<<<< HEAD
+            stable_discovered = new_seed[new_seed["is_stable"]]
+            s_a = AnalyzeStructures()
+            s_a.analyze_vaspqmpy_jobs(jobs, against_icsd=True, use_energies=True)
+            unique_s_dict = {}
+            for i in range(len(s_a.structures)):
+                if s_a.structure_is_unique[i] and (
+                    s_a.structure_ids[i] in stable_discovered
+                ):
+                    unique_s_dict[s_a.structure_ids[i]] = s_a.structures[i]
+
+            with open("discovered_unique_structures.json", "w") as f:
+                json.dump(dict([(k, s.as_dict()) for k, s in unique_s_dict.items()]), f)
+
+            with open("structure_report.log", "w") as f:
+                f.write("consumed discovery unique_discovery duplicate in_icsd \n")
+                f.write(
+                    str(len(all_submitted))
+                    + " "
+                    + str(len(stable_discovered))
+                    + " "
+                    + str(len(unique_s_dict))
+                    + " "
+                    + str(len(s_a.structures) - sum(s_a._not_duplicate))
+                    + " "
+                    + str(sum([not i for i in s_a._icsd_filter]))
+                )
+
+class MultiAnalyzer(AnalyzerBase):
+    """
+    The multi-fidelity analyzer.
+    """
+    def __init__(self, target_prop, prop_range, total_expt_queried=0,
+                 total_expt_discovery=0, analyze_cost=True, total_cost=0.0):
+        """
+        Args:
+            target_prop (str)        The name of the target property, e.g. "bandgap".
+            prop_range (list)        The range of the target property that is considered
+                                     ideal.
+            total_expt_queried (int) The total experimental queries after nth iteration. 
+            tot_expt_discovery (int) The total experimental discovery after nth iteration. 
+            analyze_cost (bool)      If the input has cost factor, also analyze that information. 
+            total_cost(float)        The total cost of the hypotheses after nth iteration.       
+        """
+        self.target_prop = target_prop
+        self.prop_range = prop_range
+        self.total_expt_queried = total_expt_queried
+        self.total_expt_discovery = total_expt_discovery
+        self.analyze_cost = analyze_cost
+        self.total_cost = total_cost
+
+    def _filter_df_by_prop_range(self, df):
+        """
+        Helper function that filters df by property range
+
+        Args:
+            df   A pd.Dataframe to be filtered.
+        """
+        return df.loc[(df[self.target_prop] >= self.prop_range[0]) &
+                      (df[self.target_prop] <= self.prop_range[1])]
+
+    def analyze(self, new_experimental_results, seed_data):
+        new_expt_hypotheses = new_experimental_results.loc[new_experimental_results['expt_data'] == 1]
+        new_discoveries = self._filter_df_by_prop_range(new_expt_hypotheses)
+
+        # total discovery = up to (& including) the current iteration
+        new_seed = seed_data.append(new_experimental_results)
+        self.total_expt_queried += len(new_expt_hypotheses)
+        self.total_expt_discovery += len(new_discoveries)
+        if self.total_expt_queried != 0:
+            success_rate = self.total_expt_discovery/self.total_expt_queried
+        else:
+            success_rate = 0
+        
+        summary = pd.DataFrame(
+                {
+                 "expt_queried": [len(new_expt_hypotheses)],
+                 "total_expt_queried": [self.total_expt_queried], 
+                 "new_discovery": [len(new_discoveries)],
+                 "total_expt_discovery": [self.total_expt_discovery],
+                 "total_regret": [self.total_expt_queried - self.total_expt_discovery], 
+                 "success_rate": [success_rate]
+            }
+        )
+
+        if self.analyze_cost:
+            iter_cost = np.sum(new_experimental_results["cost_ratio"])
+            self.total_cost += iter_cost
+            summary["iteration_cost"] = [iter_cost]
+            summary["total_cost"] = [self.total_cost]
+            if self.total_expt_discovery != 0:
+                average_cost_per_discovery = self.total_cost/self.total_expt_discovery
+            else:
+                average_cost_per_discovery = np.nan
+            summary['average_cost_per_discovery'] = [average_cost_per_discovery]
+        return summary, new_seed 
+=======
             stable_discovered = new_seed[new_seed["is_stable"].fillna(False)]
 
             # Analyze structures if present in experiment
@@ -749,3 +846,4 @@ def update_run_w_structure(folder, hull_distance=0.2, parallel=True):
                         + " "
                         + str(sum([not i for i in s_a._icsd_filter]))
                     )
+>>>>>>> master
