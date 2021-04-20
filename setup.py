@@ -40,7 +40,7 @@ setup(
     long_description=LONG_DESCRIPTION,
     long_description_content_type='text/markdown',
     setup_requires=["numpy==1.19.2",
-                    "gpflow==2.1.4"
+                    "gpflow==2.1.5"
                     ],
     install_requires=["python-dateutil==2.8.1",
                       "networkx==2.5.1",
@@ -50,7 +50,7 @@ setup(
                       "matminer==0.6.5",
                       "autologging",
                       "awscli==1.19.44",
-                      "boto3==1.17.44",
+                      "boto3==1.17.54",
                       "docopt==0.6.2",
                       "scikit-learn==0.24.1",
                       "taburu==2020.5.9",
