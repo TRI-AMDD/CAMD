@@ -720,33 +720,36 @@ def update_run_w_structure(folder, hull_distance=0.2, parallel=True):
                 finalize=True,
             )
 
-<<<<<<< HEAD
-            stable_discovered = new_seed[new_seed["is_stable"]]
-            s_a = AnalyzeStructures()
-            s_a.analyze_vaspqmpy_jobs(jobs, against_icsd=True, use_energies=True)
-            unique_s_dict = {}
-            for i in range(len(s_a.structures)):
-                if s_a.structure_is_unique[i] and (
-                    s_a.structure_ids[i] in stable_discovered
-                ):
-                    unique_s_dict[s_a.structure_ids[i]] = s_a.structures[i]
+            stable_discovered = new_seed[new_seed["is_stable"].fillna(False)]
 
-            with open("discovered_unique_structures.json", "w") as f:
-                json.dump(dict([(k, s.as_dict()) for k, s in unique_s_dict.items()]), f)
+            # Analyze structures if present in experiment
+            if "structure" in all_results.columns:
+                s_a = AnalyzeStructures()
+                s_a.analyze_vaspqmpy_jobs(all_results, against_icsd=True, use_energies=True)
+                unique_s_dict = {}
+                for i in range(len(s_a.structures)):
+                    if s_a.structure_is_unique[i] and (
+                        s_a.structure_ids[i] in stable_discovered.index
+                    ):
+                        unique_s_dict[s_a.structure_ids[i]] = s_a.structures[i]
 
-            with open("structure_report.log", "w") as f:
-                f.write("consumed discovery unique_discovery duplicate in_icsd \n")
-                f.write(
-                    str(len(all_submitted))
-                    + " "
-                    + str(len(stable_discovered))
-                    + " "
-                    + str(len(unique_s_dict))
-                    + " "
-                    + str(len(s_a.structures) - sum(s_a._not_duplicate))
-                    + " "
-                    + str(sum([not i for i in s_a._icsd_filter]))
-                )
+                with open("discovered_unique_structures.json", "w") as f:
+                    json.dump(dict([(k, s.as_dict()) for k, s in unique_s_dict.items()]), f)
+
+                with open("structure_report.log", "w") as f:
+                    f.write("consumed discovery unique_discovery duplicate in_icsd \n")
+                    f.write(
+                        str(len(all_submitted))
+                        + " "
+                        + str(len(stable_discovered))
+                        + " "
+                        + str(len(unique_s_dict))
+                        + " "
+                        + str(len(s_a.structures) - sum(s_a._not_duplicate))
+                        + " "
+                        + str(sum([not i for i in s_a._icsd_filter]))
+                    )
+   
 
 class MultiAnalyzer(AnalyzerBase):
     """
@@ -816,34 +819,3 @@ class MultiAnalyzer(AnalyzerBase):
                 average_cost_per_discovery = np.nan
             summary['average_cost_per_discovery'] = [average_cost_per_discovery]
         return summary, new_seed 
-=======
-            stable_discovered = new_seed[new_seed["is_stable"].fillna(False)]
-
-            # Analyze structures if present in experiment
-            if "structure" in all_results.columns:
-                s_a = AnalyzeStructures()
-                s_a.analyze_vaspqmpy_jobs(all_results, against_icsd=True, use_energies=True)
-                unique_s_dict = {}
-                for i in range(len(s_a.structures)):
-                    if s_a.structure_is_unique[i] and (
-                        s_a.structure_ids[i] in stable_discovered.index
-                    ):
-                        unique_s_dict[s_a.structure_ids[i]] = s_a.structures[i]
-
-                with open("discovered_unique_structures.json", "w") as f:
-                    json.dump(dict([(k, s.as_dict()) for k, s in unique_s_dict.items()]), f)
-
-                with open("structure_report.log", "w") as f:
-                    f.write("consumed discovery unique_discovery duplicate in_icsd \n")
-                    f.write(
-                        str(len(all_submitted))
-                        + " "
-                        + str(len(stable_discovered))
-                        + " "
-                        + str(len(unique_s_dict))
-                        + " "
-                        + str(len(s_a.structures) - sum(s_a._not_duplicate))
-                        + " "
-                        + str(sum([not i for i in s_a._icsd_filter]))
-                    )
->>>>>>> master
