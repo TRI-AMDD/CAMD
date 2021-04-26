@@ -21,7 +21,7 @@ def _get_features_from_df(df, features):
     feature_df = df[features]
     return feature_df
 
-def _process_data(candidate_data, seed_data, features, label, preprocessor=None):
+def _process_data(candidate_data, seed_data, features, label, y_reshape=False, preprocessor=None):
     """
     Helper function that process data for ML model and returns
     np.ndarray of training features, training labels,
@@ -31,6 +31,10 @@ def _process_data(candidate_data, seed_data, features, label, preprocessor=None)
     y_train = np.array(seed_data[label])
     X_test = _get_features_from_df(candidate_data, features).values
     y_test = np.array(candidate_data[label])
+
+    if y_reshape:
+        y_train = y_train.reshape(-1,1)
+        y_test = y_test.reshape(-1,1)
 
     if preprocessor:
         X_train = preprocessor.fit_transform(X_train)
@@ -131,9 +135,7 @@ class EpsilonGreedyMultiAgent(HypothesisAgent):
             highFi_cands_fea = _get_features_from_df(high_fidelity_candidates, self.features)
 
             for idx, cand_fea in exp_cands_fea.iterrows(): 
-                highFi_cost = len(selected_hypotheses)
-                
-                if highFi_cost < highFi_budget:
+                if len(selected_hypotheses) < highFi_budget:
                     normdiff_lst = self._calculate_similarity(highFi_cands_fea, seed_data_fea)
                     mask = (normdiff_lst <= self.similarity_thres)
                     if len(normdiff_lst[mask]) >= 1:
@@ -187,9 +189,8 @@ class GPMultiAgent(HypothesisAgent):
     offloading exploratory (higher risk) acquisitions first to lower-fidelity computations.
     """
     def __init__(self, candidate_data=None, seed_data=None, chemsys_col='reduced_formula', features=None, 
-                 fidelities=('theory_data', 'expt_data'), target_prop=None, target_prop_val=1.8, 
-                 preprocessor=StandardScaler(), alpha=0.5, rank_thres=5, unc_percentile=30, 
-                 query_criteria='cost_ratio', total_budget=None):
+                 fidelities=('theory_data', 'expt_data'), target_prop=None, target_prop_val=1.8, total_budget=None,
+                 preprocessor=StandardScaler(), gp_kernel=None, gp_max_iter=200, alpha=1.0, rank_thres=5, unc_percentile=30):
         self.candidate_data = candidate_data
         self.seed_data = seed_data
         self.chemsys_col = chemsys_col
@@ -197,38 +198,36 @@ class GPMultiAgent(HypothesisAgent):
         self.fidelities = fidelities
         self.target_prop = target_prop
         self.target_prop_val = target_prop_val
+        self.total_budget = total_budget
         self.preprocessor = preprocessor
+        self.gp_kernel = gp_kernel
+        self.gp_max_iter = gp_max_iter
         self.alpha = alpha
         self.rank_thres = rank_thres
         self.unc_percentile = unc_percentile
-        self.query_criteria = query_criteria
-        self.total_budget = total_budget
         super(GPMultiAgent).__init__()
 
         """
         Args:
-            candidate_data (df)      Candidate search space for active learning.
-            seed_data (df)           Seed (training) data for active learning.
+            candidate_data (df)      Candidate search space for the campaign.
+            seed_data (df)           Seed (training) data for the campaign.
             chemsys_col (str)        The name of the composition column.
-            features (tuple of str)  Name of the features used in machine learning. If None, default features
-                                     (magpie features) are used. 
-            fidelities (tuple)       Fidelity levels of the datasets. The strings in the tuple should be arranged 
-                                     from low to high fidelity. The value of fidelity features should be one-hot encoded.    
+            features (tuple of str)  Column name of the features used in machine learning.
+            fidelities (tuple)       Fidelity levels of the datasets. The strings in the tuple should be arranged
+                                     from low to high fidelity. The value of fidelity features should be one-hot encoded.
             target_prop (str)        The property machine learning model is predicting, given feature space.
             target_prop_val (float)  The ideal value of the target property.
-            preprocessor             A sklearn preprocessor that preprocess the features. It can be None, a single  
+            total_budget (int)       The budget for the hypotheses queried.
+            gp_kernel                The kernel used in GP regressor.
+            gp_max_iter (int)        Number of maximum iterations for GP optimization.
+            preprocessor             A preprocessor that preprocess the features. It can be None, a single
                                      processor, or a pipeline. The default is StandardScaler().
-            alpha (float)            The mixing parameter for uncertainties. It controls the 
-                                     trade-off between exploration and exploitation. Defaults to 1.0. 
-            rank_thres (int)         A threshold help to decide if lower fidelity data is worth acquiring.                 
+            alpha (float)            The mixing parameter for uncertainties. It controls the
+                                     trade-off between exploration and exploitation. Defaults to 1.0.
+            rank_thres (int)         A threshold help to decide if lower fidelity data is worth acquiring.   
             unc_percentile (int)     A number between 0 and 100, and used to calculate an uncertainty threshold
                                      at that percentile value. The threshold is then used to decide if the
-                                     agent is quering theory or experimental hypotheses. 
-            query_criteria (str)     Can be either 'cost_ratio' or 'number' to indicate which types of method
-                                     will be used to query hypotheses. .                        
-            total_budget (int)       The budget for the hypotheses query. If query_criteria is 'cost_ratio', this should 
-                                     be an amount indicate costs, if query_criteria is 'number', this should be a 
-                                     a total number of queries.
+                                     agent is quering theory or experimental hypotheses.
             """
         
     def _halluciate_lower_fidelity(self, seed_data, candidate_data, low_fidelity_data):
@@ -252,12 +251,16 @@ class GPMultiAgent(HypothesisAgent):
         return rank_after_hallucination
 
     def _train_and_predict(self, candidate_data, seed_data):
-        candidate_data_copy = candidate_data.copy()
         features_columns = self.features + list(self.fidelities)
-        X_train, y_train, X_test, y_test = _process_data(candidate_data, seed_data, features_columns, self.target_prop, preprocessor=self.preprocessor)
-        gp = GPy.models.GPRegression(X_train, y_train)
-        gp.optimize('bfgs', max_iters=200)
+        X_train, y_train, X_test, y_test = _process_data(candidate_data, seed_data, features_columns,
+                                                         self.target_prop, y_reshape=True, preprocessor=self.preprocessor)
+        gp = GPy.models.GPRegression(X_train, y_train, kernel=self.gp_kernel)
+        gp.optimize('bfgs', max_iters=self.gp_max_iter)
         y_pred, var = gp.predict(X_test)
+
+        # Make a copy of the candidate data so the original one
+        # does not get modified during hypotheses generation
+        candidate_data_copy = candidate_data.copy()
         dist_to_ideal = np.abs(self.target_prop_val - y_pred)
         pred_lcb = dist_to_ideal - self.alpha * var**0.5 
         candidate_data_copy['pred_lcb'] = pred_lcb 
@@ -266,37 +269,38 @@ class GPMultiAgent(HypothesisAgent):
         return candidate_data_copy
         
     def _query_hypotheses(self, candidate_data, seed_data): 
-        high_fidelity_candidates = candidate_data.loc[candidate_data[self.fidelities[1]]== 1]
+        high_fidelity_candidates = candidate_data.loc[candidate_data[self.fidelities[1]] == 1]
         high_fidelity_candidates = high_fidelity_candidates.sort_values('pred_lcb')
-        
-        selected_hypotheses = pd.DataFrame(columns=candidate_data.columns)
+
+        # edge case: if there are no high fidelity candidate left, end the campaign
         if len(high_fidelity_candidates) == 0:
             return None
 
         else:
+            # set up an empty df for queries
+            selected_hypotheses = pd.DataFrame(columns=candidate_data.columns)
+            # determine a dynamic uncertainty threshold based on all the uncertainties
             unc_thres = np.percentile(np.array(high_fidelity_candidates.pred_unc), self.unc_percentile)
-            for idx, candidate in high_fidelity_candidates.iterrows():
-                if self.query_criteria == 'number':
-                    total_cost = len(selected_hypotheses)
-                elif self.query_criteria == 'cost_ratio':
-                    total_cost = np.sum(selected_hypotheses[self.query_criteria])
 
-                # query more hypotheses if total budget is not fulfilled
-                if total_cost < self.total_budget:
+            # start querying hypothesis
+            for idx, candidate in high_fidelity_candidates.iterrows():
+                if len(selected_hypotheses) < self.total_budget:
                     chemsys = candidate[self.chemsys_col]
                     low_fidelity = candidate_data.loc[(candidate_data[self.chemsys_col] == chemsys)&
                                                       (candidate_data[self.fidelities[0]] == 1)]
-                    # exploit
+
+                    # exploit if uncertainty is low or the low fidelity data does not exist
                     if (candidate.pred_unc <= unc_thres) or (len(low_fidelity) == 0):
                         selected_hypotheses = selected_hypotheses.append(candidate)
                     # explore
                     else:
                         orig_rank = high_fidelity_candidates.index.get_loc(idx)
                         new_rank = self._get_rank_after_hallucination(seed_data, candidate_data, idx, low_fidelity)
-                        delta_rank = new_rank - orig_rank
+
                         # If adding predicted DFT value to the seed data confirms the candidate
                         # is good, we go ahead and query the candidate. If not, we query the lower
-                        # fidelity first to the seed space. 
+                        # fidelity first to the seed space.
+                        delta_rank = new_rank - orig_rank
                         if delta_rank <= self.rank_thres:
                             selected_hypotheses = selected_hypotheses.append(candidate)
                         else:
