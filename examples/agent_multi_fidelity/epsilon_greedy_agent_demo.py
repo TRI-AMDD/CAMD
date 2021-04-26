@@ -21,7 +21,7 @@ candidate_data = df.loc[df.expt_data==1]
 
 ####################################################
 # Create the folder where the results go
-os.system('rm -rf Results/epsilon_greedy') # If the folder alreadt exist, delete it first
+os.system('rm -rf Results/epsilon_greedy') # If the folder already exist, delete it first
 os.system('mkdir -p Results/epsilon_greedy')
 
 # Provide inputs for the campaign
