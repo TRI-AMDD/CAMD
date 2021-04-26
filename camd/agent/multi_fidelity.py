@@ -7,49 +7,45 @@ from monty.os import cd
 from sklearn.preprocessing import StandardScaler
 from camd.agent.base import HypothesisAgent
 
-
-def preprocess(dataframes, composition_columns, featurizer, fill_na=-1,label_columns=None):
+def _get_features_from_df(df, features):
     """
-    A hlper function that preprocess multi-fidelity datasets. It will take multiple 
-    datasets (in dataframe form), and featuriized the compositional features, and 
-    one-hot encode any other additional features. Lastly, it will fill in null features. 
+    Helper function to get feature columns of a dataframe.
     
     Args:
-        dataframes (list)            A list of pd.DataFrames where each dataframe is a dataset.
-                                        Note, fidelity level should be included. 
-        composition_columns (list)   A list of compositional feature column names in corresponding
-                                        dataset.
-        featurizer                   Featurizer used to featurize the compositional feature. 
-        fill_na (float)              The number used to fill null values in the dataframe. 
-        label_columns (list)         A list of additional features combined from each dataframe. 
+        df                      A pd.DataFrame where the features are extracted.
+        features (list of str)  Name of the features columns in df.
     
     Returns:
-        all_data                     A processed pd.DataFrame.
+            feature_df      A pd.DataFrame that only contains the features used in ML.
     """
-    all_features = []
-    for df, comp_col in zip(dataframes, composition_columns):
-        if label_columns is None:
-            extra_label = list(set(df.columns) - {comp_col})
-        df['composition'] = df[comp_col].apply(Composition)  
-        featurized = featurizer.featurize_dataframe(df, 'composition')
-        one_hot_df = pd.get_dummies(df[extra_label])
-        all_features.append(pd.concat(
-                                      [featurized[featurizer.feature_labels()], 
-                                      one_hot_df], axis=1))
-    all_data = pd.concat(all_features, axis=0)
-    all_data = all_data.fillna(fill_na)
-    return all_data  
+    feature_df = df[features]
+    return feature_df
 
-
-
-class GenericMultiAgent(HypothesisAgent):
+def _process_data(candidate_data, seed_data, features, label, preprocessor=None):
     """
-    A multi-fidelity agent that takes in sklearn supervised regressor
-    (GPR excluded) and generate hypotheses.
+    Helper function that process data for ML model and returns
+    np.ndarray of training features, training labels,
+    test features and test labels.
+    """
+    X_train = _get_features_from_df(seed_data, features).values
+    y_train = np.array(seed_data[label])
+    X_test = _get_features_from_df(candidate_data, features).values
+    y_test = np.array(candidate_data[label])
+
+    if preprocessor:
+        X_train = preprocessor.fit_transform(X_train)
+        X_test = preprocessor.transform(X_test)
+    return X_train, y_train, X_test, y_test
+    
+
+class EpsilonGreedyMultiAgent(HypothesisAgent):
+    """
+    A multi-fidelity agent that allocates the desired budget for high fidelity versus
+    low fidelity candidate data, and acquires candidates in each fidelity via exploitation
     """
     def __init__(self, candidate_data=None, seed_data=None, features=None, fidelities=('theory_data', 'expt_data'),
-                 target_prop=None, target_prop_val=None, preprocessor=StandardScaler(), model=None, minimize=True,
-                 query_criteria='number', total_budget=None, expt_query_frac=None, l2norm_thres=300., theor_per_expt=1):
+                 target_prop=None, target_prop_val=None, preprocessor=StandardScaler(), model=None, ranking_method='minimize',
+                 total_budget=None, highFi_query_frac=None, similarity_thres=300., lowFi_per_highFi=1):
         self.candidate_data = candidate_data
         self.seed_data = seed_data
         self.features = features
@@ -58,81 +54,38 @@ class GenericMultiAgent(HypothesisAgent):
         self.target_prop_val = target_prop_val
         self.preprocessor = preprocessor
         self.model = model
-        self.minimize = minimize
-        self.query_criteria = query_criteria
+        self.ranking_method = ranking_method
         self.total_budget = total_budget
-        self.expt_query_frac = expt_query_frac
-        self.l2norm_thres = l2norm_thres
-        self.theor_per_expt = theor_per_expt
-        super(GenericMultiAgent).__init__()
+        self.highFi_query_frac = highFi_query_frac
+        self.similarity_thres = similarity_thres
+        self.lowFi_per_highFi = lowFi_per_highFi
+        super(EpsilonGreedyMultiAgent).__init__()
         """
         Args:
-            candidate_data (df)      Candidate search space for active learning.
-            seed_data (df)           Seed (training) data for active learning.
-            features (tuple of str)  Name of the features used in machine learning. If None, default features
-                                     (magpie features) are used. 
+            candidate_data (df)      Candidate search space for the campaign.
+            seed_data (df)           Seed (training) data for the campaign.
+            features (tuple of str)  Name of the feature columns used in machine learning model training.
             fidelities (tuple)       Fidelity levels of the datasets. The strings in the tuple should be arranged 
-                                     from low to high fidelity. The value of fidelity features should be one-hot encoded.    
-            target_prop (str)        The property machine learning model is predicting, given feature space.
+                                     from low to high fidelity.
+            target_prop (str)        The property machine learning model is learning, given feature space.
             target_prop_val (float)  The ideal value of the target property.
-            preprocessor             A sklearn preprocessor that preprocess the features. It can be None, a single  
-                                     processor, or a pipeline. The default is StandardScaler().
-            model                    The sklearn supervised machine learning regressor (GPR excluded).
-            minimize (bool)          If True, rank candidates with ML prediction as close to the target property value
-                                     as possible. If False, rank candidates with ML prediction as far away from the target 
-                                     as possible. Minimize=False will be helpful when there is no target value for a 
-                                     prediction problem, such as bulk modulus. 
-            query_criteria (str)     Can be either 'cost_ratio' or 'number' to indicate which types of method
-                                     will be used to query hypotheses. .                        
-            total_budget (int)       The budget for the hypotheses query. If query_criteria is 'cost_ratio', this should 
-                                     be an amount indicates cost, if query_criteria is 'number', this should be a 
-                                     a total number of queries.
-            expt_query_frac (float)  The fraction of the total budget that are used for experimental
-                                     hypotheses queries. The value should be between 0 and 1.
-            l2norm_thres(float)      The threshold value for l2 norm similarity between a candidate composition and
-                                     compositions in the seed data.  
-            theor_per_expt (int)     Theory hypotheses budget per experimental candidates. In other
-                                     words, the number of theory candidate selected to support each
-                                     experimental candidates that predicted to be good, but the agent
+            preprocessor             A preprocessor that preprocess the features. It can be None, a single
+                                     processor, or a pipeline. The default is sklearn StandardScaler.
+            model                    A sklearn supervised machine learning regressor.
+            ranking_method (str)     Ranking method of candidates based on ML predictions. Select one of the following: "minimize",
+                                     "ascending", or "descending". "minimize" will rank candidates with ML candidates closest to the
+                                     target property value. "ascending" or "descening" will rank candidates with ascending/descening
+                                     ML predictions, best to use when there is no target propety value (i.e. smaller/larger the better).
+            total_budget (int)       The number of the hypotheses at a given iteration of the campaign.
+            highFi_query_frac        The fraction of the total budget used for high fidelity hypotheses queries.
+                                     The value should be <0 and <=1.
+            similarity_thres(float)  The threshold value for l2 norm similarity between a candidate composition and
+                                     compositions in the seed data. User will need to run some calculations
+                                     to determine the best threshold value.
+            lowFi_per_highFi (int)   The number of low fidelity candidate selected to support each
+                                     high fidelity candidates that predicted to be good, but the agent
                                      does not want to generate that experimental hypotheses yet. 
         """
-
-    def _get_features_from_df(self, df, add_fea=[]):
-        """
-        Helper function to get feature columns of a dataframe.
-    
-        Args:
-            df              A pd.DataFrame where the features are extracted.
-            add_fea(list)   Name of the additional features (str) used in ML.
-    
-        Returns:
-            feature_df      A pd.DataFrame that only contains the features used in ML.
-                                by default, this will be compositional features.
-        """
-        if self.features is None:
-            features = [column for column in df if column.startswith("MagpieData")]
-        else:
-            features = list(self.features)
-            
-        all_features = features + add_fea
-        feature_df = df[all_features]
-        return feature_df
-
-    def _process_data(self, candidate_data, seed_data):
-        """
-        Helper function that process data for ML model and returns
-        np.ndarray of training features, training labels,
-        test features and test labels.
-        """
-        X_train = self._get_features_from_df(seed_data, add_fea=list(self.fidelities)).values
-        y_train = np.array(seed_data[self.target_prop])
-        X_test = self._get_features_from_df(candidate_data, add_fea=list(self.fidelities)).values
-        y_test = np.array(candidate_data[self.target_prop])
-      
-        if self.preprocessor:
-            X_train = self.preprocessor.fit_transform(X_train)
-            X_test = self.preprocessor.transform(X_test)
-        return X_train, y_train, X_test, y_test
 
     def _calculate_similarity(self, comp, seed_comps):
         """
@@ -150,85 +103,88 @@ class GenericMultiAgent(HypothesisAgent):
         return l2_norm
 
     def _query_hypotheses(self, candidate_data, seed_data):
-        exp_candidates = candidate_data.loc[candidate_data.expt_data == 1]
-        theor_candidates = candidate_data.loc[candidate_data.theory_data == 1]
-        seed_data_fea = self._get_features_from_df(seed_data)
-        exp_cands_fea = self._get_features_from_df(exp_candidates)
+        """
+        Query hypotheses given candidate and seed data via exploitation.
+        """
+        # separate the candidate space into high and low fidelity candidates
+        high_fidelity_candidates = candidate_data.loc[candidate_data[self.fidelities[1]] == 1]
+        low_fidelity_candidates = candidate_data.loc[candidate_data[self.fidelities[0]] == 1]
 
-        # set up an empty df for queries
-        selected_hypotheses = pd.DataFrame(columns=candidate_data.columns)
-        
-        # if there are no experimental data left in the candidate space, end the campaign
-        if len(exp_candidates) == 0:
+        # edge case: if there are no high fidelity candidate left, end the campaign
+        if len(high_fidelity_candidates) == 0:
             return None
-         
-        # if there are only experimental data left in the candidate space 
-        # use the entire iteration budget on experimental queries
-        elif (len(exp_candidates) != 0) & (len(theor_candidates) == 0):
-            for idx, exp in exp_candidates.iterrows(): 
-                if self.query_criteria == 'number':
-                    total_cost = len(selected_hypotheses)
-                elif self.query_criteria == 'cost_ratio':
-                    total_cost = np.sum(selected_hypotheses[self.query_criteria])
 
-                if total_cost < self.total_budget:
-                    selected_hypotheses = selected_hypotheses.append(exp)
+        # egde case: if there are only high fidelity candidate in the search space
+        # use the entire iteration budget on high fidelity queries
+        elif (len(high_fidelity_candidates) != 0) & (len(low_fidelity_candidates) == 0):
+            selected_hypotheses = high_fidelity_candidates.head(self.total_budget)
 
-        # query both experimental and theory hypotheses
+        ## query both high and low fidelity data in-tandem
         else:
-            # first query experimental candidates that have support 
-            # from the seed data (i.e. similar compostion). 
-            exp_budget = self.total_budget * self.expt_query_frac
-            l2norm_thres = self.l2norm_thres
-            for idx, cand_fea in exp_cands_fea.iterrows(): 
-                if self.query_criteria == 'number':
-                    expt_cost = len(selected_hypotheses)
-                elif self.query_criteria == 'cost_ratio':
-                    expt_cost = np.sum(selected_hypotheses[self.query_criteria])
-                
-                if expt_cost < exp_budget:
-                    normdiff_lst = self._calculate_similarity(cand_fea, seed_data_fea)
-                    mask = (normdiff_lst <= l2norm_thres)
-                    if len(normdiff_lst[mask]) >= 1:
-                        selected_hypotheses = selected_hypotheses.append(exp_candidates.loc[idx])
+            # set up an empty df for queries
+            selected_hypotheses = pd.DataFrame(columns=candidate_data.columns)
 
-            # for remaining of the budget, select DFT hypotheses that supports 
-            # experimental data that predicted to be ideal. 
-            remained_exp_cands_fea = exp_cands_fea.drop(selected_hypotheses.index)
-            theor_candidates_copy = theor_candidates.copy()
-            for idx, cand_fea in remained_exp_cands_fea.iterrows():
-                if self.query_criteria == 'number':
-                    total_cost = len(selected_hypotheses)
-                elif self.query_criteria == 'cost_ratio':
-                    total_cost = np.sum(selected_hypotheses[self.query_criteria])
+            # first query high fidelity candidates that have support
+            # from the seed data (i.e. similar compostion). 
+            highFi_budget = self.total_budget * self.highFi_query_frac
+            seed_data_fea = _get_features_from_df(seed_data, self.features)
+            highFi_cands_fea = _get_features_from_df(high_fidelity_candidates, self.features)
+
+            for idx, cand_fea in exp_cands_fea.iterrows(): 
+                highFi_cost = len(selected_hypotheses)
+                
+                if highFi_cost < highFi_budget:
+                    normdiff_lst = self._calculate_similarity(highFi_cands_fea, seed_data_fea)
+                    mask = (normdiff_lst <= self.similarity_thres)
+                    if len(normdiff_lst[mask]) >= 1:
+                        selected_hypotheses = selected_hypotheses.append(high_fidelity_candidates.loc[idx])
+
+            # for each of the remaining ranked high fidelity candidates,  select some low fidelity
+            # candidates with similar composition as hypotheses until the total budget fulfills.
+            remained_highFi_cands_fea = highFi_cands_fea.drop(selected_hypotheses.index)
+            lowFi_candidates_copy = low_fidelity_candidates.copy()
+            for idx, cand_fea in remained_highFi_cands_fea.iterrows():
+                total_cost = len(selected_hypotheses)
                     
-                if (total_cost < self.total_budget) & (len(theor_candidates_copy) !=0):
-                    theor_cands_fea = self._get_features_from_df(theor_candidates_copy)
-                    theor_candidates_copy['normdiff'] = self._calculate_similarity(cand_fea, theor_cands_fea) 
-                    theor_candidates_copy = theor_candidates_copy.sort_values('normdiff')
-                    selected_hypotheses = selected_hypotheses.append(theor_candidates_copy.head(self.theor_per_expt))
-                    theor_candidates_copy = theor_candidates_copy.drop(theor_candidates_copy.head(self.theor_per_expt).index)
+                if (total_cost < self.total_budget) & (len(lowFi_candidates_copy) !=0):
+                    lowFi_cands_fea = _get_features_from_df(lowFi_candidates_copy, self.features)
+                    lowFi_candidates_copy['normdiff'] = self._calculate_similarity(cand_fea, lowFi_cands_fea)
+                    lowFi_candidates_copy = lowFi_candidates_copy.sort_values('normdiff')
+                    selected_hypotheses = selected_hypotheses.append(lowFi_candidates_copy.head(self.lowFi_per_highFi))
+                    lowFi_candidates_copy = lowFi_candidates_copy.drop(theor_candidates_copy.head(self.lowFi_per_highFi).index)
         return selected_hypotheses
 
     def get_hypotheses(self, candidate_data, seed_data):
-        candidate_data_copy = candidate_data.copy()
-        X_train, y_train, X_test, y_test = self._process_data(candidate_data_copy, seed_data)
+        features_columns = self.features + list(self.fidelities)
+        X_train, y_train, X_test, y_test = _process_data(candidate_data, seed_data, features_columns, self.target_prop, preprocessor=self.preprocessor)
         self.model.fit(X_train, y_train)
         y_pred = self.model.predict(X_test)
-        candidate_data_copy['dist_to_ideal'] = np.abs(self.target_prop_val - y_pred)
-        if self.minimize:
-            candidate_data_copy = candidate_data_copy.sort_values(by=['dist_to_ideal'])
-        else:
-            candidate_data_copy = candidate_data_copy.sort_values(by=['dist_to_ideal'], ascending=False)
+
+        # Make a copy of the candidate data so the original one
+        # does not get modified during hypotheses generation
+        candidate_data_copy = candidate_data.copy()
+        candidate_data_copy['distance_to_ideal'] = np.abs(self.target_prop_val - y_pred)
+
+        if self.ranking_method == 'minimize':
+            candidate_data_copy = candidate_data_copy.sort_values(by=['distance_to_ideal'])
+        elif self.ranking_method == 'ascending':
+            candidate_data_copy = candidate_data_copy.sort_values(by=y_pred, ascending=True)
+        elif self.ranking_method == 'descending':
+            candidate_data_copy = candidate_data_copy.sort_values(by=y_pred, ascending=False)
+
         hypotheses = self._query_hypotheses(candidate_data_copy, seed_data)
         return hypotheses
 
 
 class GPMultiAgent(HypothesisAgent):
     """
-    Similar to Generic_MultiAgent, but the ML model is Gaussian Process regressor
-    from GPy). This agent accounts for uncertainty, and use the lower confidence bound approach 
-    to generate hypotheses.
+    A Gaussian process lower confidence bound derived multi-fidelity agent.
+    This agent operates under a total acquisition budget. It acquires
+    candidates factoring in GPR predicted uncertainties in the LCB setting
+    and hallucination of information gain from DFT acquisitions analogous
+    to work of Desautels et al. in batch mode LCB.  The agent aims for
+    prioritizing exploitation primarily with high-fidelity experimental measurements,
+    offloading exploratory (higher risk) acquisitions first to lower-fidelity computations.
     """
     def __init__(self, candidate_data=None, seed_data=None, chemsys_col='reduced_formula', features=None, 
                  fidelities=('theory_data', 'expt_data'), target_prop=None, target_prop_val=1.8, 
@@ -274,42 +230,6 @@ class GPMultiAgent(HypothesisAgent):
                                      be an amount indicate costs, if query_criteria is 'number', this should be a 
                                      a total number of queries.
             """
-    def _get_features_from_df(self, df, add_fea=[]):
-        """
-        Helper function to get feature columns of a dataframe.
-    
-        Args:
-            df              A pd.DataFrame where the features are extracted.
-            add_fea(list)   Name of the additional features (str) used in ML.
-    
-        Returns:
-            feature_df      A pd.DataFrame that only contains the features used in ML.
-                                by default, this will be compositional features.
-        """
-        if self.features is None:
-            features = [column for column in df if column.startswith("MagpieData")]
-        else:
-            features = list(self.features)
-            
-        all_features = features + add_fea
-        feature_df = df[all_features]
-        return feature_df
-
-    def _process_data(self, candidate_data, seed_data):
-        """
-        Helper function that process data for ML model and returns
-        np.ndarray of training features, training labels,
-        test features and test labels. Note, Y.ndim == 2
-        """
-        X_train = self._get_features_from_df(seed_data, add_fea=list(self.fidelities)).values
-        y_train = np.array(seed_data[[self.target_prop]])
-        X_test = self._get_features_from_df(candidate_data, add_fea=list(self.fidelities)).values
-        y_test = np.array(candidate_data[[self.target_prop]])
-      
-        if self.preprocessor:
-            X_train = self.preprocessor.fit_transform(X_train)
-            X_test = self.preprocessor.transform(X_test)
-        return X_train, y_train, X_test, y_test
         
     def _halluciate_lower_fidelity(self, seed_data, candidate_data, low_fidelity_data):
         # make copy of seed and candidate data, so we don't mess with the original one
@@ -333,7 +253,8 @@ class GPMultiAgent(HypothesisAgent):
 
     def _train_and_predict(self, candidate_data, seed_data):
         candidate_data_copy = candidate_data.copy()
-        X_train, y_train, X_test, y_test = self._process_data(candidate_data_copy, seed_data)
+        features_columns = self.features + list(self.fidelities)
+        X_train, y_train, X_test, y_test = _process_data(candidate_data, seed_data, features_columns, self.target_prop, preprocessor=self.preprocessor)
         gp = GPy.models.GPRegression(X_train, y_train)
         gp.optimize('bfgs', max_iters=200)
         y_pred, var = gp.predict(X_test)
