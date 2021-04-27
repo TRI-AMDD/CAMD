@@ -28,7 +28,7 @@ fresh conda environment for the install (e. g. `conda create -n MY_ENV_NAME`).
 ### Linux
 
 Install numpy via pip first, since the build depends on this and numpy has some difficulty recognizing
-its own install.  Then install requirements and use setup.py.
+its own install.  Then install requirements and use setup.py. Make sure pip used is your conda's pip. 
 
 ```
 pip install numpy
