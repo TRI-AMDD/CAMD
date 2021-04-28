@@ -756,7 +756,7 @@ class MultiAnalyzer(AnalyzerBase):
     The multi-fidelity analyzer.
     """
     def __init__(self, target_prop, prop_range, total_expt_queried=0,
-                 total_expt_discovery=0, analyze_cost=True, total_cost=0.0):
+                 total_expt_discovery=0, analyze_cost=False, total_cost=0.0):
         """
         Args:
             target_prop (str)        The name of the target property, e.g. "bandgap".
@@ -764,7 +764,7 @@ class MultiAnalyzer(AnalyzerBase):
                                      ideal.
             total_expt_queried (int) The total experimental queries after nth iteration. 
             tot_expt_discovery (int) The total experimental discovery after nth iteration. 
-            analyze_cost (bool)      If the input has cost factor, also analyze that information. 
+            analyze_cost (bool)      If the input has "cost" column, also analyze that information. 
             total_cost(float)        The total cost of the hypotheses after nth iteration.       
         """
         self.target_prop = target_prop
@@ -809,7 +809,7 @@ class MultiAnalyzer(AnalyzerBase):
         )
 
         if self.analyze_cost:
-            iter_cost = np.sum(new_experimental_results["cost_ratio"])
+            iter_cost = np.sum(new_experimental_results["cost"])
             self.total_cost += iter_cost
             summary["iteration_cost"] = [iter_cost]
             summary["total_cost"] = [self.total_cost]

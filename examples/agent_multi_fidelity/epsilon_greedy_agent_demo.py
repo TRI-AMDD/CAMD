@@ -21,26 +21,55 @@ candidate_data = df.loc[df.expt_data==1]
 
 ####################################################
 # Create the folder where the results go
-os.system('rm -rf Results/epsilon_greedy') # If the folder already exist, delete it first
-os.system('mkdir -p Results/epsilon_greedy')
+# os.system('rm -rf Results/{folder name}') # If a result folder already exist, delete it first
+os.system('mkdir -p Results/epsilon_greedy_2Fi')
 
 # Provide inputs for the campaign
 N_query = 20
-iterations = 5
+iterations = 10
 data_features = [column for column in df if column.startswith("MagpieData")]
 model = SVR(C=10)
 
 ####################################################
-# Run the campaign
+# Run campaigns
+####################################################
+# multi-fidelity campaugn using SVR
 agent = EpsilonGreedyMultiAgent(candidate_data=candidate_data, seed_data=seed_data,
                                features=data_features, target_prop='bandgap', target_prop_val=1.8,
                                 model=model, total_budget=N_query, highFi_query_frac=1)
 experiment = ATFSampler(dataframe=candidate_data)
 analyzer = MultiAnalyzer(target_prop='bandgap', prop_range=[1.6, 2.0])
 
-with cd('Results/epsilon_greedy'):
+with cd('Results/epsilon_greedy_2Fi'):
     campaign = Campaign(candidate_data=candidate_data, seed_data=seed_data,
-                        agent=agent, experiment=experiment,
-                        analyzer=analyzer)
+                        agent=agent, experiment=experiment, analyzer=analyzer)
     campaign.auto_loop(n_iterations=iterations, initialize=True)
+    
+
+################################################################
+# if you also want to compare the multi-fidelity agent to random 
+# and single fidelity agent. Uncomment the code below
+################################################################
+# # Random campaign
+# os.system('mkdir -p Results/random')
+# agent = RandomAgent(n_query = N_query)
+# experiment = ATFSampler(dataframe=candidate_data)
+# analyzer = MultiAnalyzer(target_prop='bandgap', prop_range=[1.6, 2.0])
+# with cd('Results/random'):
+#     campaign = Campaign(candidate_data=candidate_data, seed_data=seed_data, 
+#                         agent=agent, experiment=experiment, analyzer=analyzer)
+#     campaign.auto_loop(n_iterations=iterations, initialize=True)
+
+# # single fidelity campaign using SVR
+# os.system('mkdir -p Results/epsilon_greedy_1Fi')
+# agent = EpsilonGreedyMultiAgent(candidate_data=candidate_data, seed_data=None,
+#                                features=data_features, target_prop='bandgap', target_prop_val=1.8,
+#                                 model=model, total_budget=N_query, highFi_query_frac=1)
+# experiment = ATFSampler(dataframe=candidate_data)
+# analyzer = MultiAnalyzer(target_prop='bandgap', prop_range=[1.6, 2.0])
+
+# with cd('Results/epsilon_greedy_1Fi'):
+#     campaign = Campaign(candidate_data=candidate_data, seed_data=None, create_seed=N_query,
+#                         agent=agent, experiment=experiment, analyzer=analyzer)
+#     campaign.auto_loop(n_iterations=iterations, initialize=True)
 

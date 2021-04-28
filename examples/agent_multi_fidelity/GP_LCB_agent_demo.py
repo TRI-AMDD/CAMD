@@ -1,5 +1,7 @@
 """
 This script demonstrate how to run a multi-fidelity campaign using epsilon-greedy agent. The campaign was run using bounday condition acquisition (where all the DFT data is available). The example dataset used in this demo is the bandgap dataset in this folder. Please see "generate_example_featurized_dataset" notebook on how we generate/featurized the dataset.
+
+** Note: If you run this script with CPU only, it is rather slow as the campaign progresses (i.e. seed data increases for GPR model training)
 """
 
 import os
