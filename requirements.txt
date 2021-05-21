@@ -18,7 +18,7 @@ watchtower==1.0.6
 fsspec==0.9.0
 
 # Pinned dependencies to help pip
-tensorflow==2.4.1
+tensorflow==2.5.0
 sympy==1.8
 sqlparse==0.4.0
 spglib==1.16.1
