@@ -25,4 +25,4 @@ scipy==1.6.3
 pymatgen==2020.12.31
 
 # Temporary qmpy3 dependency
-qmpy-tri==2021.6.11
+qmpy-tri>=2021.6.11
