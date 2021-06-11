@@ -21,7 +21,7 @@ from qmpy.analysis.thermodynamics.phase import Phase, PhaseData
 from camd.analysis import PhaseSpaceAL, ELEMENTS
 from camd.agent.base import HypothesisAgent, QBC
 from camd.utils.data import filter_dataframe_by_composition
-from pymatgen import Composition
+from pymatgen.core.composition import Composition
 
 from sklearn.gaussian_process.kernels import RBF, ConstantKernel
 from sklearn.gaussian_process import GaussianProcessRegressor

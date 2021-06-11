@@ -17,7 +17,7 @@ from camd import tqdm
 from qmpy.analysis.thermodynamics.phase import Phase, PhaseData
 from qmpy.analysis.thermodynamics.space import PhaseSpace
 from multiprocessing import Pool, cpu_count
-from pymatgen import Composition
+from pymatgen.core.composition import Composition
 from pymatgen.entries.computed_entries import ComputedEntry
 from pymatgen.analysis.phase_diagram import (
     PhaseDiagram,
@@ -26,7 +26,7 @@ from pymatgen.analysis.phase_diagram import (
     triangular_coord,
 )
 from pymatgen.analysis.structure_matcher import StructureMatcher
-from pymatgen import Structure
+from pymatgen.core.structure import Structure
 from camd.utils.data import cache_matrio_data, \
     filter_dataframe_by_composition, ELEMENTS
 from camd import CAMD_CACHE

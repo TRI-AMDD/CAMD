@@ -12,7 +12,7 @@ from protosearch.build_bulk.oqmd_interface import OqmdInterface
 
 
 from pymatgen.io.ase import AseAtomsAdaptor
-from pymatgen import Composition, Element
+from pymatgen.core.composition import Composition, Element
 from matminer.featurizers.base import MultipleFeaturizer
 from matminer.featurizers.composition import (
     ElementProperty,

@@ -11,7 +11,8 @@ import botocore
 import requests
 import pandas as pd
 import numpy as np
-from pymatgen import Composition, Structure
+from pymatgen.core.composition import Composition
+from pymatgen.core.structure import Structure
 from monty.os import makedirs_p
 from camd import CAMD_CACHE, tqdm
 
@@ -460,3 +461,61 @@ def s3_key_exists(key, bucket):
     else:
         # The object does exist.
         return True
+
+
+def download_s3_file(key, bucket, output_filename):
+    """
+    Quick utility to download s3 file
+
+    Args:
+        key (str): key to download
+        bucket (str): bucket from which to download
+        output_filename (str): output filename for object
+
+    Returns:
+        (bool): whether the key was found in the bucket
+
+    """
+    s3_client = boto3.client('s3')
+    s3_client.download_file(bucket, key, output_filename)
+    return True
+
+
+def upload_s3_file(key, bucket, filename):
+    """
+    Quick utility to upload s3 file
+
+    Args:
+        key (str): key to download
+        bucket (str): bucket from which to download
+        filename (str): output filename for object
+
+    Returns:
+        (bool): whether the key was found in the bucket
+
+    """
+    s3_client = boto3.client('s3')
+    s3_client.upload_file(filename, bucket, key)
+    return True
+
+
+def get_common_prefixes(bucket, prefix):
+    """
+    Helper function to get common "subfolders" of folders
+    in S3
+
+    Args:
+        bucket (str): bucket name
+        prefix (str): prefix for which to list common prefixes
+
+    Returns:
+
+    """
+    if not prefix.endswith('/'):
+        prefix += "/"
+    client = boto3.client('s3')
+    paginator = client.get_paginator('list_objects')
+    result = paginator.paginate(Bucket=bucket, Delimiter='/', Prefix=prefix)
+    return [common_prefix['Prefix'].split('/')[-2]
+            for common_prefix in result.search("CommonPrefixes")
+            if common_prefix]
