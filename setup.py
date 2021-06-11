@@ -1,12 +1,22 @@
 from setuptools import setup, find_packages
-import warnings
+from setuptools.command.build_ext import build_ext as _build_ext
 
-try:
-    import numpy
-except ImportError:
-    # This is crude, but the best way I can figure to do this
-    warnings.warn("Setup requires pre-installation of numpy, run pip "
-                  "install numpy before setup.py")
+
+class build_ext(_build_ext):
+    """Extension builder that checks for numpy before install."""
+    def finalize_options(self):
+        """Override finalize_options."""
+        _build_ext.finalize_options(self)
+        # Prevent numpy from thinking it is still in its setup process:
+        import builtins
+        if hasattr(builtins, '__NUMPY_SETUP__'):
+            # pylint: disable=E1101
+            del builtins.__NUMPY_SETUP__
+        import importlib
+        import numpy
+        importlib.reload(numpy)
+        self.include_dirs.append(numpy.get_include())
+
 
 DESCRIPTION = "camd is software designed to support autonomous materials " \
               "research and sequential learning"
@@ -34,7 +44,7 @@ after the fact sampling of known data.
 setup(
     name='camd',
     url="https://github.com/TRI-AMDD/CAMD",
-    version="2021.6.11-post4",
+    version="2021.6.11-post5",
     packages=find_packages(),
     description=DESCRIPTION,
     long_description=LONG_DESCRIPTION,
@@ -45,7 +55,6 @@ setup(
     install_requires=["python-dateutil==2.8.1",
                       "networkx==2.5.1",
                       "matplotlib==3.4.1",
-                      "qmpy",  # This version is constrained by the source
                       "pandas==1.2.3",
                       "matminer==0.6.5",
                       "autologging",
