@@ -25,4 +25,4 @@ scipy==1.5.4
 pymatgen==2020.12.31
 
 # Temporary qmpy3 dependency
-git+git://github.com/JosephMontoya-TRI/qmpy_py3@master#egg=qmpy
+qmpy-tri==2021.6.11

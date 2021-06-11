@@ -34,7 +34,7 @@ after the fact sampling of known data.
 setup(
     name='camd',
     url="https://github.com/TRI-AMDD/CAMD",
-    version="2021.6.11",
+    version="2021.6.11-post3",
     packages=find_packages(),
     description=DESCRIPTION,
     long_description=LONG_DESCRIPTION,
@@ -55,7 +55,8 @@ setup(
                       "scikit-learn==0.24.1",
                       "taburu==2020.5.9",
                       "GPy==1.9.9",
-                      "watchtower==1.0.6"
+                      "watchtower==1.0.6",
+                      "qmpy-tri==2021.6.11"
                       ],
     extras_require={
         "proto_dft": ["protosearch==2020.5.10"],
@@ -64,9 +65,6 @@ setup(
                   "coveralls"
                   ]
     },
-    dependency_links=[
-        "https://github.com/JosephMontoya-TRI/qmpy_py3/tarball/master#egg=qmpy",
-    ],
     entry_points={
         "console_scripts": [
             "camd_worker = camd.campaigns.worker:main",
