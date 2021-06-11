@@ -1,10 +1,10 @@
 numpy==1.19.2
-Django==3.1.7
-gpflow==2.1.4
+Django==3.1.8
+gpflow==2.1.5
 python-dateutil==2.8.1
 networkx==2.5.1
 matplotlib==3.4.1
-pandas==1.2.3
+pandas==1.2.4
 matminer==0.6.5
 autologging
 awscli==1.19.44
@@ -17,11 +17,11 @@ GPy==1.9.9
 watchtower==1.0.6
 
 # Pinned dependencies to help pip
-tensorflow==2.4.0
-sympy==1.7.1
+tensorflow==2.5.0
+sympy==1.8
 sqlparse==0.4.0
-spglib==1.16.0
-scipy==1.5.4
+spglib==1.16.1
+scipy==1.6.3
 pymatgen==2020.12.31
 
 # Temporary qmpy3 dependency

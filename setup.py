@@ -1,21 +1,4 @@
 from setuptools import setup, find_packages
-from setuptools.command.build_ext import build_ext as _build_ext
-
-
-class build_ext(_build_ext):
-    """Extension builder that checks for numpy before install."""
-    def finalize_options(self):
-        """Override finalize_options."""
-        _build_ext.finalize_options(self)
-        # Prevent numpy from thinking it is still in its setup process:
-        import builtins
-        if hasattr(builtins, '__NUMPY_SETUP__'):
-            # pylint: disable=E1101
-            del builtins.__NUMPY_SETUP__
-        import importlib
-        import numpy
-        importlib.reload(numpy)
-        self.include_dirs.append(numpy.get_include())
 
 
 DESCRIPTION = "camd is software designed to support autonomous materials " \
@@ -50,12 +33,12 @@ setup(
     long_description=LONG_DESCRIPTION,
     long_description_content_type='text/markdown',
     setup_requires=["numpy==1.19.2",
-                    "gpflow==2.1.4"
+                    "gpflow==2.1.5"
                     ],
     install_requires=["python-dateutil==2.8.1",
                       "networkx==2.5.1",
                       "matplotlib==3.4.1",
-                      "pandas==1.2.3",
+                      "pandas==1.2.4",
                       "matminer==0.6.5",
                       "autologging",
                       "awscli==1.19.44",
