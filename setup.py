@@ -37,7 +37,7 @@ setup(
                     ],
     install_requires=["python-dateutil==2.8.1",
                       "networkx==2.5.1",
-                      "matplotlib==3.4.1",
+                      "matplotlib==3.4.2",
                       "pandas==1.2.4",
                       "matminer==0.6.5",
                       "autologging",
