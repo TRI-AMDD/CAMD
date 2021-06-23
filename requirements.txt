@@ -3,7 +3,7 @@ Django==3.1.8
 gpflow==2.1.5
 python-dateutil==2.8.1
 networkx==2.5.1
-matplotlib==3.4.1
+matplotlib==3.4.2
 pandas==1.2.4
 matminer==0.6.5
 autologging
@@ -22,7 +22,7 @@ sympy==1.8
 sqlparse==0.4.0
 spglib==1.16.1
 scipy==1.6.3
-pymatgen==2020.12.31
+pymatgen==2022.0.9
 
 # Temporary qmpy3 dependency
 qmpy-tri==2021.6.11
