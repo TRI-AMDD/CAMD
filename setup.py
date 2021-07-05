@@ -39,7 +39,7 @@ setup(
                       "networkx==2.5.1",
                       "matplotlib==3.4.2",
                       "pandas==1.2.4",
-                      "matminer==0.6.5",
+                      "matminer==0.7.3",
                       "autologging",
                       "awscli==1.19.95",
                       "boto3==1.17.93",
