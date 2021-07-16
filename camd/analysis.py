@@ -749,3 +749,200 @@ def update_run_w_structure(folder, hull_distance=0.2, parallel=True):
                         + " "
                         + str(sum([not i for i in s_a._icsd_filter]))
                     )
+
+
+class GenericATFAnalyzer:
+    """
+        Generic analyzer provide AL metrics analysis, including
+            first: decision efficiency metric, deALM,
+            second: any discover from top n percentile catalyst, anyALM,
+            third: fraction of top m percentile, allALM
+    """
+
+    def __init__(self, threshold=0, seed_size=1):
+        """
+            Notice the default of SL is to maximize a value, if the target value is 
+            overpotential, please remember to negate the target values
+            Args:
+                threshold (float):
+                    the threshold indicating a "good" candidate
+                seed_size (int):
+                    the size of seed data
+        """
+        self.threshold = threshold
+        self.seed_size = seed_size
+
+    def gather_deALM(self, exploration_df, record_list):
+        """
+            compute the decision efficiency AML
+            Args:
+                - exploration_space_df (pd.DataFrame):
+                    dataframe represent the whole exploration space
+                - record_list (list):
+                    list of pd.DataFrame, each pd.dataFrame is the seed_data_df loaded from 
+                    CAMD campaigin
+                    each dataframe with concatenated columns, each column are the target values
+                    selected by CAMD agent running campaign, length of the list should be
+                    seed_size + max_budget + 1
+            Returns:
+                - self.deALM (np.array):
+                    np.array with shape (num_of_iterations, max_budget), so in each row, campaign
+                    deALM are recorded, the number of column should match with max_budget+1
+        """
+        deALM = []
+        for record in record_list:
+            each_cycle_deALM = []
+            # make a copy of exploartion df to preserve the original data
+            work_df = exploration_df.copy()
+            # sort df using target values
+            work_df.sort_values(by=['target'], inplace=True)
+
+            # separate the decisions from seed data
+            target_df = record['target']
+            seed_df = pd.DataFrame(target_df[:self.seed_size])
+            decision_df = pd.DataFrame(target_df[self.seed_size:])
+            # take seed data away from work_df
+            work_df.drop(seed_df.index, inplace=True)
+
+            # go through each selected candidate, find the rank
+            for i in list(decision_df.index):
+                index_list = np.array(work_df.index)
+                identified_rank_frac = 2 * (np.where(index_list == i)[0][0] / work_df.shape[0]) - 1
+                each_cycle_deALM.append(identified_rank_frac)
+                # drop the candidate from work df once selected
+                work_df.drop(i, inplace=True)
+            # append each_cycle_deAML to deALM
+            deALM.append(each_cycle_deALM)
+        self.deALM = np.array(deALM)
+
+        return self.deALM
+
+    def gather_anyALM(self, exploration_df, record_list, percentile=0.01):
+        """
+            compute the any AML
+            Args:
+                - exploration_space_df (pd.DataFrame):
+                    dataframe represent the whole exploration space
+                - record_list (list):
+                    list of pd.DataFrame, each pd.dataFrame is the seed_data_df loaded from 
+                    CAMD campaigin
+                    each dataframe with concatenated columns, each column are the target values
+                    selected by CAMD agent running campaign, length of the list should be
+                    seed_size + max_budget + 1
+        """
+        anyALM = []
+        for record in record_list:
+            # make a copy of exploartion df to preserve the original data
+            work_df = exploration_df.copy()
+            # sort df using target values
+            work_df.sort_values(by=['target'], inplace=True)
+            target_values_list = work_df['target'].to_list()
+            threshold_target_value = target_values_list[round((1-percentile)*work_df.shape[0])]
+
+            # separate the decisions from seed data
+            target_df = record['target']
+            seed_df = pd.DataFrame(target_df[:self.seed_size])
+            decision_df = pd.DataFrame(target_df[self.seed_size:])
+            # take seed data away from work_df
+            work_df.drop(seed_df.index, inplace=True)
+
+            # go through each selected candidate, find the rank
+            each_cycle_anyALM = np.array([0] * decision_df.shape[0])
+            for i in range(decision_df.shape[0]):
+                # index_list = np.array(work_df.index)
+                # identified_rank = np.where(index_list == i)[0][0] / work_df.shape[0]
+                if decision_df['target'].to_list()[i] >= threshold_target_value:
+                    each_cycle_anyALM[i:] += 1
+                    break
+                # TODO: delete it
+            # append each_cycle_deAML to deALM
+            anyALM.append(each_cycle_anyALM)
+        self.anyALM = np.array(anyALM)
+        self.anyALM = (self.anyALM/self.anyALM.shape[0]).sum(axis=0)
+
+        return self.anyALM
+
+
+    def gather_allALM(self, exploration_df, record_list, percentile=0.1):
+        """
+            compute the all AML
+            Args:
+                - exploration_space_df (pd.DataFrame):
+                    dataframe represent the whole exploration space
+                - record_list (list):
+                    list of pd.DataFrame, each pd.dataFrame is the seed_data_df loaded from 
+                    CAMD campaigin
+                    each dataframe with concatenated columns, each column are the target values
+                    selected by CAMD agent running campaign, length of the list should be
+                    seed_size + max_budget + 1
+        """
+
+        allALM = []
+        for record in record_list:
+            # make a copy of exploartion df to preserve the original data
+            work_df = exploration_df.copy()
+            # sort df using target values
+            work_df.sort_values(by=['target'], inplace=True)
+            target_values_list = work_df['target'].to_list()
+            threshold_target_value = target_values_list[round((1-percentile)*work_df.shape[0])]
+
+            # separate the decisions from seed data
+            target_df = record['target']
+            seed_df = pd.DataFrame(target_df[:self.seed_size])
+            decision_df = pd.DataFrame(target_df[self.seed_size:])
+            # take seed data away from work_df
+            work_df.drop(seed_df.index, inplace=True)
+
+            # go through each selected candidate, find the rank
+            count = 0
+            each_cycle_allALM = []
+            for i in range(decision_df.shape[0]):
+                if decision_df['target'].to_list()[i] >= threshold_target_value:
+                    count += 1
+                each_cycle_allALM.append(count / (work_df.shape[0]*(1-percentile)))
+                # TODO: drop it from work_df or not?
+            # append each_cycle_deAML to deALM
+            allALM.append(each_cycle_allALM)
+        self.allALM = np.array(allALM)
+
+        return self.allALM
+
+    def gather_simALM(self, record_list):
+        """
+            compute the similarity AML, the similarity is defined as averaged normalized distance
+            between newly acquired sample with previous selected samples
+            Args:
+                - exploration_space_df (pd.DataFrame):
+                    dataframe represent the whole exploration space
+                - record_list (list):
+                    list of pd.DataFrame, each pd.dataFrame is the seed_data_df loaded from 
+                    CAMD campaigin
+                    each dataframe with concatenated columns, each column are the target values
+                    selected by CAMD agent running campaign, length of the list should be
+                    seed_size + max_budget + 1
+        """
+
+        simALM = []
+        for record in record_list:
+            # separate the decisions from seed data
+            seed_df = pd.DataFrame(record[:self.seed_size])
+            decision_df = pd.DataFrame(record[self.seed_size:])
+            # drop the target values so that only features are left
+            seed_df.drop('target', inplace=True, axis=1)
+            decision_df.drop('target', inplace=True, axis=1)
+
+            decision_df.reset_index(inplace=True,drop=True)
+
+            # go through each selected candidate
+            each_cycle_simALM = []
+            for i in range(decision_df.shape[0]):
+                decision_fecture_vector = np.array(decision_df.loc[i].tolist())
+                seed_feature_vector = np.array(seed_df.values.tolist())
+                similarity = np.linalg.norm(seed_feature_vector-decision_fecture_vector) / seed_df.shape[0]
+                each_cycle_simALM.append(similarity)
+                seed_df = pd.concat([seed_df, decision_df[i:(i+1)]], axis=0)
+            # append each_cycle_deAML to deALM
+            simALM.append(each_cycle_simALM)
+        self.simALM = np.array(simALM)
+
+        return self.simALM
