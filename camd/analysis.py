@@ -862,7 +862,6 @@ class GenericATFAnalyzer:
 
         return self.anyALM
 
-
     def gather_allALM(self, exploration_df, record_list, percentile=0.1):
         """
             compute the all AML
@@ -876,7 +875,6 @@ class GenericATFAnalyzer:
                     selected by CAMD agent running campaign, length of the list should be
                     seed_size + max_budget + 1
         """
-
         allALM = []
         for record in record_list:
             # make a copy of exploartion df to preserve the original data
@@ -885,14 +883,12 @@ class GenericATFAnalyzer:
             work_df.sort_values(by=['target'], inplace=True)
             target_values_list = work_df['target'].to_list()
             threshold_target_value = target_values_list[round((1-percentile)*work_df.shape[0])]
-
             # separate the decisions from seed data
             target_df = record['target']
             seed_df = pd.DataFrame(target_df[:self.seed_size])
             decision_df = pd.DataFrame(target_df[self.seed_size:])
             # take seed data away from work_df
             work_df.drop(seed_df.index, inplace=True)
-
             # go through each selected candidate, find the rank
             count = 0
             each_cycle_allALM = []
@@ -931,7 +927,7 @@ class GenericATFAnalyzer:
             seed_df.drop('target', inplace=True, axis=1)
             decision_df.drop('target', inplace=True, axis=1)
 
-            decision_df.reset_index(inplace=True,drop=True)
+            decision_df.reset_index(inplace=True, drop=True)
 
             # go through each selected candidate
             each_cycle_simALM = []
