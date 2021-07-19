@@ -858,7 +858,7 @@ class GenericATFAnalyzer:
             # append each_cycle_deAML to deALM
             anyALM.append(each_cycle_anyALM)
         self.anyALM = np.array(anyALM)
-        self.anyALM = (self.anyALM/self.anyALM.shape[0]).sum(axis=0)
+        # self.anyALM = (self.anyALM/self.anyALM.shape[0]).sum(axis=0)
 
         return self.anyALM
 
