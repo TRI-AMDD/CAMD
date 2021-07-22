@@ -50,7 +50,7 @@ def run_analysis_alm(exploration_space_df, record_list):
                 selected by CAMD agent running campaign, length of the list should be
                     seed_size + max_budget + 1
     """
-    almAnalyzer = GenericATFAnalyzer(threshold=threshold, seed_size=num_seed)
+    almAnalyzer = GenericATFAnalyzer(seed_size=num_seed)
     deALM_val = almAnalyzer.gather_deALM(exploration_space_df, record_list)
     anyALM_val = almAnalyzer.gather_anyALM(exploration_space_df, record_list, percentile=0.01)
     allALM_val = almAnalyzer.gather_allALM(exploration_space_df, record_list, percentile=0.1)
@@ -70,11 +70,13 @@ if __name__ == "__main__":
     # gather all target values and put into one df
     deALM_random, anyALM_random, allALM_random, simALM_random = \
         run_analysis_alm(exploration_space_df, record_list_random)
+    print(deALM_random.shape, anyALM_random.shape, allALM_random.shape, simALM_random.shape)
     # run analysis of sequential learning performance for ucb scenario
     record_list_ucb = gather_seed_data_record(cal_path, scenario="ucb-s1-1", num_cycle=5)
     # gather all target values and put into one df
     # record_campaign_target_df_ucb = pd.concat([x['target'].reset_index(drop=True) for x in record_list_ucb], axis=1)
     deALM_ucb, anyALM_ucb, allALM_ucb, simALM_ucb = run_analysis_alm(exploration_space_df, record_list_ucb)
+    print(deALM_ucb.shape, anyALM_ucb.shape, allALM_ucb.shape, simALM_ucb.shape)
 
     # plot the deALM comparison
     # deALM

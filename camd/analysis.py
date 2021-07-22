@@ -759,17 +759,14 @@ class GenericATFAnalyzer:
             third: fraction of top m percentile, allALM
     """
 
-    def __init__(self, threshold=0, seed_size=1):
+    def __init__(self, seed_size=1):
         """
             Notice the default of SL is to maximize a value, if the target value is 
             overpotential, please remember to negate the target values
             Args:
-                threshold (float):
-                    the threshold indicating a "good" candidate
                 seed_size (int):
                     the size of seed data
         """
-        self.threshold = threshold
         self.seed_size = seed_size
 
     def gather_deALM(self, exploration_df, record_list):
@@ -895,7 +892,7 @@ class GenericATFAnalyzer:
             for i in range(decision_df.shape[0]):
                 if decision_df['target'].to_list()[i] >= threshold_target_value:
                     count += 1
-                each_cycle_allALM.append(count / (work_df.shape[0]*(1-percentile)))
+                each_cycle_allALM.append(count / (work_df.shape[0]*percentile))
                 # TODO: drop it from work_df or not?
             # append each_cycle_deAML to deALM
             allALM.append(each_cycle_allALM)
