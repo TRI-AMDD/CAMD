@@ -73,10 +73,10 @@ class GenericATFAnalyzerTest(unittest.TestCase):
         seed_size = 10
         exploration_df = pd.read_csv(os.path.join(CAMD_TEST_FILES, "test_df_ATF.csv"))
         record = pickle.load(open(os.path.join(CAMD_TEST_FILES, "seed_data_ATF.pickle"), "rb"))
-        analyzer = GenericATFAnalyzer()
+        analyzer = GenericATFAnalyzer(exploration_df, percentile=0.01)
         seed_data = pd.DataFrame(record[:seed_size])
         new_experimental_results = pd.DataFrame(record[seed_size:])
-        summary, _ = analyzer.analyze(new_experimental_results, seed_data, exploration_df, percentile=0.01)
+        summary, _ = analyzer.analyze(new_experimental_results, seed_data)
 
         self.assertEqual(summary['deALM'].to_list()[0].shape[0], record.shape[0]-seed_size)
         self.assertEqual(summary['anyALM'].to_list()[0].shape[0], record.shape[0]-seed_size)

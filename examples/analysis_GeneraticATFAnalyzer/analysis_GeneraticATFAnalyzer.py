@@ -66,9 +66,8 @@ def run_analysis_alm(exploration_space_df, record_list):
     for record in record_list:
         seed_data = pd.DataFrame(record[:num_seed])
         new_experimental_results = pd.DataFrame(record[num_seed:(num_seed+max_budget)])
-        analyzer = GenericATFAnalyzer()
-        summary, _ = analyzer.analyze(new_experimental_results, seed_data, 
-                                      exploration_space_df, percentile=percentile)
+        analyzer = GenericATFAnalyzer(exploration_space_df, percentile)
+        summary, _ = analyzer.analyze(new_experimental_results, seed_data)
         deALM.append(summary['deALM'].to_list()[0])
         anyALM.append(summary['anyALM'].to_list()[0])
         allALM.append(summary['allALM'].to_list()[0])

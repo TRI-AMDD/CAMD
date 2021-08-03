@@ -763,17 +763,22 @@ class GenericATFAnalyzer(AnalyzerBase):
     should be passed in
     """
 
-    def __init__(self):
+    def __init__(self, exploration_space_df, percentile=0.01):
         """
         Notice the default of SL is to maximize a value, if the target value is 
         overpotential, please remember to negate the target values
 
         Args:
+            exploration_space_df (pd.DataFrame):
+                dataframe represent the whole exploration space
+            percentile (float):
+                top percentile of candidates considered as "good"
         """
+        self.exploration_space_df = exploration_space_df
+        self.percentile = percentile
         super(GenericATFAnalyzer, self).__init__()
 
-    def analyze(self, new_experimental_results, seed_data, 
-                exploration_space_df, percentile=0.01):
+    def analyze(self, new_experimental_results, seed_data):
         """
         run analysis one by one
         Args:
@@ -781,10 +786,6 @@ class GenericATFAnalyzer(AnalyzerBase):
                 selection of candidiates in the right order
             seed_data (pd.DataFrame):
                 seed data used before first-round CAMD selection starts
-            exploration_space_df (pd.DataFrame):
-                dataframe represent the whole exploration space
-            percentile (float):
-                top percentile of candidates considered as "good"
         Returns:
             deALM_val (np.array):
                 results from GenericATFAnalyzer.gather_deALM()
@@ -797,13 +798,13 @@ class GenericATFAnalyzer(AnalyzerBase):
         """
         summary = pd.DataFrame()
         deALM_val = self.gather_deALM(new_experimental_results.copy(), 
-                                      seed_data.copy(), exploration_space_df.copy())
+                                      seed_data.copy(), self.exploration_space_df.copy())
         summary['deALM'] = [deALM_val]
         anyALM_val = self.gather_anyALM(new_experimental_results.copy(), seed_data.copy(), 
-                                        exploration_space_df.copy(), percentile=percentile)
+                                        self.exploration_space_df.copy(), percentile=self.percentile)
         summary['anyALM'] = [anyALM_val]
         allALM_val = self.gather_allALM(new_experimental_results.copy(), seed_data.copy(), 
-                                        exploration_space_df.copy(), percentile=percentile)
+                                        self.exploration_space_df.copy(), percentile=self.percentile)
         summary['allALM'] = [allALM_val]
         simALM_val = self.gather_simALM(new_experimental_results.copy(), seed_data.copy())
         summary['simALM'] = [simALM_val]
