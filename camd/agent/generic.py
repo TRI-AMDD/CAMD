@@ -80,7 +80,7 @@ class GenericGPUCB(HypothesisAgent):
         t_pred, unc = self.pipeline.predict(self.candidate_data, return_std=True)
         t_pred += unc * self.alpha
         selected = np.argsort(-1.0 * t_pred)[: self.n_query]
-        return candidate_data.loc[selected]
+        return candidate_data.iloc[selected]
 
 
 class GPBatchUCB(HypothesisAgent):
