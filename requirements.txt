@@ -22,7 +22,7 @@ sympy==1.8
 sqlparse==0.4.0
 spglib==1.16.1
 scipy==1.6.3
-pymatgen==2020.12.31
+pymatgen==2022.0.12
 
 # Temporary qmpy3 dependency
 qmpy-tri==2021.6.11
