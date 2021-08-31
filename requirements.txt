@@ -8,7 +8,7 @@ pandas==1.2.4
 matminer==0.6.5
 autologging
 awscli==1.19.95
-boto3==1.17.93
+boto3==1.18.32
 docopt==0.6.2
 scikit-learn==0.24.1
 taburu==2020.5.9
@@ -17,7 +17,7 @@ GPy==1.9.9
 watchtower==1.0.6
 
 # Pinned dependencies to help pip
-tensorflow==2.5.0
+tensorflow==2.6.0
 sympy==1.8
 sqlparse==0.4.0
 spglib==1.16.1
