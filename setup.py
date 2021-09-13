@@ -42,7 +42,7 @@ setup(
                       "matminer==0.6.5",
                       "autologging",
                       "awscli==1.19.95",
-                      "boto3==1.17.93",
+                      "boto3==1.18.40",
                       "docopt==0.6.2",
                       "scikit-learn==0.24.1",
                       "taburu==2020.5.9",
