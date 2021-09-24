@@ -248,6 +248,11 @@ class GPBatchUCB(HypothesisAgent):
 
 
 class LinearAgent(HypothesisAgent):
+    """
+    Linear regression based agent that tries to maximize a target.
+    Best for simple checks and benchmarks.
+    """
+
     def __init__(
         self,
         candidate_data=None,
@@ -256,6 +261,7 @@ class LinearAgent(HypothesisAgent):
         fit_intercept: bool = True,
         positive: bool = False,
     ):
+
         """
         Args:
             candidate_data (pandas.DataFrame): data about the candidates to search over. Must have a "target" column,
@@ -273,7 +279,17 @@ class LinearAgent(HypothesisAgent):
         super(LinearAgent).__init__()
 
     def get_hypotheses(self, candidate_data, seed_data=None):
+        """
+        Methods for getting hypotheses using linear regression
 
+        Args:
+            candidate_data (pandas.DataFrame): candidate data
+            seed_data (pandas.DataFrame): seed data
+
+        Returns:
+            (pandas.DataFrame): selected hypotheses
+
+        """
         # Fit on known data
         self.candidate_data = candidate_data.drop(
             columns=["target"], axis=1, errors="ignore"
@@ -300,6 +316,6 @@ class LinearAgent(HypothesisAgent):
         self.pipeline = Pipeline(steps)
         self.pipeline.fit(X_seed, y_seed)
         output = self.pipeline.predict(self.candidate_data)
-        sorted_output = np.argsort(output)
+        sorted_output = np.argsort(output)[::-1]
         selected = sorted_output[: self.n_query]
         return candidate_data.iloc[selected]
