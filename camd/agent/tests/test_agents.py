@@ -24,4 +24,4 @@ class GenericAgentsTest(unittest.TestCase):
         agent = LinearAgent()
 
         predictions = agent.get_hypotheses(seed_data=df, candidate_data=candidate_df)
-        assert predictions["domain"][0] == -10
+        assert predictions["domain"][9] == 10
