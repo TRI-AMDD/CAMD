@@ -19,7 +19,7 @@ watchtower==1.0.6
 # Pinned dependencies to help pip
 tensorflow==2.6.0
 sympy==1.8
-sqlparse==0.4.0
+sqlparse==0.4.2
 spglib==1.16.1
 scipy==1.6.3
 pymatgen==2020.12.31
