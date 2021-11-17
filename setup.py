@@ -50,7 +50,10 @@ setup(
                       "qmpy-tri==2021.6.11"
                       ],
     extras_require={
-        "proto_dft": ["protosearch==2020.5.10"],
+        "proto_dft": [
+            "protosearch==2020.5.10",
+            "awscli"
+        ],
         "tests": ["pytest",
                   "pytest-cov",
                   "coveralls"
