@@ -16,10 +16,11 @@ ENV PATH="/opt/conda/envs/camd/bin:$PATH"
 
 COPY setup.py requirements.txt /home/camd/
 
-# Install package
+# Install package + awscli for Mc1
 RUN source /opt/conda/bin/activate camd && \
     pip install `grep numpy requirements.txt` && \
-    pip install -r requirements.txt
+    pip install -r requirements.txt && \
+    pip install awscli
 
 COPY camd /home/camd/camd
 RUN pip install -e .
