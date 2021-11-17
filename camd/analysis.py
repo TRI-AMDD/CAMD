@@ -930,6 +930,7 @@ class GenericATFAnalyzer(AnalyzerBase):
         simALM = np.array(simALM)
         return simALM
 
+
 class MultiAnalyzer(AnalyzerBase):
     """
     The multi-fidelity analyzer.
@@ -984,7 +985,7 @@ class MultiAnalyzer(AnalyzerBase):
                  "total_expt_discovery": [self.total_expt_discovery],
                  "total_regret": [self.total_expt_queried - self.total_expt_discovery], 
                  "success_rate": [success_rate]
-            }
+                }
         )
 
         if self.analyze_cost:
