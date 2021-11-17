@@ -367,16 +367,13 @@ class OqmdDFTonMC1(Experiment):
         AWS batch.  Updates current data with latest AWS batch
         response.
         """
+        batch_client = boto3.client("batch", region_name="us-east-1")
         for structure_id, calc in self.current_data.iterrows():
             if calc["status"] in ["SUCCEEDED", "FAILED"]:
                 continue
             path = calc["path"]
             print("Checking status of {}: {}".format(path, structure_id))
-            aws_cmd = "aws batch describe-jobs --jobs " "--region=us-east-1 {}".format(
-                calc["jobId"]
-            )
-            result = subprocess.check_output(shlex.split(aws_cmd))
-            result = json.loads(result)
+            result = batch_client.describe_jobs(jobs=[calc['jobId']])
             aws_status = result["jobs"][0]["status"]
             if aws_status == "SUCCEEDED":
                 os.chdir(path)
@@ -429,17 +426,14 @@ class OqmdDFTonMC1(Experiment):
         Returns:
             None
         """
+        batch_client = boto3.client("batch", region_name="us-east-1")
         running_jobs = self.current_data[self.current_data["status"] == "RUNNING"]
         lapsed_jobs = running_jobs[running_jobs["elapsed_time"] > self.timeout]
 
         # Kill AWS job
         for structure_id, row in lapsed_jobs.iterrows():
-            kill_cmd = (
-                "aws batch terminate-job --region=us-east-1 "
-                "--job-id {} --reason camd_timeout".format(row["jobId"])
-            )
-            kill_result = subprocess.check_output(shlex.split(kill_cmd))
-            print("{} job killed: ".format(kill_result))
+            result = batch_client.terminate_job(jobId=row["jobId"], reason="camd_timeout")
+            print("{} job killed: ".format(result))
             self.current_data.loc[structure_id, "status"] = "FAILED"
             self.current_data.loc[structure_id, "error"] = "timeout"
         self._update_job_status()
