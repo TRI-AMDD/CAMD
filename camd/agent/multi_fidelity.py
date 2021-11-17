@@ -106,7 +106,6 @@ class EpsilonGreedyMultiAgent(HypothesisAgent):
         self.lowFi_per_highFi = lowFi_per_highFi
         super(EpsilonGreedyMultiAgent).__init__()
 
-
     def _calculate_similarity(self, comp, seed_comps):
         """
         Helper function that calculates similarity between
@@ -247,7 +246,6 @@ class GPMultiAgent(HypothesisAgent):
         self.rank_thres = rank_thres
         self.unc_percentile = unc_percentile
         super(GPMultiAgent).__init__()
-
 
     def _halluciate_lower_fidelity(self, seed_data, candidate_data, low_fidelity_data):
         # make copy of seed and candidate data, so we don't mess with the original one
