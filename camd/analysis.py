@@ -965,6 +965,18 @@ class MultiAnalyzer(AnalyzerBase):
                       (df[self.target_prop] <= self.prop_range[1])]
 
     def analyze(self, new_experimental_results, seed_data):
+        """
+        Analyze results of multi-fidelity data
+
+        Args:
+            new_experimental_results (pd.DataFrame):
+            seed_data (pd.DataFrame):
+
+        Returns:
+            (pd.DataFrame): summary of last iteration
+            (pd.DataFrame): new seed data
+
+        """
         new_expt_hypotheses = new_experimental_results.loc[new_experimental_results['expt_data'] == 1]
         new_discoveries = self._filter_df_by_prop_range(new_expt_hypotheses)
 

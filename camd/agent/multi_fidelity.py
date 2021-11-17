@@ -1,4 +1,16 @@
-# Copyright Toyota Research Institute 2019
+# Copyright Toyota Research Institute 2021
+"""
+This module implements agents and helper functions designed
+support multi-fidelity discovery campaigns.
+
+See the following reference:
+
+Palizhati A, Aykol M, Suram S, Hummelshøj JS, Montoya JH. Multi-fidelity Sequential Learning for
+Accelerated Materials Discovery. ChemRxiv. Cambridge: Cambridge Open Engage; 2021; This content
+is a preprint and has not been peer-reviewed.
+"""
+
+
 import GPy
 import numpy as np
 import pandas as pd
@@ -52,6 +64,33 @@ class EpsilonGreedyMultiAgent(HypothesisAgent):
                  target_prop=None, target_prop_val=None, preprocessor=StandardScaler(), model=None,
                  ranking_method='minimize', total_budget=None, highFi_query_frac=None, similarity_thres=300.,
                  lowFi_per_highFi=1):
+        """
+        Args:
+            candidate_data (df)      Candidate search space for the campaign.
+            seed_data (df)           Seed (training) data for the campaign.
+            features (tuple of str)  Name of the feature columns used in machine learning model training.
+            fidelities (tuple)       Fidelity levels of the datasets. The strings in the tuple should be arranged
+                                     from low to high fidelity.
+            target_prop (str)        The property machine learning model is learning, given feature space.
+            target_prop_val (float)  The ideal value of the target property.
+            preprocessor             A preprocessor that preprocess the features. It can be None, a single
+                                     processor, or a pipeline. The default is sklearn StandardScaler.
+            model                    A sklearn supervised machine learning regressor.
+            ranking_method (str)     Ranking method of candidates based on ML predictions. Select one of the
+                                     following: "minimize", "ascending", or "descending". "minimize" will rank
+                                     candidates with ML candidates closest to the target property value. "ascending"
+                                     or "descening" will rank candidates with ascending/descening ML predictions, best
+                                     to use when there is no target propety value (i.e. smaller/larger the better).
+            total_budget (int)       The number of the hypotheses at a given iteration of the campaign.
+            highFi_query_frac        The fraction of the total budget used for high fidelity hypotheses queries.
+                                     The value should be <0 and <=1.
+            similarity_thres(float)  The threshold value for l2 norm similarity between a candidate composition and
+                                     compositions in the seed data. User will need to run some calculations
+                                     to determine the best threshold value.
+            lowFi_per_highFi (int)   The number of low fidelity candidate selected to support each
+                                     high fidelity candidates that predicted to be good, but the agent
+                                     does not want to generate that experimental hypotheses yet.
+        """
         self.candidate_data = candidate_data
         self.seed_data = seed_data
         self.features = features
@@ -66,33 +105,7 @@ class EpsilonGreedyMultiAgent(HypothesisAgent):
         self.similarity_thres = similarity_thres
         self.lowFi_per_highFi = lowFi_per_highFi
         super(EpsilonGreedyMultiAgent).__init__()
-        """
-        Args:
-            candidate_data (df)      Candidate search space for the campaign.
-            seed_data (df)           Seed (training) data for the campaign.
-            features (tuple of str)  Name of the feature columns used in machine learning model training.
-            fidelities (tuple)       Fidelity levels of the datasets. The strings in the tuple should be arranged
-                                     from low to high fidelity.
-            target_prop (str)        The property machine learning model is learning, given feature space.
-            target_prop_val (float)  The ideal value of the target property.
-            preprocessor             A preprocessor that preprocess the features. It can be None, a single
-                                     processor, or a pipeline. The default is sklearn StandardScaler.
-            model                    A sklearn supervised machine learning regressor.
-            ranking_method (str)     Ranking method of candidates based on ML predictions. Select one of the 
-                                     following: "minimize", "ascending", or "descending". "minimize" will rank 
-                                     candidates with ML candidates closest to the target property value. "ascending" 
-                                     or "descening" will rank candidates with ascending/descening ML predictions, best 
-                                     to use when there is no target propety value (i.e. smaller/larger the better).
-            total_budget (int)       The number of the hypotheses at a given iteration of the campaign.
-            highFi_query_frac        The fraction of the total budget used for high fidelity hypotheses queries.
-                                     The value should be <0 and <=1.
-            similarity_thres(float)  The threshold value for l2 norm similarity between a candidate composition and
-                                     compositions in the seed data. User will need to run some calculations
-                                     to determine the best threshold value.
-            lowFi_per_highFi (int)   The number of low fidelity candidate selected to support each
-                                     high fidelity candidates that predicted to be good, but the agent
-                                     does not want to generate that experimental hypotheses yet.
-        """
+
 
     def _calculate_similarity(self, comp, seed_comps):
         """
@@ -151,6 +164,17 @@ class EpsilonGreedyMultiAgent(HypothesisAgent):
         return selected_hypotheses
 
     def get_hypotheses(self, candidate_data, seed_data):
+        """
+        Gets hypotheses using agent.
+
+        Args:
+            candidate_data (pd.DataFrame): dataframe of candidates
+            seed_data (pd.DataFrame): dataframe of known data
+
+        Returns:
+            (pd.DataFrame): dataframe of selected candidates
+
+        """
         features_columns = self.features + list(self.fidelities)
         X_train, y_train, X_test, y_test = process_data(
             candidate_data, seed_data, features_columns, self.target_prop, preprocessor=self.preprocessor)
@@ -186,6 +210,29 @@ class GPMultiAgent(HypothesisAgent):
     def __init__(self, candidate_data=None, seed_data=None, chemsys_col='reduced_formula', features=None,
                  fidelities=('theory_data', 'expt_data'), target_prop=None, target_prop_val=1.8, total_budget=None,
                  preprocessor=StandardScaler(), gp_max_iter=200, alpha=1.0, rank_thres=10, unc_percentile=5):
+        """
+        Args:
+            candidate_data (df)      Candidate search space for the campaign.
+            seed_data (df)           Seed (training) data for the campaign.
+            chemsys_col (str)        The name of the composition column.
+            features (tuple of str)  Column name of the features used in machine learning.
+            fidelities (tuple)       Fidelity levels of the datasets. The strings in the tuple should be arranged
+                                     from low to high fidelity. The value of fidelity features should
+                                     be one-hot encoded.
+            target_prop (str)        The property machine learning model is predicting, given feature space.
+            target_prop_val (float)  The ideal value of the target property.
+            total_budget (int)       The budget for the hypotheses queried.
+            gp_max_iter (int)        Number of maximum iterations for GP optimization.
+            preprocessor             A preprocessor that preprocess the features. It can be None, a single
+                                     processor, or a pipeline. The default is StandardScaler().
+            alpha (float)            The mixing parameter for uncertainties. It controls the
+                                     trade-off between exploration and exploitation. Defaults to 1.0.
+            rank_thres (int)         A threshold help to decide if lower fidelity data is worth acquiring.
+            unc_percentile (int)     A number between 0 and 100, and used to calculate an uncertainty threshold
+                                     at that percentile value. The threshold is used to decide if the
+                                     agent is quering theory or experimental hypotheses.
+
+        """
         self.candidate_data = candidate_data
         self.seed_data = seed_data
         self.chemsys_col = chemsys_col
@@ -201,28 +248,6 @@ class GPMultiAgent(HypothesisAgent):
         self.unc_percentile = unc_percentile
         super(GPMultiAgent).__init__()
 
-        """
-        Args:
-            candidate_data (df)      Candidate search space for the campaign.
-            seed_data (df)           Seed (training) data for the campaign.
-            chemsys_col (str)        The name of the composition column.
-            features (tuple of str)  Column name of the features used in machine learning.
-            fidelities (tuple)       Fidelity levels of the datasets. The strings in the tuple should be arranged
-                                     from low to high fidelity. The value of fidelity features should 
-                                     be one-hot encoded.
-            target_prop (str)        The property machine learning model is predicting, given feature space.
-            target_prop_val (float)  The ideal value of the target property.
-            total_budget (int)       The budget for the hypotheses queried.
-            gp_max_iter (int)        Number of maximum iterations for GP optimization.
-            preprocessor             A preprocessor that preprocess the features. It can be None, a single
-                                     processor, or a pipeline. The default is StandardScaler().
-            alpha (float)            The mixing parameter for uncertainties. It controls the
-                                     trade-off between exploration and exploitation. Defaults to 1.0.
-            rank_thres (int)         A threshold help to decide if lower fidelity data is worth acquiring.
-            unc_percentile (int)     A number between 0 and 100, and used to calculate an uncertainty threshold
-                                     at that percentile value. The threshold is used to decide if the
-                                     agent is quering theory or experimental hypotheses.
-            """
 
     def _halluciate_lower_fidelity(self, seed_data, candidate_data, low_fidelity_data):
         # make copy of seed and candidate data, so we don't mess with the original one
@@ -298,6 +323,18 @@ class GPMultiAgent(HypothesisAgent):
         return selected_hypotheses
 
     def get_hypotheses(self, candidate_data, seed_data):
+        """
+        Selects candidate data for experiment using agent methods
+
+        Args:
+            candidate_data (pd.DataFrame): candidate data
+            seed_data (pd.DataFrame): known data on which to base the selection
+                of candidates
+
+        Returns:
+            (pd.DataFrame): selected candidates e.g. for experiment
+
+        """
         candidate_data = self._train_and_predict(candidate_data, seed_data)
         hypotheses = self._query_hypotheses(candidate_data, seed_data)
         return hypotheses
