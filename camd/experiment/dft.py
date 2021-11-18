@@ -25,8 +25,13 @@ from monty.tempfile import ScratchDir
 from pymatgen.io.vasp.outputs import Vasprun
 from pymatgen.core.composition import Composition
 from camd.experiment.base import Experiment
-from camd.utils.data import QMPY_REFERENCES, QMPY_REFERENCES_HUBBARD, \
-    get_chemsys, get_common_prefixes
+from camd.utils.data import (
+    QMPY_REFERENCES,
+    QMPY_REFERENCES_HUBBARD,
+    get_chemsys,
+    get_common_prefixes,
+    s3_key_exists,
+)
 
 
 class OqmdDFTonMC1(Experiment):
@@ -36,10 +41,18 @@ class OqmdDFTonMC1(Experiment):
     system.
     """
 
-    def __init__(self, poll_time=60, timeout=7200, current_data=None, job_status=None,
-                 cleanup_directories=True, container_version="oqmdvasp/3",
-                 batch_queue="oqmd_test_queue", use_cached=False,
-                 prefix_append=None):
+    def __init__(
+        self,
+        poll_time=60,
+        timeout=7200,
+        current_data=None,
+        job_status=None,
+        cleanup_directories=True,
+        container_version="oqmdvasp/3",
+        batch_queue="oqmd_test_queue",
+        use_cached=False,
+        prefix_append=None,
+    ):
         """
         Initializes an OqmdDFTonMC1 instance
 
@@ -72,7 +85,7 @@ class OqmdDFTonMC1(Experiment):
                 "variable to use camd MC1 interface"
             )
 
-        container, version = container_version.split('/')
+        container, version = container_version.split("/")
         parent_dir = os.path.join(
             tri_path,
             "model",
@@ -82,8 +95,10 @@ class OqmdDFTonMC1(Experiment):
             "camd",
         )
         if prefix_append is not None:
-            if '_' in prefix_append:
-                raise ValueError("Prefix cannot contain underscores for mc1 compatibility")
+            if "_" in prefix_append:
+                raise ValueError(
+                    "Prefix cannot contain underscores for mc1 compatibility"
+                )
             parent_dir = os.path.join(parent_dir, prefix_append)
         self.parent_dir = parent_dir
 
@@ -127,7 +142,8 @@ class OqmdDFTonMC1(Experiment):
 
     def get_results(self):
         """
-        Gets the results from the current run.
+        Gets the results from the current run by calling update_results and returning
+        current_data attribute.
 
         Returns:
             (DataFrame): dataframe corresponding to the
@@ -184,7 +200,7 @@ class OqmdDFTonMC1(Experiment):
         """
         for idx, row in self.current_data.iterrows():
             # Clean simulation directories
-            sim_path = row['path'].replace("model", "simulation")
+            sim_path = row["path"].replace("model", "simulation")
             if os.path.exists(sim_path):
                 shutil.rmtree(sim_path)
 
@@ -233,39 +249,47 @@ class OqmdDFTonMC1(Experiment):
             (pandas.DataFrame) dataframe with data filled out
 
         """
+
         tri_path = os.environ.get("TRI_PATH")
         tri_bucket = os.environ.get("TRI_BUCKET")
         s3_client = boto3.client("s3")
         # Scrub tri_path and replace model with simulation
         # to get s3 key
-        s3_parent = self.parent_dir.replace('model', 'simulation')
-        s3_parent = s3_parent.replace(tri_path + '/', "")
+        s3_parent = self.parent_dir.replace("model", "simulation")
+        s3_parent = s3_parent.replace(tri_path + "/", "")
         cached_experiments = pd.DataFrame()
         # Get all experiment folders
-        chemsyses = set([get_chemsys(s) for s in candidate_data['structure']])
+        chemsyses = set([get_chemsys(s) for s in candidate_data["structure"]])
         experiment_dirs = []
         for chemsys in chemsyses:
             chemsys_dirs = get_common_prefixes(
-                tri_bucket,
-                os.path.join(s3_parent, chemsys)
+                tri_bucket, os.path.join(s3_parent, chemsys)
             )
             experiment_dirs.extend(chemsys_dirs)
-        for structure_id, row in tqdm(candidate_data.iterrows(), total=len(candidate_data)):
-            if not structure_id.replace('-', '') in experiment_dirs:
+        for structure_id, row in tqdm(
+            candidate_data.iterrows(), total=len(candidate_data)
+        ):
+            if not structure_id.replace("-", "") in experiment_dirs:
                 continue
             calc_path = os.path.join(
-                s3_parent, get_chemsys(row['structure']),
-                structure_id.replace('-', ''), "_1/")
-            with ScratchDir('.'):
+                s3_parent,
+                get_chemsys(row["structure"]),
+                structure_id.replace("-", ""),
+                "_1/",
+            )
+            with ScratchDir("."):
                 # Figure out whether prior submission exists
                 cached_experiments = cached_experiments.append(row)
-                # TODO: figure out whether file exists in s3
-                # TODO: this is a little crude, could use boto3
                 try:
                     # import pdb; pdb.set_trace()
                     vr_path = os.path.join(calc_path, "static", "vasprun.xml")
-                    cmd = "aws s3 cp s3://{}/{} .".format(tri_bucket, vr_path)
-                    subprocess.call(shlex.split(cmd))
+
+                    # Check if vasprunl exists, then download and parse
+                    if not s3_key_exists(key=vr_path, bucket=tri_bucket):
+                        raise FileNotFoundError
+                    s3_client.meta.client.download_file(
+                        filename="vasprun.xml", bucket=tri_bucket, key=vr_path
+                    )
                     vr = Vasprun("vasprun.xml")
                     vr_dict = vr.as_dict()
                     delta_e = get_qmpy_formation_energy(
@@ -283,13 +307,12 @@ class OqmdDFTonMC1(Experiment):
                     error_doc = {}
                     try:
                         err_obj = s3_client.get_object(
-                            Bucket=tri_bucket, Key=os.path.join(calc_path, 'err'))
-                        errtxt = err_obj['Body'].read().decode('utf-8')
-                        error_doc.update(
-                            {"mc1_stderr": errtxt}
+                            Bucket=tri_bucket, Key=os.path.join(calc_path, "err")
                         )
+                        errtxt = err_obj["Body"].read().decode("utf-8")
+                        error_doc.update({"mc1_stderr": errtxt})
                     except ClientError:
-                        print('No error file for {}'.format(calc_path))
+                        print("No error file for {}".format(calc_path))
                     error_doc.update(
                         {
                             "camd_exception": "{}".format(e),
@@ -298,7 +321,9 @@ class OqmdDFTonMC1(Experiment):
                     )
                     # Dump error docs to avoid Pandas issues with dict values
                     data = {"status": "FAILED", "error": json.dumps(error_doc)}
-                update_dataframe_row(cached_experiments, structure_id, data, add_columns=True)
+                update_dataframe_row(
+                    cached_experiments, structure_id, data, add_columns=True
+                )
         return cached_experiments
 
     def submit_dft_calcs_to_mc1(self):
@@ -317,8 +342,11 @@ class OqmdDFTonMC1(Experiment):
         for structure_id, row in self.current_data.iterrows():
             # Replace structure id in path to avoid confusing mc1
             calc_path = os.path.join(
-                self.parent_dir, get_chemsys(row['structure']),
-                structure_id.replace('-', ''), "_1")
+                self.parent_dir,
+                get_chemsys(row["structure"]),
+                structure_id.replace("-", ""),
+                "_1",
+            )
             os.makedirs(calc_path, exist_ok=True)
             with cd(calc_path):
                 # Write input cif file and python model file
@@ -355,9 +383,11 @@ class OqmdDFTonMC1(Experiment):
                     )
                 except subprocess.CalledProcessError as e:
                     print(e.output)
-                    data = {"path": os.getcwd(),
-                            "status": "FAILED",
-                            "error": "failed submission {}".format(e.output)}
+                    data = {
+                        "path": os.getcwd(),
+                        "status": "FAILED",
+                        "error": "failed submission {}".format(e.output),
+                    }
 
                 update_dataframe_row(self.current_data, structure_id, data)
 
@@ -373,7 +403,7 @@ class OqmdDFTonMC1(Experiment):
                 continue
             path = calc["path"]
             print("Checking status of {}: {}".format(path, structure_id))
-            result = batch_client.describe_jobs(jobs=[calc['jobId']])
+            result = batch_client.describe_jobs(jobs=[calc["jobId"]])
             aws_status = result["jobs"][0]["status"]
             if aws_status == "SUCCEEDED":
                 os.chdir(path)
@@ -432,7 +462,9 @@ class OqmdDFTonMC1(Experiment):
 
         # Kill AWS job
         for structure_id, row in lapsed_jobs.iterrows():
-            result = batch_client.terminate_job(jobId=row["jobId"], reason="camd_timeout")
+            result = batch_client.terminate_job(
+                jobId=row["jobId"], reason="camd_timeout"
+            )
             print("{} job killed: ".format(result))
             self.current_data.loc[structure_id, "status"] = "FAILED"
             self.current_data.loc[structure_id, "error"] = "timeout"
@@ -502,8 +534,7 @@ def get_qmpy_formation_energy(total_e, formula, n_atoms):
     return energy
 
 
-def update_dataframe_row(dataframe, index, update_dict,
-                         add_columns=False):
+def update_dataframe_row(dataframe, index, update_dict, add_columns=False):
     """
     Method to update a dataframe row via an update_dictionary
     and an index, similarly to Dict.update()
