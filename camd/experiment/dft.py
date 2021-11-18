@@ -29,7 +29,6 @@ from camd.utils.data import (
     QMPY_REFERENCES_HUBBARD,
     get_chemsys,
     get_common_prefixes,
-    s3_key_exists,
 )
 
 
@@ -283,9 +282,7 @@ class OqmdDFTonMC1(Experiment):
                     # import pdb; pdb.set_trace()
                     vr_path = os.path.join(calc_path, "static", "vasprun.xml")
 
-                    # Check if vasprunl exists, then download and parse
-                    if not s3_key_exists(key=vr_path, bucket=tri_bucket):
-                        raise FileNotFoundError
+                    # Download and parse vasprun file
                     s3_client.meta.client.download_file(
                         filename="vasprun.xml", bucket=tri_bucket, key=vr_path
                     )
