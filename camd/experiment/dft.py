@@ -328,7 +328,8 @@ class OqmdDFTonMC1(Experiment):
 
     def submit_dft_calcs_to_mc1(self):
         """
-        Helper method for submitting DFT calculations to MC1
+        Helper method for submitting DFT calculations to MC1.
+        Draws upon current_data attribute to submit calculations.
         """
 
         # Create run directory
