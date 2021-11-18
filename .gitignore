@@ -101,3 +101,6 @@ ENV/
 
 # IntelliJ environment files
 .idea
+
+camd/_cache
+camd/data

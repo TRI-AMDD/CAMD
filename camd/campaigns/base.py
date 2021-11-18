@@ -15,6 +15,10 @@ import numpy as np
 import pandas as pd
 import shutil
 import logging
+from datetime import datetime
+import git
+import camd
+import inspect
 
 from monty.json import MSONable
 from camd.utils.data import s3_sync
@@ -36,9 +40,10 @@ class Campaign(MSONable):
     or black-box optimization with local or global optima search.
 
     """
+
     def __init__(
         self,
-        candidate_data,
+        candidate_dataset,
         agent,
         experiment,
         analyzer,
@@ -48,7 +53,7 @@ class Campaign(MSONable):
         s3_prefix=None,
         s3_bucket=CAMD_S3_BUCKET,
         path=None,
-        logger=None
+        logger=None,
     ):
         """
         Invokes a campaign from candidates, seed, agent, and other supporting
@@ -79,7 +84,8 @@ class Campaign(MSONable):
         self.s3_bucket = s3_bucket
 
         # Data parameters
-        self.candidate_data = candidate_data
+        self.candidate_dataset = candidate_dataset
+        self.candidate_data = candidate_dataset.data
         self.seed_data = seed_data if seed_data is not None else pd.DataFrame()
         self.create_seed = create_seed
         self.history = pd.DataFrame()
@@ -144,8 +150,12 @@ class Campaign(MSONable):
         if not self.initialized:
             raise ValueError("Campaign must be initialized.")
 
+        iteration_start_time = datetime.now().isoformat()
+
         # Get new results
-        self.logger.info("{} {} state: Getting new results".format(self.type, self.iteration))
+        self.logger.info(
+            "{} {} state: Getting new results".format(self.type, self.iteration)
+        )
         self.experiment.monitor()
         new_experimental_results = self.experiment.get_results()
         os.chdir(self.path)
@@ -154,7 +164,9 @@ class Campaign(MSONable):
         self.load("seed_data", method="pickle")
 
         # Analyze new results
-        self.logger.info("{} {} state: Analyzing results".format(self.type, self.iteration))
+        self.logger.info(
+            "{} {} state: Analyzing results".format(self.type, self.iteration)
+        )
         summary, new_seed_data = self.analyzer.analyze(
             new_experimental_results, self.seed_data
         )
@@ -205,7 +217,9 @@ class Campaign(MSONable):
             return False
 
         # Experiments submitted
-        self.logger.info("{} {} state: Running experiments".format(self.type, self.iteration))
+        self.logger.info(
+            "{} {} state: Running experiments".format(self.type, self.iteration)
+        )
         self.job_status = self.experiment.submit(suggested_experiments)
         self.save("job_status")
 
@@ -214,12 +228,32 @@ class Campaign(MSONable):
         self.consumed_candidates += suggested_experiments.index.values.tolist()
         self.save("consumed_candidates")
 
+        self.dbgen_data_acquisition_request = {
+            "type": "lookup",
+            "requested_data": suggested_experiments.to_json(),
+        }
+
+        self.dbgen_iteration_metadata = {
+            "iteration": self.iteration,
+            "timestamp": iteration_start_time,
+            "use_outside_data": False,
+        }
+        self.save(
+            "dbgen_iteration_metadata",
+            custom_name=f"dbgen_iteration_metadata_{self.iteration}.json",
+        )
+        self.save(
+            "dbgen_data_acquisition_request",
+            custom_name=f"dbgen_data_acquisition_request_{self.iteration}.json",
+        )
+
         self.iteration += 1
         self.save("iteration")
         return True
 
-    def auto_loop(self, n_iterations=10, monitor=False,
-                  initialize=False, save_iterations=False):
+    def auto_loop(
+        self, n_iterations=10, monitor=False, initialize=False, save_iterations=False
+    ):
         """
         Runs the loop repeatedly, and locally. Contains
         option for backing up the loop in enumerated
@@ -267,6 +301,14 @@ class Campaign(MSONable):
         if self.initialized:
             raise ValueError("Initialization may overwrite existing loop data. Exit.")
         if not self.seed_data.empty and not self.create_seed:
+            # save some metadata about the custom seed dataset that was used
+            self.dbgen_data_subset_metadata = {
+                "name": f"{self.candidate_dataset.name}_subset",  # TODO: How can we name this? Change this to a UUID?
+                "random_seed": None,
+                "subselection_method": None,
+                "n_rows": self.seed_data.shape[0],
+            }
+
             self.logger.info(
                 "{} {} state: Agent {} hypothesizing".format(
                     self.type, "initialization", self.agent.__class__.__name__
@@ -277,6 +319,15 @@ class Campaign(MSONable):
             )
         elif self.create_seed:
             np.random.seed(seed=random_state)
+
+            # Save some metadata about the seed dataset that was just created
+            self.dbgen_data_subset_metadata = {
+                "name": f"{self.candidate_dataset.name}_subset",
+                "random_seed": random_state,
+                "subselection_method": "pd.DataFrame.sample",
+                "n_rows": self.create_seed,
+            }
+
             _agent = RandomAgent(self.candidate_data, n_query=self.create_seed)
             self.logger.info(
                 "{} {} state: Agent {} hypothesizing".format(
@@ -288,9 +339,42 @@ class Campaign(MSONable):
             raise ValueError(
                 "No seed data available. Either supply or ask for creation."
             )
+
+        # Save some properties of the campaign to be stored in the database
+        self.dbgen_campaign_metadata = {
+            "name": f"{self.candidate_dataset.name}_{self.agent.__class__.__name__}",
+            "timestamp": datetime.now().isoformat(),
+            "github_hash": git.Repo(search_parent_directories=True).head.object.hexsha,
+            "camd_version": camd.__version__,
+            "transform_recipe_name": self.analyzer.__class__.__name__,
+            "transform_recipe_hash": inspect.getsource(
+                self.analyzer.analyze
+            ).__hash__(),
+            "transform_recipe_params": json.loads(
+                json.dumps(self.analyzer.__dict__, default=lambda x: str(x))
+            ),
+            "agent_name": self.agent.__class__.__name__,
+            "agent_hash": inspect.getsource(self.agent.get_hypotheses).__hash__(),
+            "agent_params": json.loads(
+                json.dumps(self.agent.__dict__, default=lambda x: str(x))
+            ),
+        }
+
+        self.dbgen_dataset_metadata = {
+            "name": self.candidate_dataset.name,
+            "random_seed": None,
+            "subselection_method": None,
+            "n_rows": None,
+        }
+        self.save("dbgen_dataset_metadata")
+        self.save("dbgen_data_subset_metadata")
+        self.save("dbgen_campaign_metadata")
+
         self.analyzer._initial_seed_indices = self.seed_data.index.tolist()
 
-        self.logger.info("{} {} state: Running experiments".format(self.type, self.iteration))
+        self.logger.info(
+            "{} {} state: Running experiments".format(self.type, self.iteration)
+        )
         self.job_status = self.experiment.submit(suggested_experiments)
         self.consumed_candidates = suggested_experiments.index.values.tolist()
         self.create_seed = False
