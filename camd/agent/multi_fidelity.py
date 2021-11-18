@@ -128,10 +128,10 @@ class EpsilonGreedyMultiAgent(HypothesisAgent):
             seed_data_fea = get_features_from_df(seed_data, self.features)
             highFi_cands_fea = get_features_from_df(high_fidelity_candidates, self.features)
 
-            for idx, cand_fea in exp_cands_fea.iterrows():
+            for idx, cand_fea in highFi_cands_fea.iterrows():
                 if len(selected_hypotheses) < highFi_budget:
                     normdiff = self._calculate_similarity(cand_fea, seed_data_fea)
-                    if normdiff[(normdiff <= self.similarity_thres)] >= 1:
+                    if len(normdiff[(normdiff <= self.similarity_thres)]) >= 1:
                         selected_hypotheses = selected_hypotheses.append(high_fidelity_candidates.loc[idx])
 
             # query low fidelity candidate for remaining budget
@@ -143,7 +143,7 @@ class EpsilonGreedyMultiAgent(HypothesisAgent):
                     lowFi_candidates_copy['normdiff'] = self._calculate_similarity(cand_fea, lowFi_cands_fea)
                     lowFi_candidates_copy = lowFi_candidates_copy.sort_values('normdiff')
                     selected_hypotheses = selected_hypotheses.append(lowFi_candidates_copy.head(self.lowFi_per_highFi))
-                    lowFi_candidates_copy = lowFi_candidates_copy.drop(theor_candidates_copy.head(self.lowFi_per_highFi).index)
+                    lowFi_candidates_copy = lowFi_candidates_copy.drop(lowFi_candidates_copy.head(self.lowFi_per_highFi).index)
         return selected_hypotheses
 
     def get_hypotheses(self, candidate_data, seed_data):
@@ -180,7 +180,7 @@ class GPMultiAgent(HypothesisAgent):
     """
     def __init__(self, candidate_data=None, seed_data=None, chemsys_col='reduced_formula', features=None,
                  fidelities=('theory_data', 'expt_data'), target_prop=None, target_prop_val=1.8, total_budget=None,
-                 preprocessor=StandardScaler(), gp_max_iter=200, alpha=1.0, rank_thres=10 unc_percentile=5):
+                 preprocessor=StandardScaler(), gp_max_iter=200, alpha=1.0, rank_thres=10, unc_percentile=5):
         self.candidate_data = candidate_data
         self.seed_data = seed_data
         self.chemsys_col = chemsys_col
