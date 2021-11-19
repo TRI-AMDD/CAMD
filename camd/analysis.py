@@ -929,3 +929,85 @@ class GenericATFAnalyzer(AnalyzerBase):
             seed_data = pd.concat([seed_data, new_experimental_results[i:(i+1)]], axis=0)
         simALM = np.array(simALM)
         return simALM
+
+
+class MultiAnalyzer(AnalyzerBase):
+    """
+    The multi-fidelity analyzer.
+    """
+    def __init__(self, target_prop, prop_range, total_expt_queried=0,
+                 total_expt_discovery=0, analyze_cost=False, total_cost=0.0):
+        """
+        Args:
+            target_prop (str)        The name of the target property, e.g. "bandgap".
+            prop_range (list)        The range of the target property that is considered
+                                     ideal.
+            total_expt_queried (int) The total experimental queries after nth iteration. 
+            tot_expt_discovery (int) The total experimental discovery after nth iteration.
+            analyze_cost (bool)      If the input has "cost" column, also analyze that information.
+            total_cost(float)        The total cost of the hypotheses after nth iteration.       
+        """
+        self.target_prop = target_prop
+        self.prop_range = prop_range
+        self.total_expt_queried = total_expt_queried
+        self.total_expt_discovery = total_expt_discovery
+        self.analyze_cost = analyze_cost
+        self.total_cost = total_cost
+
+    def _filter_df_by_prop_range(self, df):
+        """
+        Helper function that filters df by property range
+
+        Args:
+            df   A pd.Dataframe to be filtered.
+        """
+        return df.loc[(df[self.target_prop] >= self.prop_range[0]) &
+                      (df[self.target_prop] <= self.prop_range[1])]
+
+    def analyze(self, new_experimental_results, seed_data):
+        """
+        Analyze results of multi-fidelity data
+
+        Args:
+            new_experimental_results (pd.DataFrame):
+            seed_data (pd.DataFrame):
+
+        Returns:
+            (pd.DataFrame): summary of last iteration
+            (pd.DataFrame): new seed data
+
+        """
+        new_expt_hypotheses = new_experimental_results.loc[new_experimental_results['expt_data'] == 1]
+        new_discoveries = self._filter_df_by_prop_range(new_expt_hypotheses)
+
+        # total discovery = up to (& including) the current iteration
+        new_seed = seed_data.append(new_experimental_results)
+        self.total_expt_queried += len(new_expt_hypotheses)
+        self.total_expt_discovery += len(new_discoveries)
+        if self.total_expt_queried != 0:
+            success_rate = self.total_expt_discovery/self.total_expt_queried
+        else:
+            success_rate = 0
+
+        summary = pd.DataFrame(
+                {
+                 "expt_queried": [len(new_expt_hypotheses)],
+                 "total_expt_queried": [self.total_expt_queried],
+                 "new_discovery": [len(new_discoveries)],
+                 "total_expt_discovery": [self.total_expt_discovery],
+                 "total_regret": [self.total_expt_queried - self.total_expt_discovery], 
+                 "success_rate": [success_rate]
+                }
+        )
+
+        if self.analyze_cost:
+            iter_cost = np.sum(new_experimental_results["cost"])
+            self.total_cost += iter_cost
+            summary["iteration_cost"] = [iter_cost]
+            summary["total_cost"] = [self.total_cost]
+            if self.total_expt_discovery != 0:
+                average_cost_per_discovery = self.total_cost/self.total_expt_discovery
+            else:
+                average_cost_per_discovery = np.nan
+            summary['average_cost_per_discovery'] = [average_cost_per_discovery]
+        return summary, new_seed
