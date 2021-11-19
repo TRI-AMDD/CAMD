@@ -209,21 +209,6 @@ class GPMultiAgent(HypothesisAgent):
     def __init__(self, candidate_data=None, seed_data=None, chemsys_col='reduced_formula', features=None,
                  fidelities=('theory_data', 'expt_data'), target_prop=None, target_prop_val=1.8, total_budget=None,
                  preprocessor=StandardScaler(), gp_max_iter=200, alpha=1.0, rank_thres=10, unc_percentile=5):
-        self.candidate_data = candidate_data
-        self.seed_data = seed_data
-        self.chemsys_col = chemsys_col
-        self.features = features
-        self.fidelities = fidelities
-        self.target_prop = target_prop
-        self.target_prop_val = target_prop_val
-        self.total_budget = total_budget
-        self.preprocessor = preprocessor
-        self.gp_max_iter = gp_max_iter
-        self.alpha = alpha
-        self.rank_thres = rank_thres
-        self.unc_percentile = unc_percentile
-        super(GPMultiAgent).__init__()
-
         """
         Args:
             candidate_data (df)      Candidate search space for the campaign.
@@ -245,7 +230,6 @@ class GPMultiAgent(HypothesisAgent):
             unc_percentile (int)     A number between 0 and 100, and used to calculate an uncertainty threshold
                                      at that percentile value. The threshold is used to decide if the
                                      agent is quering theory or experimental hypotheses.
-
         """
         self.candidate_data = candidate_data
         self.seed_data = seed_data
