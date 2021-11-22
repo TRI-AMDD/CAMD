@@ -12,6 +12,7 @@ from sklearn.model_selection import KFold, cross_val_score
 from sklearn.pipeline import Pipeline
 from sklearn.gaussian_process import GaussianProcessRegressor
 from sklearn.gaussian_process.kernels import RBF, ConstantKernel
+from sklearn.linear_model import LinearRegression
 
 from camd.agent.base import HypothesisAgent
 
@@ -80,7 +81,7 @@ class GenericGPUCB(HypothesisAgent):
         t_pred, unc = self.pipeline.predict(self.candidate_data, return_std=True)
         t_pred += unc * self.alpha
         selected = np.argsort(-1.0 * t_pred)[: self.n_query]
-        return candidate_data.loc[selected]
+        return candidate_data.iloc[selected]
 
 
 class GPBatchUCB(HypothesisAgent):
@@ -150,9 +151,11 @@ class GPBatchUCB(HypothesisAgent):
         if seed_data is not None:
             self.seed_data = seed_data
         else:
-            raise ValueError("GPBatchUCB Agent requires a finite seed as input. "
-                             "If you are using this as part of a Campaign, consider "
-                             "the create_seed option.")
+            raise ValueError(
+                "GPBatchUCB Agent requires a finite seed as input. "
+                "If you are using this as part of a Campaign, consider "
+                "the create_seed option."
+            )
 
         fb_start = max(len(self.seed_data), 1)
 
@@ -242,3 +245,77 @@ class GPBatchUCB(HypothesisAgent):
             raise NotImplementedError("Unknown mode for GPBatchUCB Agent")
 
         return self.candidate_data.loc[batch]
+
+
+class LinearAgent(HypothesisAgent):
+    """
+    Linear regression based agent that tries to maximize a target.
+    Best for simple checks and benchmarks.
+    """
+
+    def __init__(
+        self,
+        candidate_data=None,
+        seed_data=None,
+        n_query: int = None,
+        fit_intercept: bool = True,
+        positive: bool = False,
+    ):
+
+        """
+        Args:
+            candidate_data (pandas.DataFrame): data about the candidates to search over. Must have a "target" column,
+                    and at least one additional column that can be used as descriptors.
+            seed_data (pandas.DataFrame):  data which to fit the Agent to.
+            n_query (int): number of queries in allowed. Defaults to 1.
+            fit_intercept (bool): if the intercept is fit for the linear regression
+            positive (bool): if true, constraint coefficients to be positive for the linear regression
+        """
+        self.candidate_data = candidate_data
+        self.seed_data = seed_data
+        self.n_query = n_query if n_query else 1
+        self.fit_intercept = fit_intercept
+        self.positive = positive
+        super(LinearAgent).__init__()
+
+    def get_hypotheses(self, candidate_data, seed_data=None):
+        """
+        Methods for getting hypotheses using linear regression
+
+        Args:
+            candidate_data (pandas.DataFrame): candidate data
+            seed_data (pandas.DataFrame): seed data
+
+        Returns:
+            (pandas.DataFrame): selected hypotheses
+
+        """
+        # Fit on known data
+        self.candidate_data = candidate_data.drop(
+            columns=["target"], axis=1, errors="ignore"
+        )
+
+        if seed_data is not None:
+            self.seed_data = seed_data
+        else:
+            raise ValueError(
+                "Linear Agent requires a finite seed as input. "
+                "If you are using this as part of a Campaign, consider "
+                "the create_seed option."
+            )
+
+        X_seed = seed_data.drop(columns=["target"], axis=1)
+        y_seed = seed_data["target"]
+        steps = [
+            ("scaler", StandardScaler()),
+            (
+                "linear",
+                LinearRegression(),
+            ),
+        ]
+        self.pipeline = Pipeline(steps)
+        self.pipeline.fit(X_seed, y_seed)
+        output = self.pipeline.predict(self.candidate_data)
+        sorted_output = np.argsort(output)[::-1]
+        selected = sorted_output[: self.n_query]
+        return candidate_data.iloc[selected]
