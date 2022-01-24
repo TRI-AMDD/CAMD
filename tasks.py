@@ -80,14 +80,14 @@ def release_github(ctx):
     desc = "\n".join(toks[:-1]).strip()
     payload = {
         "tag_name": "v" + NEW_VER,
-        "target_commitish": "master",
+        "target_commitish": "main",
         "name": "v" + NEW_VER,
         "body": desc,
         "draft": False,
         "prerelease": False
     }
     response = requests.post(
-        "https://api.github.com/repos/ToyotaResearchInstitute/camd/releases",
+        "https://api.github.com/repos/TRI-AMDD/camd/releases",
         data=json.dumps(payload),
         headers={"Authorization": "token " + os.environ["GITHUB_RELEASES_TOKEN"]})
     print(response.text)
