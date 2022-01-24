@@ -8,7 +8,7 @@ import numpy as np
 from sklearn.neural_network import MLPRegressor
 from sklearn.gaussian_process.kernels import RBF, ConstantKernel
 
-from camd.agent.stability import QBCStabilityAgent, GaussianProcessStabilityAgent, SVGProcessStabilityAgent, \
+from camd.agent.stability import QBCStabilityAgent, GaussianProcessStabilityAgent, \
     BaggedGaussianProcessStabilityAgent, AgentStabilityAdaBoost
 from camd.agent.base import RandomAgent
 from camd.agent.generic import GenericGPUCB, GPBatchUCB
@@ -209,35 +209,6 @@ class AtfLoopTest(unittest.TestCase):
         new_loop.run()
         self.assertTrue(True)
         self.assertEqual(new_loop.iteration, 7)
-
-
-@unittest.skipUnless(CAMD_LONG_TESTS, SKIP_MSG)
-class AtfSVGPLoopTest(unittest.TestCase):
-    def setUp(self):
-        self.pwd = os.getcwd()
-        self.tempdir = tempfile.mkdtemp()
-        os.chdir(self.tempdir)
-
-    def tearDown(self):
-        os.chdir(self.pwd)
-        shutil.rmtree(self.tempdir)
-
-    def test_svgp_loop(self):
-        df = pd.read_csv(os.path.join(CAMD_TEST_FILES, 'test_df.csv'))
-        df_sub = df[df['N_species'] <= 3]
-        n_seed = 200  # Starting sample size
-        agent = SVGProcessStabilityAgent(n_query=10, hull_distance=0.05, alpha=0.5, M=100)
-        analyzer = StabilityAnalyzer(hull_distance=0.05, parallel=False)
-        experiment = ATFSampler(df_sub)
-        candidate_data = df_sub
-
-        new_loop = Campaign(candidate_data, agent, experiment, analyzer,
-                            create_seed=n_seed)
-        new_loop.initialize()
-        self.assertTrue(new_loop.initialized)
-
-        new_loop.auto_loop(3)
-        self.assertTrue(True)
 
 
 class GPBatchUCBAgent(unittest.TestCase):

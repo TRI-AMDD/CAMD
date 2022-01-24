@@ -272,10 +272,10 @@ class AnalyzeStructures(AnalyzerBase):
         self.energies = []
         for j, r in jobs.iterrows():
             if r["status"] == "SUCCEEDED":
-                rdict = r['result'].as_dict()
-                self.structures.append(r['result'].final_structure)
+                final_structure = r['result'].final_structure
+                self.structures.append(final_structure)
                 self.structure_ids.append(j)
-                self.energies.append(rdict["output"]["final_energy_per_atom"])
+                self.energies.append(r['result'].final_energy / len(final_structure))
         if use_energies:
             return self.analyze(
                 self.structures, self.structure_ids, against_icsd, self.energies
