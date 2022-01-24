@@ -32,7 +32,7 @@ setup(
     description=DESCRIPTION,
     long_description=LONG_DESCRIPTION,
     long_description_content_type='text/markdown',
-    setup_requires=["numpy==1.22.1",
+    setup_requires=["numpy==1.21.5",
                     ],
     install_requires=["python-dateutil==2.8.1",
                       "networkx==2.5.1",
