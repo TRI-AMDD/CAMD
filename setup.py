@@ -37,11 +37,11 @@ setup(
                       "matplotlib==3.4.2",
                       "matminer==0.7.4",
                       "awscli",
-                      "boto3==1.20.41",
+                      "boto3==1.20.43",
                       "docopt==0.6.2",
                       "taburu==2020.5.9",
                       "GPy==1.10.0",
-                      "watchtower==1.0.6",
+                      "watchtower==2.1.1",
                       "qmpy-tri>=2021.6.11"
                       ],
     extras_require={
