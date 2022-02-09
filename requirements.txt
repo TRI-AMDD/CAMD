@@ -1,5 +1,5 @@
 Django==3.1.14
-python-dateutil==2.8.1
+python-dateutil==2.8.2
 networkx==2.5.1
 matminer==0.7.4
 boto3==1.20.49
