@@ -34,7 +34,7 @@ setup(
     long_description_content_type='text/markdown',
     install_requires=["python-dateutil==2.8.2",
                       "networkx==2.5.1",
-                      "matplotlib==3.4.2",
+                      "matplotlib==3.5.2",
                       "matminer==0.7.4",
                       "awscli",
                       "boto3==1.23.5",
