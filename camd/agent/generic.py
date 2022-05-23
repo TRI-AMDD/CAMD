@@ -61,7 +61,7 @@ class GenericGPUCB(HypothesisAgent):
 
         self.candidate_data = candidate_data.drop(columns=["target"], axis=1)
         self.seed_data = seed_data
-        X_seed = seed_data.drop(columns=["target"], axis=1, error='ignore')
+        X_seed = seed_data.drop(columns=["target"], axis=1, errors='ignore')
         y_seed = seed_data["target"]
         steps = [
             ("scaler", StandardScaler()),
