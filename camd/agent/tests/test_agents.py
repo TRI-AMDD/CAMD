@@ -16,7 +16,7 @@ class GenericAgentsTest(unittest.TestCase):
         )
 
         candidate_X = np.linspace(-10, 10, 10)
-        self.candidate_df = pandas.DataFrame(data=candidate_X, columns=["domain"])
+        self.candidate_data = pandas.DataFrame(data=candidate_X, columns=["domain"])
 
     def test_linear_agent(self):
         """
@@ -25,12 +25,12 @@ class GenericAgentsTest(unittest.TestCase):
         """
         agent = LinearAgent(n_query=10)
         predictions = agent.get_hypotheses(
-            seed_data=self.seed_data, candidate_data=self.candidate_df
+            seed_data=self.seed_data, candidate_data=self.candidate_data
         )
         self.assertEqual(predictions["domain"][9], 10)
 
     def test_sequential_agent(self):
         agents = [LinearAgent(n_query=10), LinearAgent(n_query=5)]
         agent = SequentialAgent(agents=agents)
-        agent.get_hypotheses(self.seed_data, self.candidate_df)
-        self.assertEqual(len(get_hypotheses), 5)
+        hypotheses = agent.get_hypotheses(self.candidate_data, self.seed_data)
+        self.assertEqual(len(hypotheses), 5)

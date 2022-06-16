@@ -187,9 +187,9 @@ class SequentialAgent(HypothesisAgent):
     """
     def __init__(
         self,
+        agents: list,
         candidate_data=None,
         seed_data=None,
-        agents: list=[LinearAgent()],
     ):
 
         """
