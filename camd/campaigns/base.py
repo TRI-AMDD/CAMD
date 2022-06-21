@@ -30,7 +30,7 @@ class Campaign(MSONable):
     follows closely the "scientific method". Agent is the entity
     that suggests new Experiments.
 
-    Supporting entities are Analyzers and Finalizers. Framework
+    Supporting entities are Analyzers. Framework
     is flexible enough to implement many sequential learning or
     optimization tasks, including active-learning, bayesian optimization
     or black-box optimization with local or global optima search.
@@ -215,6 +215,8 @@ class Campaign(MSONable):
         self.save("experiment", method="pickle")
 
         self.consumed_candidates += suggested_experiments.index.values.tolist()
+        self.logger.info("{} {} state: consumed candidates {}".format(
+            self.type, self.iteration, self.consumed_candidates))
         self.save("consumed_candidates")
 
         self.iteration += 1
@@ -296,6 +298,8 @@ class Campaign(MSONable):
         self.logger.info("{} {} state: Running experiments".format(self.type, self.iteration))
         self.job_status = self.experiment.submit(suggested_experiments)
         self.consumed_candidates = suggested_experiments.index.values.tolist()
+        self.logger.info("{} {} state: consumed candidates {}".format(
+            self.type, self.iteration, self.consumed_candidates))
         self.create_seed = False
         self.initialized = True
 

@@ -131,7 +131,9 @@ class StabilityAgent(HypothesisAgent, metaclass=abc.ABCMeta):
         else:
             X_cand = None
         if seed_data is not None:
-            self.seed_data = seed_data
+            # Filter seed data with No delta_e, indicates a failure
+            # TODO: probably worth considering putting this somewhere else
+            self.seed_data = seed_data.dropna(subset=['delta_e'])
             X_seed = self.get_features(self.seed_data)
             y_seed = self.seed_data["delta_e"]
         else:
@@ -347,12 +349,12 @@ class AgentStabilityML5(StabilityAgent):
         cv_score = cross_val_score(
             pipeline,
             X_seed,
-            self.seed_data["delta_e"],
+            y_seed,
             cv=KFold(5, shuffle=True),
             scoring="neg_mean_absolute_error",
         )
         self.cv_score = np.mean(cv_score) * -1
-        pipeline.fit(X_seed, self.seed_data["delta_e"])
+        pipeline.fit(X_seed, y_seed)
 
         expected = pipeline.predict(X_cand)
 
@@ -698,7 +700,7 @@ class AgentStabilityAdaBoost(StabilityAgent):
         overall_adaboost = AdaBoostRegressor(
             base_estimator=self.model, n_estimators=self.n_estimators
         )
-        overall_adaboost.fit(X_scaled, self.seed_data["delta_e"])
+        overall_adaboost.fit(X_scaled, y_seed)
 
         X_cand = scaler.transform(X_cand)
         expected = overall_adaboost.predict(X_cand)

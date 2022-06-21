@@ -137,7 +137,8 @@ class AnalyzeStructures(AnalyzerBase):
         super(AnalyzeStructures, self).__init__()
 
     def analyze(
-        self, structures=None, structure_ids=None, against_icsd=False, energies=None
+        self, campaign
+            #structures=None, structure_ids=None, against_icsd=False, energies=None
     ):
         """
         One encounter of a given structure will be labeled as True, its
@@ -341,7 +342,7 @@ class StabilityAnalyzer(AnalyzerBase):
 
         """
         # On first run get initial seed indices
-        if not self.initial_seed_indices:
+        if self.initial_seed_indices is None:
             self.initial_seed_indices = campaign.seed_data.index
         # Check for new results
         new_experimental_results = campaign.experiment.get_results()
@@ -373,7 +374,7 @@ class StabilityAnalyzer(AnalyzerBase):
         )
         new_data["is_stable"] = new_data["stability"] <= self.hull_distance
 
-        # TODO: This is implicitly adding "stability", and "is_stable" columns
+        # # TODO: This is implicitly adding "stability", and "is_stable" columns
         #       but could be handled more gracefully
         if "stability" not in new_seed.columns:
             new_seed = pd.concat([new_seed, new_data], axis=1, sort=False)
@@ -671,6 +672,7 @@ def update_run_w_structure(folder, hull_distance=0.2, parallel=True):
     Updates a campaign grouped in directories with structure analysis
 
     """
+    import pdb; pdb.set_trace()
     with cd(folder):
         required_files = ["seed_data.pickle"]
         if os.path.isfile("error.json"):
