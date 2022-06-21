@@ -46,6 +46,7 @@ setup(
                       ],
     extras_require={
         "proto_dft": ["protosearch==2020.5.10"],
+        "m3gnet": ["m3gnet"],
         "tests": ["pytest",
                   "pytest-cov",
                   "coveralls"
