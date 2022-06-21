@@ -37,9 +37,8 @@ from monty.serialization import loadfn
 class AnalyzerBase(abc.ABC):
     """
     The AnalyzerBase class defines the contract
-    for post-processing experiments and creating
-    a new seed_data object for the agent.
-
+    for post-processing experiments and reporting
+    on campaign state
     """
     def __init__(self):
         """
@@ -49,31 +48,18 @@ class AnalyzerBase(abc.ABC):
         self._initial_seed_indices = []
 
     @abc.abstractmethod
-    def analyze(self, new_experimental_results, seed_data):
+    def analyze(self, campaign):
         """
         Analyze method, performs some operation on new
         experimental results in order to place them
         in the context of the seed data
 
         Args:
-            new_experimental_results (DataFrame): new data
-                to be added to the seed
-            seed_data (DataFrame): current seed data from
-                campaign
+            campaign (Campaign): Campaign to be analyzed
 
         Returns:
-            (DataFrame): dataframe corresponding to the summary
-                of the previous set of experiments
-            (DataFrame): dataframe corresponding to the new
-                seed data
+            (DataFrame): dataframe corresponding to the analysis summary
         """
-
-    @property
-    def initial_seed_indices(self):
-        """
-        Returns: The list of indices contained in the initial seed. Intended to be set by the Campaign.
-        """
-        return self._initial_seed_indices
 
 
 class GenericMaxAnalyzer(AnalyzerBase):
@@ -92,22 +78,19 @@ class GenericMaxAnalyzer(AnalyzerBase):
         self.best_examples = []
         super(GenericMaxAnalyzer, self).__init__()
 
-    def analyze(self, new_experimental_results, seed_data):
+    def analyze(self, campaign):
         """
         Analyzes the results of an experiment by finding
         the best examples and their scores
 
         Args:
-            new_experimental_results (pandas.DataFrame): new experimental
-                results to be analyzed
-            seed_data (pandas.DataFrame): past data to include in analysis
 
         Returns:
             (pandas.DataFrame): one-row dataframe summarizing past results
             (pandas.DataFrame): new seed data to be passed to agent
 
         """
-        new_seed = seed_data.append(new_experimental_results)
+        new_seed = campaign.seed_data.append(campaign.experiment.get_results())
         self.score.append(np.sum(new_seed["target"] > self.threshold))
         self.best_examples.append(new_seed.loc[new_seed.target.idxmax()])
         new_discovery = (
@@ -122,7 +105,7 @@ class GenericMaxAnalyzer(AnalyzerBase):
                 "new_discovery": new_discovery,
             }
         )
-        return summary, new_seed
+        return summary
 
 
 class AnalyzeStructures(AnalyzerBase):
@@ -289,7 +272,7 @@ class StabilityAnalyzer(AnalyzerBase):
     Analyzer object for stability campaigns
     """
     def __init__(self, hull_distance=0.05, parallel=cpu_count(), entire_space=False,
-                 plot=True):
+                 plot=True, initial_seed_indices=None):
         """
         The Stability Analyzer is intended to analyze DFT-result
         data in the context of a global compositional seed in
@@ -313,6 +296,7 @@ class StabilityAnalyzer(AnalyzerBase):
         self.entire_space = entire_space
         self.space = None
         self.plot = plot
+        self.initial_seed_indices = initial_seed_indices
         super(StabilityAnalyzer, self).__init__()
 
     @staticmethod
@@ -343,7 +327,7 @@ class StabilityAnalyzer(AnalyzerBase):
         space = PhaseSpaceAL(bounds=ELEMENTS, data=pd)
         return space
 
-    def analyze(self, new_experimental_results, seed_data):
+    def analyze(self, campaign):
         """
         Args:
             new_experimental_results (DataFrame): new experimental
@@ -354,14 +338,16 @@ class StabilityAnalyzer(AnalyzerBase):
         Returns:
             (DataFrame): summary of the process, i. e. of
                 the increment or experimental results
-            (DataFrame): augmented seed data, i. e. "new"
-                seed data according to the experimental results
 
         """
+        # On first run get initial seed indices
+        if not self.initial_seed_indices:
+            self.initial_seed_indices = campaign.seed_data.index
         # Check for new results
+        new_experimental_results = campaign.experiment.get_results()
         new_comp = new_experimental_results['Composition'].sum()
         new_experimental_results = new_experimental_results.dropna(subset=['delta_e'])
-        new_seed = seed_data.append(new_experimental_results)
+        new_seed = campaign.seed_data.append(new_experimental_results)
 
         # Aggregate seed_data and new experimental results
         include_columns = ["Composition", "delta_e"]
@@ -405,11 +391,11 @@ class StabilityAnalyzer(AnalyzerBase):
             initial_seed_indices=self.initial_seed_indices,
         )
         # Drop excess columns from experiment
-        new_seed = new_seed.drop([
-            'path', 'status', 'start_time', 'jobId', 'jobName', 'jobArn',
-            'result', 'error', 'elapsed_time'
-        ], axis="columns", errors="ignore")
-        return summary, new_seed
+        # new_seed = new_seed.drop([
+        #     'path', 'status', 'start_time', 'jobId', 'jobName', 'jobArn',
+        #     'result', 'error', 'elapsed_time'
+        # ], axis="columns", errors="ignore")
+        return summary
 
     @staticmethod
     def get_summary(new_seed, new_ids, initial_seed_indices=None):
@@ -437,7 +423,7 @@ class StabilityAnalyzer(AnalyzerBase):
         #       of experiments, so can be difficult to determine marginal
         #       value of a given experimental run
         processed_new = new_seed.loc[new_ids]
-        initial_seed_indices = initial_seed_indices if initial_seed_indices else []
+        initial_seed_indices = initial_seed_indices if initial_seed_indices is not None else []
         total_discovery = new_seed.loc[
             ~new_seed.index.isin(initial_seed_indices)
         ].is_stable.sum()

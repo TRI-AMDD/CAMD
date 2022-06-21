@@ -59,7 +59,7 @@ class Campaign(MSONable):
                 search space for active learning
             agent (HypothesisAgent): a subclass of HypothesisAgent
             experiment (Experiment): a subclass of Experiment
-            analyzer (Analyzer): a subclass of Analyzer
+            analyzer (Analyzer): a subclass of Analyzer or a list of analyzers
             seed_data (pandas.DataFrame): Seed Data for active learning,
                 index is to be the assumed uid
             create_seed (int): an initial seed size to create from the data
@@ -87,7 +87,7 @@ class Campaign(MSONable):
         # Object parameters
         self.agent = agent
         self.experiment = experiment
-        self.analyzer = analyzer
+        self.analyzer = analyzer if isinstance(analyzer, list) else [analyzer]
 
         # Other parameters
         # TODO: think about how to abstract this away from the loop
@@ -155,14 +155,17 @@ class Campaign(MSONable):
 
         # Analyze new results
         self.logger.info("{} {} state: Analyzing results".format(self.type, self.iteration))
-        summary, new_seed_data = self.analyzer.analyze(
-            new_experimental_results, self.seed_data
-        )
+        summary = pd.DataFrame()
+        for analyzer in self.analyzer:
+            analysis = analyzer.analyze(self)
+            summary = pd.concat([summary, analysis], axis=1)
 
-        # Augment summary and seed
         self.history = self.history.append(summary)
         self.history = self.history.reset_index(drop=True)
         self.save("history", method="pickle")
+
+        # Augment summary and seed
+        new_seed_data = self.seed_data.append(new_experimental_results)
         self.seed_data = new_seed_data
         self.save("seed_data", method="pickle")
 
@@ -288,7 +291,7 @@ class Campaign(MSONable):
             raise ValueError(
                 "No seed data available. Either supply or ask for creation."
             )
-        self.analyzer._initial_seed_indices = self.seed_data.index.tolist()
+        # self.analyzer._initial_seed_indices = self.seed_data.index.tolist()
 
         self.logger.info("{} {} state: Running experiments".format(self.type, self.iteration))
         self.job_status = self.experiment.submit(suggested_experiments)
