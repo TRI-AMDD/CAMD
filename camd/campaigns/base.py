@@ -157,7 +157,7 @@ class Campaign(MSONable):
         self.logger.info("{} {} state: Analyzing results".format(self.type, self.iteration))
         summary = pd.DataFrame()
         for analyzer in self.analyzer:
-            analysis = analyzer.analyze(self)
+            analysis = analyzer.analyze(self, finalize=finalize)
             summary = pd.concat([summary, analysis], axis=1)
 
         self.history = self.history.append(summary)
@@ -256,7 +256,7 @@ class Campaign(MSONable):
             if save_iterations:
                 self.loop_backup(str(self.iteration - 1))
 
-        self.run(finalize=True)
+        # self.run(finalize=True)
         if monitor:
             self.logger.info("Monitoring experiments")
             self.experiment.monitor()
@@ -334,8 +334,9 @@ class Campaign(MSONable):
         """
         self.logger.info("Finalizing campaign.")
         os.chdir(self.path)
-        if hasattr(self.analyzer, "finalize"):
-            self.analyzer.finalize(self.path)
+        for analyzer in self.analyzer:
+            if hasattr(analyzer, "finalize"):
+                analyzer.finalize(self)
         if self.s3_prefix:
             self.s3_sync()
 

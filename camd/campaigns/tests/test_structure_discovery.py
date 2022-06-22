@@ -37,14 +37,14 @@ class ProtoDFTCampaignTest(unittest.TestCase):
         candidate_data = exp_dataframe.iloc[:, :-11]
         # Set up agents and loop parameters
         agent = AgentStabilityAdaBoost(
-            model=MLPRegressor(hidden_layer_sizes=(84, 50)),
+            model=MLPRegressor(hidden_layer_sizes=(40, 20)),
             n_query=2,
             hull_distance=0.2,
             exploit_fraction=1.0,
             uncertainty=True,
             alpha=0.5,
             diversify=True,
-            n_estimators=20
+            n_estimators=5
         )
         analyzer = StabilityAnalyzer(hull_distance=0.2)
         # Reduce seed_data
