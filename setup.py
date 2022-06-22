@@ -1,12 +1,5 @@
 from setuptools import setup, find_packages
-import warnings
 
-try:
-    import numpy
-except ImportError:
-    # This is crude, but the best way I can figure to do this
-    warnings.warn("Setup requires pre-installation of numpy, run pip "
-                  "install numpy before setup.py")
 
 DESCRIPTION = "camd is software designed to support autonomous materials " \
               "research and sequential learning"
@@ -34,39 +27,31 @@ after the fact sampling of known data.
 setup(
     name='camd',
     url="https://github.com/TRI-AMDD/CAMD",
-    version="2020.9.11",
+    version="2022.1.24",
     packages=find_packages(),
     description=DESCRIPTION,
     long_description=LONG_DESCRIPTION,
     long_description_content_type='text/markdown',
-    setup_requires=["numpy==1.19.2",
-                    "gpflow==2.1.4"
-                    ],
-    install_requires=["python-dateutil==2.8.1",
+    install_requires=["python-dateutil==2.8.2",
                       "networkx==2.5.1",
-                      "matplotlib==3.4.1",
-                      "qmpy",  # This version is constrained by the source
-                      "pandas==1.2.3",
-                      "matminer==0.6.5",
-                      "autologging",
-                      "awscli==1.19.44",
-                      "boto3==1.17.44",
+                      "matplotlib==3.5.2",
+                      "matminer==0.7.4",
+                      "awscli",
+                      "boto3==1.24.12",
                       "docopt==0.6.2",
-                      "scikit-learn==0.24.1",
                       "taburu==2020.5.9",
-                      "GPy==1.9.9",
-                      "watchtower==1.0.6"
+                      "GPy==1.10.0",
+                      "watchtower==2.1.1",
+                      "qmpy-tri>=2021.6.11"
                       ],
     extras_require={
         "proto_dft": ["protosearch==2020.5.10"],
+        "m3gnet": ["m3gnet"],
         "tests": ["pytest",
                   "pytest-cov",
                   "coveralls"
                   ]
     },
-    dependency_links=[
-        "https://github.com/JosephMontoya-TRI/qmpy_py3/tarball/master#egg=qmpy",
-    ],
     entry_points={
         "console_scripts": [
             "camd_worker = camd.campaigns.worker:main",

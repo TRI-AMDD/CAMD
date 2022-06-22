@@ -3,3 +3,4 @@ camd/s3_cache
 scripts
 camd/_cache
 .git
+.eggs

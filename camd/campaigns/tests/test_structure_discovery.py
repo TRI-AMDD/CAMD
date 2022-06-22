@@ -29,6 +29,9 @@ def teardown_s3():
 
 class ProtoDFTCampaignTest(unittest.TestCase):
     def test_simulated(self):
+        # Note that there's a small issue with pickled results here that may not have
+        # certain spin and magnetization flags set - pickled Vasprun objects may not
+        # be completely compatible with latest version of pymatgen
         exp_dataframe = pd.read_pickle(os.path.join(CAMD_TEST_FILES, "mn-ni-o-sb.pickle"))
         experiment = ATFSampler(exp_dataframe)
         candidate_data = exp_dataframe.iloc[:, :-11]

@@ -5,7 +5,7 @@ import os
 import uuid
 
 from pymatgen.util.testing import PymatgenTest
-from pymatgen import MPRester
+from pymatgen.ext.matproj import MPRester
 from camd.experiment.dft import OqmdDFTonMC1
 import pandas as pd
 

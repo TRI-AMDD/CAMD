@@ -4,7 +4,6 @@ Contains agents related to crystal-structure discovery
 and hypothesizing
 """
 
-import time
 import abc
 import json
 import os
@@ -12,25 +11,20 @@ from copy import deepcopy
 from multiprocessing import cpu_count
 from collections import OrderedDict
 
-import pandas as pd
-import tensorflow as tf
-import gpflow
-from gpflow.ci_utils import ci_niter
 import numpy as np
 from qmpy.analysis.thermodynamics.phase import Phase, PhaseData
 from camd.analysis import PhaseSpaceAL, ELEMENTS
 from camd.agent.base import HypothesisAgent, QBC
 from camd.utils.data import filter_dataframe_by_composition
-from pymatgen import Composition
+from pymatgen.core.composition import Composition
 
 from sklearn.gaussian_process.kernels import RBF, ConstantKernel
 from sklearn.gaussian_process import GaussianProcessRegressor
 from sklearn.linear_model import LinearRegression
-from sklearn.model_selection import cross_val_score, KFold, train_test_split
+from sklearn.model_selection import cross_val_score, KFold
 from sklearn.preprocessing import StandardScaler
 from sklearn.pipeline import Pipeline
 from sklearn.ensemble import AdaBoostRegressor, BaggingRegressor
-from sklearn.cluster import MiniBatchKMeans
 from sklearn.metrics import pairwise_distances
 
 # TODO: Adaptive N_query and subsampling of candidate space
@@ -460,207 +454,6 @@ class GaussianProcessStabilityAgent(StabilityAgent):
         # GP makes predictions for Hf and uncertainty*alpha on candidate data
         preds, stds = overall_pipeline.predict(X_cand, return_std=True)
         expected = preds - stds * self.alpha
-
-        # Update candidate data dataframe with predictions
-        self.update_candidate_stabilities(expected, sort=True, floor=-6.0)
-
-        # Find the most stable ones up to n_query within hull_distance
-        stability_filter = self.candidate_data["pred_stability"] <= self.hull_distance
-        within_hull = self.candidate_data[stability_filter]
-
-        return within_hull.head(self.n_query)
-
-
-class SVGProcessStabilityAgent(StabilityAgent):
-    """
-    Stochastic variational gaussian process stability agent for Big Data.
-
-    The computational complexity of this algorithm scales as O(M^3)
-    compared to O(N^3) of standard GP, where N is the number of data points
-    and M is the number of inducing points (M<<N).
-
-    The default parameters are optimized to deliver a compromise between
-    compute-time and model accuracy for data sets with up to 25 to 40
-    thousand examples (e.g. the ICSD seed data). For bigger systems,
-    parameter M may need to be reduced. For smaller systems, it can be
-    increased, if higher accuracy is desired.  Inducing point locations
-    are determined using k-means clustering.
-
-    References:
-        Hensman, James, Nicolo Fusi, and Neil D. Lawrence. "Gaussian
-            processes for big data." Uncertainty in Artificial
-            Intelligence (2013).
-        Kingma, Diederik P., and Jimmy Ba. "Adam: A method for stochastic
-            optimization." arXiv preprint arXiv:1412.6980 (2014).
-
-    """
-
-    def __init__(
-        self,
-        candidate_data=None,
-        seed_data=None,
-        n_query=1,
-        hull_distance=0.0,
-        parallel=cpu_count(),
-        alpha=0.5,
-        M=600,
-        maxiter=20000
-    ):
-        """
-        Args:
-            candidate_data (DataFrame): data about the candidates
-            seed_data (DataFrame): data which to fit the Agent to
-            n_query (int): number of hypotheses to generate
-            hull_distance (float): hull distance as a criteria for
-                which to deem a given material as "stable"
-            parallel (bool): whether to use multiprocessing
-                for phase stability analysis
-            alpha (float): weighting factor for the stdev in making
-                best-case predictions of the stability
-            M (int): number of inducing points associated with the
-                SVGProcess
-            maxiter (int): number of maximum iterations of the SVG
-                process
-        """
-        super(SVGProcessStabilityAgent, self).__init__(
-            candidate_data=candidate_data,
-            seed_data=seed_data,
-            n_query=n_query,
-            hull_distance=hull_distance,
-            parallel=parallel,
-        )
-        self.alpha = alpha
-        self.M = M
-        self.maxiter = maxiter
-
-        # Define non-argument SVG-specific attributes
-        self.kernel = gpflow.kernels.RBF(273) * gpflow.kernels.Constant(273)
-        self.mean_f = gpflow.mean_functions.Constant()
-        self.logger = None
-        self.model = None
-        self.pred_y = None
-        self.pred_std = None
-
-    def get_hypotheses(self, candidate_data, seed_data=None):
-        """
-        Get hypotheses method for SVGProcessStabilityAgent.
-
-        Code used from gpflow examples for big data, see:
-
-        https://github.com/GPflow/GPflow/blob/develop/doc/source/notebooks/advanced/gps_for_big_data.pct.py
-
-        Args:
-            candidate_data (pandas.DataFrame): dataframe of candidates
-            seed_data (pandas.DataFrame): dataframe of prior data on
-                which to fit model
-
-        Returns:
-            (pandas.DataFrame): top candidates from the algorithm
-
-        """
-        X_cand, X_seed, y_seed = self.update_data(candidate_data, seed_data)
-
-        # Test model performance first.  Note we avoid doing CV to
-        # reduce compute time. We simply do a 1-way split 80:20 (train:test)
-        X_train, X_test, y_train, y_test = train_test_split(
-            X_seed, y_seed, test_size=0.2, random_state=42
-        )
-        scaler = StandardScaler()
-        X_train_scaled = scaler.fit_transform(X_train)
-
-        # Do a k-means clustering and use cluster centers as inducing points.
-        cls = MiniBatchKMeans(n_clusters=self.M, batch_size=200)
-        cls.fit(X_train_scaled)
-        Z = cls.cluster_centers_
-        _y = np.array(y_train.to_list())
-        mu = np.mean(_y)
-        sig = np.std(_y)
-        print(Z, _y.shape)
-        print(sig, mu)
-        model = gpflow.models.SVGP(
-            self.kernel,
-            gpflow.likelihoods.Gaussian(),
-            Z,
-            mean_function=self.mean_f,
-        )
-        elbo = tf.function(model.elbo)
-
-        # TensorFlow re-traces & compiles a `tf.function`-wrapped method at *every* call
-        # if the arguments are numpy arrays instead of tf.Tensors. Hence:
-        tensor_data = tuple(map(tf.convert_to_tensor, (X_seed, pd.DataFrame(y_seed))))
-        elbo(tensor_data)  # run it once to trace & compile
-        minibatch_size = 100
-
-        # We turn off training for inducing point locations
-        gpflow.utilities.set_trainable(model.inducing_variable, False)
-
-        train_dataset = tf.data.Dataset.from_tensor_slices((X_train_scaled, pd.DataFrame(y_train))) \
-            .repeat() \
-            .shuffle(len(X_train_scaled))
-
-        def run_adam(model, iterations):
-            """
-            Utility function running the Adam optimizer
-
-            :param model: GPflow model
-            :param interations: number of iterations
-            """
-            # Create an Adam Optimizer action
-            logf = []
-            train_iter = iter(train_dataset.batch(minibatch_size))
-            training_loss = model.training_loss_closure(train_iter, compile=True)
-            optimizer = tf.optimizers.Adam()
-
-            @tf.function
-            def optimization_step():
-                optimizer.minimize(training_loss, model.trainable_variables)
-
-            for step in range(iterations):
-                optimization_step()
-                if step % 10 == 0:
-                    elbo = -training_loss().numpy()
-                    logf.append(elbo)
-            return logf
-
-        print("training")
-        t0 = time.time()
-        run_adam(model, ci_niter(self.maxiter))
-        print("elapsed time: ", time.time() - t0)
-
-        pred_y, pred_v = model.predict_y(scaler.transform(X_test))
-        pred_y = pred_y * sig + mu
-        self.cv_score = np.mean(np.abs(pred_y - y_test.to_numpy().reshape(-1, 1)))
-        print("cv score", self.cv_score)
-        self.model = model
-
-        # Overall model
-        scaler = StandardScaler()
-        X_scaled = scaler.fit_transform(X_seed)
-        cls = MiniBatchKMeans(n_clusters=self.M, batch_size=200)
-        cls.fit(X_scaled)
-        Z = cls.cluster_centers_
-        _y = np.array(y_seed.to_list())
-        mu = np.mean(_y)
-        sig = np.std(_y)
-        model = gpflow.models.SVGP(
-            self.kernel,
-            gpflow.likelihoods.Gaussian(),
-            Z,
-            mean_function=self.mean_f,
-        )
-        maxiter = gpflow.ci_utils.ci_niter(self.maxiter)
-        run_adam(model, maxiter)
-        print(self.model)
-        self.model = model
-
-        # GP makes predictions for Hf and uncertainty*alpha on candidate data
-        pred_y, pred_v = model.predict_y(scaler.transform(X_cand))
-        pred_y = pred_y * sig + mu
-        self.pred_y = np.array(pred_y).reshape(-1,)
-        self.pred_std = (np.array(pred_v) ** 0.5).reshape(-1,)
-
-        expected = self.pred_y - self.pred_std * self.alpha
-        print("expected improv", expected)
 
         # Update candidate data dataframe with predictions
         self.update_candidate_stabilities(expected, sort=True, floor=-6.0)

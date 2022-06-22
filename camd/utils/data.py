@@ -11,7 +11,8 @@ import botocore
 import requests
 import pandas as pd
 import numpy as np
-from pymatgen import Composition, Structure
+from pymatgen.core.composition import Composition
+from pymatgen.core.structure import Structure
 from monty.os import makedirs_p
 from camd import CAMD_CACHE, tqdm
 

@@ -23,7 +23,7 @@ import pandas as pd
 from monty.os import cd
 from monty.tempfile import ScratchDir
 from pymatgen.io.vasp.outputs import Vasprun
-from pymatgen import Composition
+from pymatgen.core.composition import Composition
 from camd.experiment.base import Experiment
 from camd.utils.data import QMPY_REFERENCES, QMPY_REFERENCES_HUBBARD, \
     get_chemsys, get_common_prefixes

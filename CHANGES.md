@@ -1,6 +1,12 @@
 Change log
 ==========
 
+v2022.1.24
+----------
+* Adds LinearAgent (@StevenTorrisi-TRI)
+* Removes SVGGP-based agent in order to remove GPFlow/TensorFlow dependency
+* Updates dependencies
+
 v2020.9.11
 ----------
 * Update dependencies
