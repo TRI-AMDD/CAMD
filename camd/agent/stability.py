@@ -727,7 +727,8 @@ class AgentStabilityAdaBoost(StabilityAgent):
         n_exploitation = int(self.n_query * self.exploit_fraction)
         if self.diversify:
             to_compute = diverse_quant(
-                within_hull.index.tolist(), n_exploitation, self.candidate_data
+                within_hull.index.tolist(), n_exploitation, self.candidate_data,
+                feature_filter=self.featurizer.feature_labels()
             )
         else:
             to_compute = within_hull.head(n_exploitation).index.tolist()
@@ -760,7 +761,7 @@ class AgentStabilityAdaBoost(StabilityAgent):
         return np.array(stds)
 
 
-def diverse_quant(points, target_length, df, quantiles=None):
+def diverse_quant(points, target_length, df, quantiles=None, feature_filter=None):
     """
     Diversify a sublist by eliminating entries based on comparisons
     with quantiles threshold and Euclidean distance.
@@ -810,20 +811,16 @@ def diverse_quant(points, target_length, df, quantiles=None):
         _df = df.sample(6000)
     else:
         _df = df
-    drop_columns = [
-        "Composition",
-        "N_species",
-        "delta_e",
-        "pred_delta_e",
-        "pred_stability",
-        "structure"
-    ]
+    if feature_filter is not None:
+        _df = _df[feature_filter]
     scaler = StandardScaler()
-    X = scaler.fit_transform(_df.drop(drop_columns, axis=1, errors="ignore"))
+    X = scaler.fit_transform(_df)
     flatD = pairwise_distances(X).flatten()
 
     _df2 = df.loc[points]
-    X = scaler.transform(_df2.drop(drop_columns, axis=1, errors="ignore"))
+    if feature_filter is not None:
+        _df2 = _df2[feature_filter]
+    X = scaler.transform(_df2)
     D = pairwise_distances(X)
 
     remove_len = len(points) - target_length

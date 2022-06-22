@@ -260,10 +260,17 @@ class AnalyzeStructures(AnalyzerBase):
         self.energies = []
         for j, r in jobs.iterrows():
             if r["status"] == "SUCCEEDED":
-                final_structure = r['result'].final_structure
-                self.structures.append(final_structure)
-                self.structure_ids.append(j)
-                self.energies.append(r['result'].final_energy / len(final_structure))
+                # This is a switch for OQMD vs. MP
+                if 'output' in r: 
+                    final_structure = r['output']['structure']
+                    self.structures.append(final_structure)
+                    self.energies.append(r['output']['energy_per_atom'])
+                    self.structure_ids.append(j)
+                else:
+                    final_structure = r['result'].final_structure
+                    self.structures.append(final_structure)
+                    self.structure_ids.append(j)
+                    self.energies.append(r['result'].final_energy / len(final_structure))
         if use_energies:
             return self._analyze_structures(
                 self.structures, self.structure_ids, against_icsd, self.energies
