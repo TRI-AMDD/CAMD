@@ -23,6 +23,7 @@ class HypothesisAgent(metaclass=abc.ABCMeta):
     candidates and selects those which are most well-suited
     to experiments
     """
+
     def __init__(self):
         """
         Placeholder for initializing agents, should include
@@ -178,3 +179,48 @@ class RandomAgent(HypothesisAgent):
 
         """
         return candidate_data.sample(self.n_query)
+
+
+class SequentialAgent(HypothesisAgent):
+    """
+    Agent that applies multiple agents sequentially, i.e.
+    runs get_hypotheses multiple times to filter
+    """
+
+    def __init__(
+        self,
+        agents: list,
+        candidate_data=None,
+        seed_data=None,
+    ):
+
+        """
+        Args:
+            candidate_data (pandas.DataFrame): data about the candidates to search over.
+                Must have a "target" column, and at least one additional column that
+                can be used as descriptors.
+            seed_data (pandas.DataFrame):  data which to fit the Agent to.
+            agents (list): list of agents.
+        """
+        self.candidate_data = candidate_data
+        self.seed_data = seed_data
+        self.agents = agents
+
+        super(SequentialAgent).__init__()
+
+    def get_hypotheses(self, candidate_data, seed_data=None):
+        """
+        Methods for getting hypotheses using linear regression
+
+        Args:
+            candidate_data (pandas.DataFrame): candidate data
+            seed_data (pandas.DataFrame): seed data
+
+        Returns:
+            (pandas.DataFrame): selected hypotheses
+
+        """
+        temp_candidate_data = candidate_data
+        for agent in self.agents:
+            temp_candidate_data = agent.get_hypotheses(temp_candidate_data, seed_data)
+        return temp_candidate_data
