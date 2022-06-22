@@ -8,7 +8,6 @@ object, which performs this function.
 import abc
 import warnings
 import json
-import pickle
 import os
 import numpy as np
 import itertools
@@ -29,8 +28,6 @@ from pymatgen.analysis.structure_matcher import StructureMatcher
 from pymatgen.core.structure import Structure
 from camd.utils.data import cache_matrio_data, filter_dataframe_by_composition, ELEMENTS
 from camd import CAMD_CACHE
-from monty.os import cd
-from monty.serialization import loadfn
 
 
 class AnalyzerBase(abc.ABC):
@@ -968,7 +965,7 @@ class GenericATFAnalyzer(AnalyzerBase):
             )
             simALM.append(similarity)
             seed_data = pd.concat(
-                [seed_data, new_experimental_results[i : (i + 1)]], axis=0
+                [seed_data, new_experimental_results[i: (i + 1)]], axis=0
             )
         simALM = np.array(simALM)
         return simALM
@@ -1052,7 +1049,6 @@ class MultiAnalyzer(AnalyzerBase):
         new_discoveries = self._filter_df_by_prop_range(new_expt_hypotheses)
 
         # total discovery = up to (& including) the current iteration
-        new_seed = seed_data.append(new_experimental_results)
         self.total_expt_queried += len(new_expt_hypotheses)
         self.total_expt_discovery += len(new_discoveries)
         if self.total_expt_queried != 0:
