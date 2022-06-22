@@ -86,9 +86,8 @@ class StabilityAgent(HypothesisAgent, metaclass=abc.ABCMeta):
         self.pd = PhaseData()
         # Filter seed data by relevant chemsys
         if chemsys:
-            total_comp = Composition(chemsys.replace('-', ''))
-            filtered = filter_dataframe_by_composition(
-                self.seed_data, total_comp)
+            total_comp = Composition(chemsys.replace("-", ""))
+            filtered = filter_dataframe_by_composition(self.seed_data, total_comp)
         else:
             filtered = self.seed_data
 
@@ -133,7 +132,7 @@ class StabilityAgent(HypothesisAgent, metaclass=abc.ABCMeta):
         if seed_data is not None:
             # Filter seed data with No delta_e, indicates a failure
             # TODO: probably worth considering putting this somewhere else
-            self.seed_data = seed_data.dropna(subset=['delta_e'])
+            self.seed_data = seed_data.dropna(subset=["delta_e"])
             X_seed = self.get_features(self.seed_data)
             y_seed = self.seed_data["delta_e"]
         else:
@@ -177,7 +176,7 @@ class StabilityAgent(HypothesisAgent, metaclass=abc.ABCMeta):
         ]
 
         # Refresh and copy seed PD filtered by candidates
-        all_comp = self.candidate_data['Composition'].sum()
+        all_comp = self.candidate_data["Composition"].sum()
         pd_ml = deepcopy(self.get_pd(all_comp))
         pd_ml.add_phases(candidate_phases)
         space_ml = PhaseSpaceAL(bounds=ELEMENTS, data=pd_ml)
@@ -202,11 +201,15 @@ class StabilityAgent(HypothesisAgent, metaclass=abc.ABCMeta):
         """
         return dataframe[self.featurizer.feature_labels()]
 
+
 ()
+
+
 class QBCStabilityAgent(StabilityAgent):
     """
     Agent which uses QBC to determine optimal hypotheses
     """
+
     def __init__(
         self,
         candidate_data=None,
@@ -248,7 +251,9 @@ class QBCStabilityAgent(StabilityAgent):
         self.model = model
         self.n_members = n_members
         self.qbc = QBC(
-            n_members=n_members, training_fraction=training_fraction, model=model,
+            n_members=n_members,
+            training_fraction=training_fraction,
+            model=model,
         )
 
     def get_hypotheses(self, candidate_data, seed_data=None, retrain_committee=True):
@@ -676,15 +681,14 @@ class AgentStabilityAdaBoost(StabilityAgent):
         """
         X_cand, X_seed, y_seed = self.update_data(candidate_data, seed_data)
 
-        steps = [("scaler", StandardScaler()), ("ML", self.model)]
+        adaboost = AdaBoostRegressor(
+            base_estimator=self.model, n_estimators=self.n_estimators
+        )
+        steps = [("scaler", StandardScaler()), ("ML", adaboost)]
         pipeline = Pipeline(steps)
 
-        adaboost = AdaBoostRegressor(
-            base_estimator=pipeline, n_estimators=self.n_estimators
-        )
-
         cv_score = cross_val_score(
-            adaboost,
+            pipeline,
             X_seed,
             y_seed,
             cv=KFold(3, shuffle=True),
@@ -727,8 +731,10 @@ class AgentStabilityAdaBoost(StabilityAgent):
         n_exploitation = int(self.n_query * self.exploit_fraction)
         if self.diversify:
             to_compute = diverse_quant(
-                within_hull.index.tolist(), n_exploitation, self.candidate_data,
-                feature_filter=self.featurizer.feature_labels()
+                within_hull.index.tolist(),
+                n_exploitation,
+                self.candidate_data,
+                feature_filter=self.featurizer.feature_labels(),
             )
         else:
             to_compute = within_hull.head(n_exploitation).index.tolist()
