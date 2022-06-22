@@ -37,9 +37,8 @@ from monty.serialization import loadfn
 class AnalyzerBase(abc.ABC):
     """
     The AnalyzerBase class defines the contract
-    for post-processing experiments and creating
-    a new seed_data object for the agent.
-
+    for post-processing experiments and reporting
+    on campaign state
     """
     def __init__(self):
         """
@@ -49,31 +48,18 @@ class AnalyzerBase(abc.ABC):
         self._initial_seed_indices = []
 
     @abc.abstractmethod
-    def analyze(self, new_experimental_results, seed_data):
+    def analyze(self, campaign):
         """
         Analyze method, performs some operation on new
         experimental results in order to place them
         in the context of the seed data
 
         Args:
-            new_experimental_results (DataFrame): new data
-                to be added to the seed
-            seed_data (DataFrame): current seed data from
-                campaign
+            campaign (Campaign): Campaign to be analyzed
 
         Returns:
-            (DataFrame): dataframe corresponding to the summary
-                of the previous set of experiments
-            (DataFrame): dataframe corresponding to the new
-                seed data
+            (DataFrame): dataframe corresponding to the analysis summary
         """
-
-    @property
-    def initial_seed_indices(self):
-        """
-        Returns: The list of indices contained in the initial seed. Intended to be set by the Campaign.
-        """
-        return self._initial_seed_indices
 
 
 class GenericMaxAnalyzer(AnalyzerBase):
@@ -92,22 +78,19 @@ class GenericMaxAnalyzer(AnalyzerBase):
         self.best_examples = []
         super(GenericMaxAnalyzer, self).__init__()
 
-    def analyze(self, new_experimental_results, seed_data):
+    def analyze(self, campaign):
         """
         Analyzes the results of an experiment by finding
         the best examples and their scores
 
         Args:
-            new_experimental_results (pandas.DataFrame): new experimental
-                results to be analyzed
-            seed_data (pandas.DataFrame): past data to include in analysis
 
         Returns:
             (pandas.DataFrame): one-row dataframe summarizing past results
             (pandas.DataFrame): new seed data to be passed to agent
 
         """
-        new_seed = seed_data.append(new_experimental_results)
+        new_seed = campaign.seed_data.append(campaign.experiment.get_results())
         self.score.append(np.sum(new_seed["target"] > self.threshold))
         self.best_examples.append(new_seed.loc[new_seed.target.idxmax()])
         new_discovery = (
@@ -122,9 +105,11 @@ class GenericMaxAnalyzer(AnalyzerBase):
                 "new_discovery": new_discovery,
             }
         )
-        return summary, new_seed
+        return summary
 
 
+# TODO: this isn't yet a true analyzer - still trying to figure out
+#   how to implement this consistently
 class AnalyzeStructures(AnalyzerBase):
     """
     This class tests if a list of structures are unique. Typically
@@ -153,7 +138,7 @@ class AnalyzeStructures(AnalyzerBase):
         self.hull_distance = hull_distance
         super(AnalyzeStructures, self).__init__()
 
-    def analyze(
+    def _analyze_structures(
         self, structures=None, structure_ids=None, against_icsd=False, energies=None
     ):
         """
@@ -257,6 +242,9 @@ class AnalyzeStructures(AnalyzerBase):
         # list provided.
         return self.structure_is_unique
 
+    def analyze(self, campaign):
+        raise NotImplementedError
+
     def analyze_vaspqmpy_jobs(self, jobs, against_icsd=False, use_energies=False):
         """
         Useful for analysis integrated as part of a campaign itself
@@ -277,11 +265,11 @@ class AnalyzeStructures(AnalyzerBase):
                 self.structure_ids.append(j)
                 self.energies.append(r['result'].final_energy / len(final_structure))
         if use_energies:
-            return self.analyze(
+            return self._analyze_structures(
                 self.structures, self.structure_ids, against_icsd, self.energies
             )
         else:
-            return self.analyze(self.structures, self.structure_ids, against_icsd)
+            return self._analyze_structures(self.structures, self.structure_ids, against_icsd)
 
 
 class StabilityAnalyzer(AnalyzerBase):
@@ -289,7 +277,7 @@ class StabilityAnalyzer(AnalyzerBase):
     Analyzer object for stability campaigns
     """
     def __init__(self, hull_distance=0.05, parallel=cpu_count(), entire_space=False,
-                 plot=True):
+                 plot=True, initial_seed_indices=None):
         """
         The Stability Analyzer is intended to analyze DFT-result
         data in the context of a global compositional seed in
@@ -313,6 +301,7 @@ class StabilityAnalyzer(AnalyzerBase):
         self.entire_space = entire_space
         self.space = None
         self.plot = plot
+        self.initial_seed_indices = initial_seed_indices
         super(StabilityAnalyzer, self).__init__()
 
     @staticmethod
@@ -343,25 +332,57 @@ class StabilityAnalyzer(AnalyzerBase):
         space = PhaseSpaceAL(bounds=ELEMENTS, data=pd)
         return space
 
-    def analyze(self, new_experimental_results, seed_data):
+    @staticmethod
+    def add_stability(df, hull_distance=0.2, parallel=cpu_count()):
+        """
+        Adds stability to a dataframe
+
+        Args:
+            df (pd.DataFrame): dataframe of entries with `delta_e` field
+            hull_distance (float): distance to the hull to classify as stable
+            parallel (int): number of parallel processes to use
+
+        Returns:
+            (pd.DataFrame): dataframe of stabilities and is_stable
+
+        """
+        space = StabilityAnalyzer.get_phase_space(df)
+        new_phases = [p for p in space.phases if p.description in df.index]
+
+        space.compute_stabilities(phases=new_phases, ncpus=parallel)
+
+        # Compute new stabilities and update new seed, note that pandas will complain
+        # if the index is not explicit due to multiple types (e. g. ints for OQMD
+        # and strs for prototypes)
+        new_data = pd.DataFrame(
+            {"stability": [phase.stability for phase in new_phases]},
+            index=[phase.description for phase in new_phases]
+        )
+        new_data["is_stable"] = new_data["stability"] <= hull_distance
+        return new_data
+
+    def analyze(self, campaign, finalize=False):
         """
         Args:
-            new_experimental_results (DataFrame): new experimental
-                results to be added to the seed
-            seed_data (DataFrame): seed to be augmented via
-                the new_experimental_results
+            campaign (Campaign): CAMD campaign
+            finalize (bool): whether or not analysis is final
 
         Returns:
             (DataFrame): summary of the process, i. e. of
                 the increment or experimental results
-            (DataFrame): augmented seed data, i. e. "new"
-                seed data according to the experimental results
 
         """
+        # On first run get initial seed indices
+        if self.initial_seed_indices is None:
+            self.initial_seed_indices = campaign.seed_data.index
         # Check for new results
+        new_experimental_results = campaign.experiment.get_results()
         new_comp = new_experimental_results['Composition'].sum()
         new_experimental_results = new_experimental_results.dropna(subset=['delta_e'])
-        new_seed = seed_data.append(new_experimental_results)
+        if not finalize:
+            new_seed = campaign.seed_data.append(new_experimental_results)
+        else:
+            new_seed = campaign.seed_data
 
         # Aggregate seed_data and new experimental results
         include_columns = ["Composition", "delta_e"]
@@ -373,21 +394,10 @@ class StabilityAnalyzer(AnalyzerBase):
             # less efficient if larger spaces are without specified chemistry.
             filtered = filter_dataframe_by_composition(filtered, new_comp)
 
-        space = self.get_phase_space(filtered)
-        new_phases = [p for p in space.phases if p.description in filtered.index]
+        new_data = self.add_stability(
+            filtered, hull_distance=self.hull_distance, parallel=self.parallel)
 
-        space.compute_stabilities(phases=new_phases, ncpus=self.parallel)
-
-        # Compute new stabilities and update new seed, note that pandas will complain
-        # if the index is not explicit due to multiple types (e. g. ints for OQMD
-        # and strs for prototypes)
-        new_data = pd.DataFrame(
-            {"stability": [phase.stability for phase in new_phases]},
-            index=[phase.description for phase in new_phases]
-        )
-        new_data["is_stable"] = new_data["stability"] <= self.hull_distance
-
-        # TODO: This is implicitly adding "stability", and "is_stable" columns
+        # # TODO: This is implicitly adding "stability", and "is_stable" columns
         #       but could be handled more gracefully
         if "stability" not in new_seed.columns:
             new_seed = pd.concat([new_seed, new_data], axis=1, sort=False)
@@ -404,12 +414,7 @@ class StabilityAnalyzer(AnalyzerBase):
             new_experimental_results.index,
             initial_seed_indices=self.initial_seed_indices,
         )
-        # Drop excess columns from experiment
-        new_seed = new_seed.drop([
-            'path', 'status', 'start_time', 'jobId', 'jobName', 'jobArn',
-            'result', 'error', 'elapsed_time'
-        ], axis="columns", errors="ignore")
-        return summary, new_seed
+        return summary
 
     @staticmethod
     def get_summary(new_seed, new_ids, initial_seed_indices=None):
@@ -437,7 +442,7 @@ class StabilityAnalyzer(AnalyzerBase):
         #       of experiments, so can be difficult to determine marginal
         #       value of a given experimental run
         processed_new = new_seed.loc[new_ids]
-        initial_seed_indices = initial_seed_indices if initial_seed_indices else []
+        initial_seed_indices = initial_seed_indices if initial_seed_indices is not None else []
         total_discovery = new_seed.loc[
             ~new_seed.index.isin(initial_seed_indices)
         ].is_stable.sum()
@@ -558,13 +563,64 @@ class StabilityAnalyzer(AnalyzerBase):
             plot.savefig(filename, dpi=70)
         plot.close()
 
-    def finalize(self, path="."):
+    def finalize(self, campaign):
         """
         Post-processing a dft campaign
         """
-        update_run_w_structure(
-            path, hull_distance=self.hull_distance, parallel=self.parallel
+        # self.analyze(campaign, finalize=True)
+        all_submitted, all_results = campaign.experiment.agg_history
+        old_results = campaign.seed_data.drop(all_results.index, errors='ignore')
+        new_results = campaign.seed_data.drop(old_results.index)
+        st_a = StabilityAnalyzer(
+            hull_distance=self.hull_distance, parallel=self.parallel,
+            entire_space=False, plot=False
         )
+
+        # Having calculated stabilities again, we plot the overall hull.
+        # Filter by chemsys
+        new_comp = new_results['Composition'].sum()
+        filtered = filter_dataframe_by_composition(campaign.seed_data, new_comp)
+        filtered = filtered.dropna(subset=['delta_e'])
+
+        st_a.plot_hull(
+            filtered,
+            all_submitted.index,
+            filename="hull_finalized.png",
+            finalize=True,
+        )
+
+        stabs = self.add_stability(
+            filtered, hull_distance=self.hull_distance, parallel=self.parallel)
+        stable_discovered = stabs[stabs["is_stable"].fillna(False)]
+
+        # Analyze structures if present in experiment
+        if "structure" in all_results.columns:
+            s_a = AnalyzeStructures()
+            s_a.analyze_vaspqmpy_jobs(all_results, against_icsd=True, use_energies=True)
+            unique_s_dict = {}
+            for i in range(len(s_a.structures)):
+                if s_a.structure_is_unique[i] and (
+                        s_a.structure_ids[i] in stable_discovered.index
+                ):
+                    unique_s_dict[s_a.structure_ids[i]] = s_a.structures[i]
+
+            with open("discovered_unique_structures.json", "w") as f:
+                json.dump(dict([(k, s.as_dict()) for k, s in unique_s_dict.items()]), f)
+
+        with open("structure_report.log", "w") as f:
+            f.write("consumed discovery unique_discovery duplicate in_icsd \n")
+            f.write(
+                str(len(all_submitted))
+                            + " "
+                            + str(len(stable_discovered))
+                            + " "
+                            + str(len(unique_s_dict))
+                            + " "
+                            + str(len(s_a.structures) - sum(s_a._not_duplicate))
+                            + " "
+                            + str(sum([not i for i in s_a._icsd_filter]))
+                        )
+        return True
 
 
 class PhaseSpaceAL(PhaseSpace):
@@ -685,70 +741,7 @@ def update_run_w_structure(folder, hull_distance=0.2, parallel=True):
     Updates a campaign grouped in directories with structure analysis
 
     """
-    with cd(folder):
-        required_files = ["seed_data.pickle"]
-        if os.path.isfile("error.json"):
-            error = loadfn("error.json")
-            print("{} ERROR: {}".format(folder, error))
 
-        if not all([os.path.isfile(fn) for fn in required_files]):
-            print("{} ERROR: no seed data, no analysis to be done")
-        else:
-            with open("seed_data.pickle", "rb") as f:
-                df = pickle.load(f)
-
-            with open("experiment.pickle", "rb") as f:
-                experiment = pickle.load(f)
-                # Hack to update agg_history
-                experiment.update_current_data(None)
-
-            all_submitted, all_results = experiment.agg_history
-            old_results = df.drop(all_results.index, errors='ignore')
-            new_results = df.drop(old_results.index)
-            st_a = StabilityAnalyzer(
-                hull_distance=hull_distance, parallel=parallel, entire_space=False, plot=False)
-            summary, new_seed = st_a.analyze(new_results, old_results)
-
-            # Having calculated stabilities again, we plot the overall hull.
-            # Filter by chemsys
-            new_comp = new_results['Composition'].sum()
-            filtered = filter_dataframe_by_composition(new_seed, new_comp)
-            st_a.plot_hull(
-                filtered,
-                all_submitted.index,
-                filename="hull_finalized.png",
-                finalize=True,
-            )
-
-            stable_discovered = new_seed[new_seed["is_stable"].fillna(False)]
-
-            # Analyze structures if present in experiment
-            if "structure" in all_results.columns:
-                s_a = AnalyzeStructures()
-                s_a.analyze_vaspqmpy_jobs(all_results, against_icsd=True, use_energies=True)
-                unique_s_dict = {}
-                for i in range(len(s_a.structures)):
-                    if s_a.structure_is_unique[i] and (
-                        s_a.structure_ids[i] in stable_discovered.index
-                    ):
-                        unique_s_dict[s_a.structure_ids[i]] = s_a.structures[i]
-
-                with open("discovered_unique_structures.json", "w") as f:
-                    json.dump(dict([(k, s.as_dict()) for k, s in unique_s_dict.items()]), f)
-
-                with open("structure_report.log", "w") as f:
-                    f.write("consumed discovery unique_discovery duplicate in_icsd \n")
-                    f.write(
-                        str(len(all_submitted))
-                        + " "
-                        + str(len(stable_discovered))
-                        + " "
-                        + str(len(unique_s_dict))
-                        + " "
-                        + str(len(s_a.structures) - sum(s_a._not_duplicate))
-                        + " "
-                        + str(sum([not i for i in s_a._icsd_filter]))
-                    )
 
 
 class GenericATFAnalyzer(AnalyzerBase):

@@ -5,7 +5,6 @@ import subprocess
 import boto3
 import json
 import time
-import shlex
 from multiprocessing import Pool
 from camd import CAMD_S3_BUCKET
 from camd.campaigns.worker import Worker

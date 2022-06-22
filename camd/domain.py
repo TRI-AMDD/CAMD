@@ -9,24 +9,9 @@ import itertools
 import numpy as np
 
 from protosearch.build_bulk.oqmd_interface import OqmdInterface
-
-
 from pymatgen.io.ase import AseAtomsAdaptor
 from pymatgen.core.composition import Composition, Element
-from matminer.featurizers.base import MultipleFeaturizer
-from matminer.featurizers.composition import (
-    ElementProperty,
-    Stoichiometry,
-    ValenceOrbital,
-    IonProperty,
-)
-from matminer.featurizers.structure import (
-    SiteStatsFingerprint,
-    StructuralHeterogeneity,
-    ChemicalOrdering,
-    StructureComposition,
-    MaximumPackingEfficiency,
-)
+from camd.utils.data import get_default_featurizer
 
 
 class DomainBase(abc.ABC):
@@ -248,23 +233,7 @@ class StructureDomain(DomainBase):
         featurizer = (
             featurizer
             if featurizer
-            else MultipleFeaturizer(
-                [
-                    SiteStatsFingerprint.from_preset(
-                        "CoordinationNumber_ward-prb-2017"
-                    ),
-                    StructuralHeterogeneity(),
-                    ChemicalOrdering(),
-                    MaximumPackingEfficiency(),
-                    SiteStatsFingerprint.from_preset(
-                        "LocalPropertyDifference_ward-prb-2017"
-                    ),
-                    StructureComposition(Stoichiometry()),
-                    StructureComposition(ElementProperty.from_preset("magpie")),
-                    StructureComposition(ValenceOrbital(props=["frac"])),
-                    StructureComposition(IonProperty(fast=True)),
-                ]
-            )
+            else get_default_featurizer()
         )
 
         features = featurizer.featurize_many(

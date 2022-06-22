@@ -15,7 +15,7 @@ import numpy as np
 from qmpy.analysis.thermodynamics.phase import Phase, PhaseData
 from camd.analysis import PhaseSpaceAL, ELEMENTS
 from camd.agent.base import HypothesisAgent, QBC
-from camd.utils.data import filter_dataframe_by_composition
+from camd.utils.data import filter_dataframe_by_composition, get_default_featurizer
 from pymatgen.core.composition import Composition
 
 from sklearn.gaussian_process.kernels import RBF, ConstantKernel
@@ -45,6 +45,7 @@ class StabilityAgent(HypothesisAgent, metaclass=abc.ABCMeta):
         seed_data=None,
         n_query=1,
         hull_distance=0.0,
+        featurizer=None,
         parallel=cpu_count(),
     ):
         """
@@ -66,6 +67,7 @@ class StabilityAgent(HypothesisAgent, metaclass=abc.ABCMeta):
         self.hull_distance = hull_distance
         self.pd = None
         self.parallel = parallel
+        self.featurizer = featurizer or get_default_featurizer()
 
         # These might be able to go into the base class
         self.cv_score = np.nan
@@ -123,24 +125,16 @@ class StabilityAgent(HypothesisAgent, metaclass=abc.ABCMeta):
         # Note: In the drop command, we're ignoring errors for
         #   brevity.  We should watch this, because we may not
         #   drop everything we intend to.
-        drop_columns = [
-            "Composition",
-            "N_species",
-            "delta_e",
-            "pred_delta_e",
-            "pred_stability",
-            "stability",
-            "is_stable",
-            "structure",
-        ]
         if candidate_data is not None:
             self.candidate_data = candidate_data
-            X_cand = candidate_data.drop(drop_columns, axis=1, errors="ignore")
+            X_cand = self.get_features(self.candidate_data)
         else:
             X_cand = None
         if seed_data is not None:
-            self.seed_data = seed_data
-            X_seed = self.seed_data.drop(drop_columns, axis=1, errors="ignore")
+            # Filter seed data with No delta_e, indicates a failure
+            # TODO: probably worth considering putting this somewhere else
+            self.seed_data = seed_data.dropna(subset=['delta_e'])
+            X_seed = self.get_features(self.seed_data)
             y_seed = self.seed_data["delta_e"]
         else:
             X_seed, y_seed = None, None
@@ -199,7 +193,16 @@ class StabilityAgent(HypothesisAgent, metaclass=abc.ABCMeta):
 
         return self.candidate_data
 
+    def get_features(self, dataframe):
+        """
+        Gets features of a dataframe
 
+        Returns:
+            (pd.DataFrame): dataframe filtered to include only features
+        """
+        return dataframe[self.featurizer.feature_labels()]
+
+()
 class QBCStabilityAgent(StabilityAgent):
     """
     Agent which uses QBC to determine optimal hypotheses
@@ -346,12 +349,12 @@ class AgentStabilityML5(StabilityAgent):
         cv_score = cross_val_score(
             pipeline,
             X_seed,
-            self.seed_data["delta_e"],
+            y_seed,
             cv=KFold(5, shuffle=True),
             scoring="neg_mean_absolute_error",
         )
         self.cv_score = np.mean(cv_score) * -1
-        pipeline.fit(X_seed, self.seed_data["delta_e"])
+        pipeline.fit(X_seed, y_seed)
 
         expected = pipeline.predict(X_cand)
 
@@ -697,7 +700,7 @@ class AgentStabilityAdaBoost(StabilityAgent):
         overall_adaboost = AdaBoostRegressor(
             base_estimator=self.model, n_estimators=self.n_estimators
         )
-        overall_adaboost.fit(X_scaled, self.seed_data["delta_e"])
+        overall_adaboost.fit(X_scaled, y_seed)
 
         X_cand = scaler.transform(X_cand)
         expected = overall_adaboost.predict(X_cand)
