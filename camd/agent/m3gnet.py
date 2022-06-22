@@ -1,4 +1,3 @@
-import pandas as pd
 import numpy as np
 import tensorflow as tf
 from multiprocessing import cpu_count
@@ -74,7 +73,7 @@ class M3GNetStabilityAgent(StabilityAgent):
             self.candidate_data = candidate_data
         self.seed_data = seed_data
         X_seed = seed_data.drop(columns=["target"], axis=1, errors="ignore")
-        y_seed = seed_data["target"]
+        # y_seed = seed_data["target"]
         if retrain_committee and "calcs_reversed" in X_seed.columns:
             self.train(X_seed, retrain_epochs)
         relaxer = Relaxer(potential=self.trainer.potential)
@@ -136,7 +135,7 @@ class M3GNetHypothesisAgent(HypothesisAgent):
             self.candidate_data = candidate_data
         self.seed_data = seed_data
         X_seed = seed_data.drop(columns=["target"], axis=1, errors="ignore")
-        y_seed = seed_data["target"]
+        # y_seed = seed_data["target"]
         if retrain and "calcs_reversed" in X_seed.columns:
             self.train(X_seed)
         relaxer = Relaxer(potential=self.trainer.potential)
