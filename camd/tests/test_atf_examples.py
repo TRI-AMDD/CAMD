@@ -222,7 +222,7 @@ class AtfLoopTest(unittest.TestCase):
         self.assertEqual(new_loop.iteration, 7)
 
 
-class GPBatchUCBAgent(unittest.TestCase):
+class GPBatchUCBAgentTest(unittest.TestCase):
     def setUp(self):
         self.pwd = os.getcwd()
         self.tempdir = tempfile.mkdtemp()

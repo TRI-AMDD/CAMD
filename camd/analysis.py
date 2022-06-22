@@ -27,8 +27,7 @@ from pymatgen.analysis.phase_diagram import (
 )
 from pymatgen.analysis.structure_matcher import StructureMatcher
 from pymatgen.core.structure import Structure
-from camd.utils.data import cache_matrio_data, \
-    filter_dataframe_by_composition, ELEMENTS
+from camd.utils.data import cache_matrio_data, filter_dataframe_by_composition, ELEMENTS
 from camd import CAMD_CACHE
 from monty.os import cd
 from monty.serialization import loadfn
@@ -40,6 +39,7 @@ class AnalyzerBase(abc.ABC):
     for post-processing experiments and reporting
     on campaign state
     """
+
     def __init__(self):
         """
         Initialize an Analyzer.  Should contain all necessary
@@ -78,7 +78,7 @@ class GenericMaxAnalyzer(AnalyzerBase):
         self.best_examples = []
         super(GenericMaxAnalyzer, self).__init__()
 
-    def analyze(self, campaign):
+    def analyze(self, campaign, finalize=False):
         """
         Analyzes the results of an experiment by finding
         the best examples and their scores
@@ -261,30 +261,41 @@ class AnalyzeStructures(AnalyzerBase):
         for j, r in jobs.iterrows():
             if r["status"] == "SUCCEEDED":
                 # This is a switch for OQMD vs. MP
-                if 'output' in r: 
-                    final_structure = r['output']['structure']
+                if "output" in r:
+                    final_structure = r["output"]["structure"]
                     self.structures.append(final_structure)
-                    self.energies.append(r['output']['energy_per_atom'])
+                    self.energies.append(r["output"]["energy_per_atom"])
                     self.structure_ids.append(j)
                 else:
-                    final_structure = r['result'].final_structure
+                    final_structure = r["result"].final_structure
                     self.structures.append(final_structure)
                     self.structure_ids.append(j)
-                    self.energies.append(r['result'].final_energy / len(final_structure))
+                    self.energies.append(
+                        r["result"].final_energy / len(final_structure)
+                    )
         if use_energies:
             return self._analyze_structures(
                 self.structures, self.structure_ids, against_icsd, self.energies
             )
         else:
-            return self._analyze_structures(self.structures, self.structure_ids, against_icsd)
+            return self._analyze_structures(
+                self.structures, self.structure_ids, against_icsd
+            )
 
 
 class StabilityAnalyzer(AnalyzerBase):
     """
     Analyzer object for stability campaigns
     """
-    def __init__(self, hull_distance=0.05, parallel=cpu_count(), entire_space=False,
-                 plot=True, initial_seed_indices=None):
+
+    def __init__(
+        self,
+        hull_distance=0.05,
+        parallel=cpu_count(),
+        entire_space=False,
+        plot=True,
+        initial_seed_indices=None,
+    ):
         """
         The Stability Analyzer is intended to analyze DFT-result
         data in the context of a global compositional seed in
@@ -363,7 +374,7 @@ class StabilityAnalyzer(AnalyzerBase):
         # and strs for prototypes)
         new_data = pd.DataFrame(
             {"stability": [phase.stability for phase in new_phases]},
-            index=[phase.description for phase in new_phases]
+            index=[phase.description for phase in new_phases],
         )
         new_data["is_stable"] = new_data["stability"] <= hull_distance
         return new_data
@@ -384,8 +395,8 @@ class StabilityAnalyzer(AnalyzerBase):
             self.initial_seed_indices = campaign.seed_data.index
         # Check for new results
         new_experimental_results = campaign.experiment.get_results()
-        new_comp = new_experimental_results['Composition'].sum()
-        new_experimental_results = new_experimental_results.dropna(subset=['delta_e'])
+        new_comp = new_experimental_results["Composition"].sum()
+        new_experimental_results = new_experimental_results.dropna(subset=["delta_e"])
         if not finalize:
             new_seed = campaign.seed_data.append(new_experimental_results)
         else:
@@ -402,7 +413,8 @@ class StabilityAnalyzer(AnalyzerBase):
             filtered = filter_dataframe_by_composition(filtered, new_comp)
 
         new_data = self.add_stability(
-            filtered, hull_distance=self.hull_distance, parallel=self.parallel)
+            filtered, hull_distance=self.hull_distance, parallel=self.parallel
+        )
 
         # # TODO: This is implicitly adding "stability", and "is_stable" columns
         #       but could be handled more gracefully
@@ -413,7 +425,9 @@ class StabilityAnalyzer(AnalyzerBase):
 
         # Write hull figure to disk
         if self.plot:
-            self.plot_hull(filtered, new_experimental_results.index, filename="hull.png")
+            self.plot_hull(
+                filtered, new_experimental_results.index, filename="hull.png"
+            )
 
         # Compute summary metrics
         summary = self.get_summary(
@@ -449,7 +463,9 @@ class StabilityAnalyzer(AnalyzerBase):
         #       of experiments, so can be difficult to determine marginal
         #       value of a given experimental run
         processed_new = new_seed.loc[new_ids]
-        initial_seed_indices = initial_seed_indices if initial_seed_indices is not None else []
+        initial_seed_indices = (
+            initial_seed_indices if initial_seed_indices is not None else []
+        )
         total_discovery = new_seed.loc[
             ~new_seed.index.isin(initial_seed_indices)
         ].is_stable.sum()
@@ -477,12 +493,12 @@ class StabilityAnalyzer(AnalyzerBase):
             (pyplot): plotter instance
         """
         # Generate all entries
-        total_comp = Composition(df['Composition'].sum())
+        total_comp = Composition(df["Composition"].sum())
         if len(total_comp) > 4:
             warnings.warn("Number of elements too high for phase diagram plotting")
             return None
         filtered = filter_dataframe_by_composition(df, total_comp)
-        filtered = filtered[['delta_e', 'Composition']]
+        filtered = filtered[["delta_e", "Composition"]]
         filtered = filtered.dropna()
 
         # Create computed entry column with un-normalized energies
@@ -515,7 +531,7 @@ class StabilityAnalyzer(AnalyzerBase):
             plotkwargs.update({"linestyle": "--"})
         else:
             plotkwargs.update({"linestyle": "-"})
-        plotter = PDPlotter(pd, backend='matplotlib', **plotkwargs)
+        plotter = PDPlotter(pd, backend="matplotlib", **plotkwargs)
 
         getplotkwargs = {"label_stable": False} if finalize else {}
         plot = plotter.get_plot(**getplotkwargs)
@@ -532,7 +548,9 @@ class StabilityAnalyzer(AnalyzerBase):
             # measure stabilities wrt. the ultimate hull.
             pd = PhaseDiagram(filtered["entry"].values, elements=pg_elements)
             plotter = PDPlotter(
-                pd, backend="matplotlib", **{"markersize": 0, "linestyle": "-", "linewidth": 2}
+                pd,
+                backend="matplotlib",
+                **{"markersize": 0, "linestyle": "-", "linewidth": 2}
             )
             plot = plotter.get_plot(plt=plot)
 
@@ -576,18 +594,20 @@ class StabilityAnalyzer(AnalyzerBase):
         """
         # self.analyze(campaign, finalize=True)
         all_submitted, all_results = campaign.experiment.agg_history
-        old_results = campaign.seed_data.drop(all_results.index, errors='ignore')
+        old_results = campaign.seed_data.drop(all_results.index, errors="ignore")
         new_results = campaign.seed_data.drop(old_results.index)
         st_a = StabilityAnalyzer(
-            hull_distance=self.hull_distance, parallel=self.parallel,
-            entire_space=False, plot=False
+            hull_distance=self.hull_distance,
+            parallel=self.parallel,
+            entire_space=False,
+            plot=False,
         )
 
         # Having calculated stabilities again, we plot the overall hull.
         # Filter by chemsys
-        new_comp = new_results['Composition'].sum()
+        new_comp = new_results["Composition"].sum()
         filtered = filter_dataframe_by_composition(campaign.seed_data, new_comp)
-        filtered = filtered.dropna(subset=['delta_e'])
+        filtered = filtered.dropna(subset=["delta_e"])
 
         st_a.plot_hull(
             filtered,
@@ -597,7 +617,8 @@ class StabilityAnalyzer(AnalyzerBase):
         )
 
         stabs = self.add_stability(
-            filtered, hull_distance=self.hull_distance, parallel=self.parallel)
+            filtered, hull_distance=self.hull_distance, parallel=self.parallel
+        )
         stable_discovered = stabs[stabs["is_stable"].fillna(False)]
 
         # Analyze structures if present in experiment
@@ -607,7 +628,7 @@ class StabilityAnalyzer(AnalyzerBase):
             unique_s_dict = {}
             for i in range(len(s_a.structures)):
                 if s_a.structure_is_unique[i] and (
-                        s_a.structure_ids[i] in stable_discovered.index
+                    s_a.structure_ids[i] in stable_discovered.index
                 ):
                     unique_s_dict[s_a.structure_ids[i]] = s_a.structures[i]
 
@@ -618,15 +639,15 @@ class StabilityAnalyzer(AnalyzerBase):
                 f.write("consumed discovery unique_discovery duplicate in_icsd \n")
                 f.write(
                     str(len(all_submitted))
-                                + " "
-                                + str(len(stable_discovered))
-                                + " "
-                                + str(len(unique_s_dict))
-                                + " "
-                                + str(len(s_a.structures) - sum(s_a._not_duplicate))
-                                + " "
-                                + str(sum([not i for i in s_a._icsd_filter]))
-                            )
+                    + " "
+                    + str(len(stable_discovered))
+                    + " "
+                    + str(len(unique_s_dict))
+                    + " "
+                    + str(len(s_a.structures) - sum(s_a._not_duplicate))
+                    + " "
+                    + str(sum([not i for i in s_a._icsd_filter]))
+                )
         return True
 
 
@@ -743,14 +764,6 @@ class PhaseSpaceAL(PhaseSpace):
         )
 
 
-def update_run_w_structure(folder, hull_distance=0.2, parallel=True):
-    """
-    Updates a campaign grouped in directories with structure analysis
-
-    """
-
-
-
 class GenericATFAnalyzer(AnalyzerBase):
     """
     Generic analyzer provide AL metrics analysis, including:
@@ -765,7 +778,7 @@ class GenericATFAnalyzer(AnalyzerBase):
 
     def __init__(self, exploration_space_df, percentile=0.01):
         """
-        Notice the default of SL is to maximize a value, if the target value is 
+        Notice the default of SL is to maximize a value, if the target value is
         overpotential, please remember to negate the target values
 
         Args:
@@ -778,39 +791,47 @@ class GenericATFAnalyzer(AnalyzerBase):
         self.percentile = percentile
         super(GenericATFAnalyzer, self).__init__()
 
-    def analyze(self, new_experimental_results, seed_data):
+    def analyze(self, campaign, finalize=False):
         """
         run analysis one by one
-        Args:
-            new_experimental_results (pd.DataFrame):
-                selection of candidiates in the right order
-            seed_data (pd.DataFrame):
-                seed data used before first-round CAMD selection starts
-        Returns:
-            deALM_val (np.array):
-                results from GenericATFAnalyzer.gather_deALM()
-            anyALM_val (np.array):
-                results from GenericATFAnalyzer.gather_anyALM()
-            allALM_val (np.array):
-                results from GenericATFAnalyzer.gather_allALM()
-            simALM_val (np.array):
-                results from GenericATFAnalyzer.gather_simALM()
-        """
-        summary = pd.DataFrame()
-        deALM_val = self.gather_deALM(new_experimental_results.copy(), 
-                                      seed_data.copy(), self.exploration_space_df.copy())
-        summary['deALM'] = [deALM_val]
-        anyALM_val = self.gather_anyALM(new_experimental_results.copy(), seed_data.copy(), 
-                                        self.exploration_space_df.copy(), percentile=self.percentile)
-        summary['anyALM'] = [anyALM_val]
-        allALM_val = self.gather_allALM(new_experimental_results.copy(), seed_data.copy(), 
-                                        self.exploration_space_df.copy(), percentile=self.percentile)
-        summary['allALM'] = [allALM_val]
-        simALM_val = self.gather_simALM(new_experimental_results.copy(), seed_data.copy())
-        summary['simALM'] = [simALM_val]
-        new_seed_data = pd.concat([seed_data, new_experimental_results], axis=0)
 
-        return summary, new_seed_data
+        Args:
+            campaign (Campaign): campaign object to analyze
+            finalize (bool): whether this analysis is the final one
+
+        Returns:
+            (DataFrame): dataframe with summary stats from campaign
+
+        """
+        seed_data = campaign.seed_data
+        new_experimental_results = campaign.experiment.get_results()
+        summary = pd.DataFrame()
+        deALM_val = self.gather_deALM(
+            new_experimental_results.copy(),
+            seed_data.copy(),
+            self.exploration_space_df.copy(),
+        )
+        summary["deALM"] = [deALM_val]
+        anyALM_val = self.gather_anyALM(
+            new_experimental_results.copy(),
+            seed_data.copy(),
+            self.exploration_space_df.copy(),
+            percentile=self.percentile,
+        )
+        summary["anyALM"] = [anyALM_val]
+        allALM_val = self.gather_allALM(
+            new_experimental_results.copy(),
+            seed_data.copy(),
+            self.exploration_space_df.copy(),
+            percentile=self.percentile,
+        )
+        summary["allALM"] = [allALM_val]
+        simALM_val = self.gather_simALM(
+            new_experimental_results.copy(), seed_data.copy()
+        )
+        summary["simALM"] = [simALM_val]
+
+        return summary
 
     def gather_deALM(self, new_experimental_results, seed_data, exploration_space_df):
         """
@@ -828,20 +849,25 @@ class GenericATFAnalyzer(AnalyzerBase):
         """
         deALM = []
         # sort df using target values
-        exploration_space_df.sort_values(by=['target'], inplace=True)
+        exploration_space_df.sort_values(by=["target"], inplace=True)
         # take seed data away from exploration_space_df
         exploration_space_df.drop(seed_data.index, inplace=True)
         # go through each selected candidate, find the rank
         for i in list(new_experimental_results.index):
             index_list = np.array(exploration_space_df.index)
-            identified_rank_frac = 2 * (np.where(index_list == i)[0][0] / exploration_space_df.shape[0]) - 1
+            identified_rank_frac = (
+                2 * (np.where(index_list == i)[0][0] / exploration_space_df.shape[0])
+                - 1
+            )
             deALM.append(identified_rank_frac)
             # drop the candidate from work df once selected
             exploration_space_df.drop(i, inplace=True)
         deALM = np.array(deALM)
         return deALM
 
-    def gather_anyALM(self, new_experimental_results, seed_data, exploration_space_df, percentile):
+    def gather_anyALM(
+        self, new_experimental_results, seed_data, exploration_space_df, percentile
+    ):
         """
         compute the any ALM for one agent
         Args:
@@ -859,19 +885,26 @@ class GenericATFAnalyzer(AnalyzerBase):
         """
         anyALM = np.array([0] * new_experimental_results.shape[0])
         # sort df using target values
-        exploration_space_df.sort_values(by=['target'], inplace=True)
-        target_values_list = exploration_space_df['target'].to_list()
-        threshold_target_value = target_values_list[round((1-percentile)*exploration_space_df.shape[0])]
+        exploration_space_df.sort_values(by=["target"], inplace=True)
+        target_values_list = exploration_space_df["target"].to_list()
+        threshold_target_value = target_values_list[
+            round((1 - percentile) * exploration_space_df.shape[0])
+        ]
         # take seed data away from exploration_space_df
         exploration_space_df.drop(seed_data.index, inplace=True)
         # go through each selected candidate, find the rank
         for i in range(new_experimental_results.shape[0]):
-            if new_experimental_results['target'].to_list()[i] >= threshold_target_value:
+            if (
+                new_experimental_results["target"].to_list()[i]
+                >= threshold_target_value
+            ):
                 anyALM[i:] += 1
                 break
         return anyALM
 
-    def gather_allALM(self, new_experimental_results, seed_data, exploration_space_df, percentile):
+    def gather_allALM(
+        self, new_experimental_results, seed_data, exploration_space_df, percentile
+    ):
         """
         compute the all ALM for one agent
         Args:
@@ -889,17 +922,22 @@ class GenericATFAnalyzer(AnalyzerBase):
         """
         allALM = []
         # sort df using target values
-        exploration_space_df.sort_values(by=['target'], inplace=True)
-        target_values_list = exploration_space_df['target'].to_list()
-        threshold_target_value = target_values_list[round((1-percentile)*exploration_space_df.shape[0])]
+        exploration_space_df.sort_values(by=["target"], inplace=True)
+        target_values_list = exploration_space_df["target"].to_list()
+        threshold_target_value = target_values_list[
+            round((1 - percentile) * exploration_space_df.shape[0])
+        ]
         # take seed data away from exploration_space_df
         exploration_space_df.drop(seed_data.index, inplace=True)
         # go through each selected candidate, find the rank
         count = 0
         for i in range(new_experimental_results.shape[0]):
-            if new_experimental_results['target'].to_list()[i] >= threshold_target_value:
+            if (
+                new_experimental_results["target"].to_list()[i]
+                >= threshold_target_value
+            ):
                 count += 1
-            allALM.append(count / (exploration_space_df.shape[0]*percentile))
+            allALM.append(count / (exploration_space_df.shape[0] * percentile))
         allALM = np.array(allALM)
         return allALM
 
@@ -917,16 +955,21 @@ class GenericATFAnalyzer(AnalyzerBase):
         """
         simALM = []
         # drop the target values so that only features are left
-        seed_data.drop('target', inplace=True, axis=1)
-        new_experimental_results.drop('target', inplace=True, axis=1)
+        seed_data.drop("target", inplace=True, axis=1)
+        new_experimental_results.drop("target", inplace=True, axis=1)
         new_experimental_results.reset_index(inplace=True, drop=True)
         # go through the new candidate one by one
         for i in range(new_experimental_results.shape[0]):
             decision_fecture_vector = np.array(new_experimental_results.loc[i].tolist())
             seed_feature_vector = np.array(seed_data.values.tolist())
-            similarity = np.linalg.norm(seed_feature_vector-decision_fecture_vector) / seed_data.shape[0]
+            similarity = (
+                np.linalg.norm(seed_feature_vector - decision_fecture_vector)
+                / seed_data.shape[0]
+            )
             simALM.append(similarity)
-            seed_data = pd.concat([seed_data, new_experimental_results[i:(i+1)]], axis=0)
+            seed_data = pd.concat(
+                [seed_data, new_experimental_results[i : (i + 1)]], axis=0
+            )
         simALM = np.array(simALM)
         return simALM
 
@@ -935,17 +978,25 @@ class MultiAnalyzer(AnalyzerBase):
     """
     The multi-fidelity analyzer.
     """
-    def __init__(self, target_prop, prop_range, total_expt_queried=0,
-                 total_expt_discovery=0, analyze_cost=False, total_cost=0.0):
+
+    def __init__(
+        self,
+        target_prop,
+        prop_range,
+        total_expt_queried=0,
+        total_expt_discovery=0,
+        analyze_cost=False,
+        total_cost=0.0,
+    ):
         """
         Args:
             target_prop (str)        The name of the target property, e.g. "bandgap".
             prop_range (list)        The range of the target property that is considered
                                      ideal.
-            total_expt_queried (int) The total experimental queries after nth iteration. 
+            total_expt_queried (int) The total experimental queries after nth iteration.
             tot_expt_discovery (int) The total experimental discovery after nth iteration.
             analyze_cost (bool)      If the input has "cost" column, also analyze that information.
-            total_cost(float)        The total cost of the hypotheses after nth iteration.       
+            total_cost(float)        The total cost of the hypotheses after nth iteration.
         """
         self.target_prop = target_prop
         self.prop_range = prop_range
@@ -961,8 +1012,10 @@ class MultiAnalyzer(AnalyzerBase):
         Args:
             df   A pd.Dataframe to be filtered.
         """
-        return df.loc[(df[self.target_prop] >= self.prop_range[0]) &
-                      (df[self.target_prop] <= self.prop_range[1])]
+        return df.loc[
+            (df[self.target_prop] >= self.prop_range[0])
+            & (df[self.target_prop] <= self.prop_range[1])
+        ]
 
     def analyze(self, campaign, finalize=False):
         """
@@ -976,7 +1029,9 @@ class MultiAnalyzer(AnalyzerBase):
             (DataFrame): pandas dataframe with summary of the results
 
         """
-        return self._analyze_results(campaign.experiment.get_results(), campaign.seed_data)
+        return self._analyze_results(
+            campaign.experiment.get_results(), campaign.seed_data
+        )
 
     def _analyze_results(self, new_experimental_results, seed_data):
         """
@@ -991,7 +1046,9 @@ class MultiAnalyzer(AnalyzerBase):
             (pd.DataFrame): new seed data
 
         """
-        new_expt_hypotheses = new_experimental_results.loc[new_experimental_results['expt_data'] == 1]
+        new_expt_hypotheses = new_experimental_results.loc[
+            new_experimental_results["expt_data"] == 1
+        ]
         new_discoveries = self._filter_df_by_prop_range(new_expt_hypotheses)
 
         # total discovery = up to (& including) the current iteration
@@ -999,19 +1056,19 @@ class MultiAnalyzer(AnalyzerBase):
         self.total_expt_queried += len(new_expt_hypotheses)
         self.total_expt_discovery += len(new_discoveries)
         if self.total_expt_queried != 0:
-            success_rate = self.total_expt_discovery/self.total_expt_queried
+            success_rate = self.total_expt_discovery / self.total_expt_queried
         else:
             success_rate = 0
 
         summary = pd.DataFrame(
-                {
-                 "expt_queried": [len(new_expt_hypotheses)],
-                 "total_expt_queried": [self.total_expt_queried],
-                 "new_discovery": [len(new_discoveries)],
-                 "total_expt_discovery": [self.total_expt_discovery],
-                 "total_regret": [self.total_expt_queried - self.total_expt_discovery], 
-                 "success_rate": [success_rate]
-                }
+            {
+                "expt_queried": [len(new_expt_hypotheses)],
+                "total_expt_queried": [self.total_expt_queried],
+                "new_discovery": [len(new_discoveries)],
+                "total_expt_discovery": [self.total_expt_discovery],
+                "total_regret": [self.total_expt_queried - self.total_expt_discovery],
+                "success_rate": [success_rate],
+            }
         )
 
         if self.analyze_cost:
@@ -1020,8 +1077,8 @@ class MultiAnalyzer(AnalyzerBase):
             summary["iteration_cost"] = [iter_cost]
             summary["total_cost"] = [self.total_cost]
             if self.total_expt_discovery != 0:
-                average_cost_per_discovery = self.total_cost/self.total_expt_discovery
+                average_cost_per_discovery = self.total_cost / self.total_expt_discovery
             else:
                 average_cost_per_discovery = np.nan
-            summary['average_cost_per_discovery'] = [average_cost_per_discovery]
+            summary["average_cost_per_discovery"] = [average_cost_per_discovery]
         return summary
