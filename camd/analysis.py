@@ -964,7 +964,21 @@ class MultiAnalyzer(AnalyzerBase):
         return df.loc[(df[self.target_prop] >= self.prop_range[0]) &
                       (df[self.target_prop] <= self.prop_range[1])]
 
-    def analyze(self, new_experimental_results, seed_data):
+    def analyze(self, campaign, finalize=False):
+        """
+        Analysis method for campaign
+
+        Args:
+            campaign (Campaign):
+            finalize (bool):
+
+        Returns:
+            (DataFrame): pandas dataframe with summary of the results
+
+        """
+        return self._analyze_results(campaign.experiment.get_results(), campaign.seed_data)
+
+    def _analyze_results(self, new_experimental_results, seed_data):
         """
         Analyze results of multi-fidelity data
 
@@ -1010,4 +1024,4 @@ class MultiAnalyzer(AnalyzerBase):
             else:
                 average_cost_per_discovery = np.nan
             summary['average_cost_per_discovery'] = [average_cost_per_discovery]
-        return summary, new_seed
+        return summary
