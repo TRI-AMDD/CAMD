@@ -74,26 +74,12 @@ class ProtoDFTCampaignTest(unittest.TestCase):
             # self.assertTrue(os.path.isfile('hull_finalized.png'))
 
     def test_sim_m3gnet(self):
-        from pymatgen.ext.matproj import MPRester
-        from pymatgen.core import Structure, Composition
-
-        # exp_dataframe = pd.read_pickle(os.path.join(CAMD_TEST_FILES, "test_m3gnet.pickle"))
-        exp_dataframe = pd.read_pickle("test_m3gnet_featurized.pickle")
-        #
-        # elements = [str(s) for s in Composition(exp_dataframe.Composition.sum())]
-        # with MPRester() as mpr:
-        #     data = mpr.query(
-        #         {"nelements": 1, "e_above_hull": {"$lt": 0.02}, 'elements': {"$in": elements}},
-        #         ['structure', 'pretty_formula', 'formation_energy_per_atom']
-        #     )
-        #     data = pd.DataFrame(data)
-        #     from camd.utils.data import get_default_featurizer
-        #     featurizer = get_default_featurizer()
-        #     # data['structure'] = data.structure.apply(Structure.from_dict)
-        #     featurizer.featurize_dataframe(data, 'structure', inplace=True, ignore_errors=True)
-        #     import pdb; pdb.set_trace()
-        #     data.to_pickle("mp_test_data.pickle")
-        seed_data = pd.read_pickle("mp_test_data.pickle")
+        exp_dataframe = pd.read_pickle(
+            os.path.join(CAMD_TEST_FILES, "test_m3gnet_featurized.pickle")
+        )
+        seed_data = pd.read_pickle(
+            os.path.join(CAMD_TEST_FILES, "mp_test_data.pickle")
+        )
 
         seed_data = seed_data.rename(
             columns={

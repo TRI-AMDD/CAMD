@@ -614,19 +614,19 @@ class StabilityAnalyzer(AnalyzerBase):
             with open("discovered_unique_structures.json", "w") as f:
                 json.dump(dict([(k, s.as_dict()) for k, s in unique_s_dict.items()]), f)
 
-        with open("structure_report.log", "w") as f:
-            f.write("consumed discovery unique_discovery duplicate in_icsd \n")
-            f.write(
-                str(len(all_submitted))
-                            + " "
-                            + str(len(stable_discovered))
-                            + " "
-                            + str(len(unique_s_dict))
-                            + " "
-                            + str(len(s_a.structures) - sum(s_a._not_duplicate))
-                            + " "
-                            + str(sum([not i for i in s_a._icsd_filter]))
-                        )
+            with open("structure_report.log", "w") as f:
+                f.write("consumed discovery unique_discovery duplicate in_icsd \n")
+                f.write(
+                    str(len(all_submitted))
+                                + " "
+                                + str(len(stable_discovered))
+                                + " "
+                                + str(len(unique_s_dict))
+                                + " "
+                                + str(len(s_a.structures) - sum(s_a._not_duplicate))
+                                + " "
+                                + str(sum([not i for i in s_a._icsd_filter]))
+                            )
         return True
 
 

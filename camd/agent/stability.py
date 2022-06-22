@@ -45,7 +45,7 @@ class StabilityAgent(HypothesisAgent, metaclass=abc.ABCMeta):
         seed_data=None,
         n_query=1,
         hull_distance=0.0,
-        featurizer=None,
+        feature_labels=None,
         parallel=cpu_count(),
     ):
         """
@@ -55,6 +55,7 @@ class StabilityAgent(HypothesisAgent, metaclass=abc.ABCMeta):
             n_query (int): number of hypotheses to generate
             hull_distance (float): hull distance as a criteria for
                 which to deem a given material as "stable"
+            feature_labels ([str]): list of columns to filter for features in ML
             parallel (bool, int): whether to use multiprocessing
                 for phase stability analysis, if an int, sets the n_jobs
                 parameter as well.  If a bool, sets n_jobs to cpu_count()
@@ -67,7 +68,10 @@ class StabilityAgent(HypothesisAgent, metaclass=abc.ABCMeta):
         self.hull_distance = hull_distance
         self.pd = None
         self.parallel = parallel
-        self.featurizer = featurizer or get_default_featurizer()
+        if feature_labels is not None:
+            self.feature_labels = feature_labels
+        else:
+            self.feature_labels = get_default_featurizer().feature_labels()
 
         # These might be able to go into the base class
         self.cv_score = np.nan
@@ -199,7 +203,7 @@ class StabilityAgent(HypothesisAgent, metaclass=abc.ABCMeta):
         Returns:
             (pd.DataFrame): dataframe filtered to include only features
         """
-        return dataframe[self.featurizer.feature_labels()]
+        return dataframe[self.feature_labels]
 
 
 ()
@@ -221,6 +225,7 @@ class QBCStabilityAgent(StabilityAgent):
         training_fraction=0.5,
         model=None,
         n_members=10,
+        feature_labels=None,
     ):
         """
         Args:
@@ -245,6 +250,7 @@ class QBCStabilityAgent(StabilityAgent):
             n_query=n_query,
             hull_distance=hull_distance,
             parallel=parallel,
+            feature_labels=feature_labels
         )
 
         self.alpha = alpha
@@ -308,6 +314,7 @@ class AgentStabilityML5(StabilityAgent):
         parallel=cpu_count(),
         model=None,
         exploit_fraction=0.5,
+        feature_labels=None,
     ):
         """
         Args:
@@ -328,6 +335,7 @@ class AgentStabilityML5(StabilityAgent):
             n_query=n_query,
             hull_distance=hull_distance,
             parallel=parallel,
+            feature_labels=feature_labels
         )
 
         self.model = model or LinearRegression()
@@ -398,6 +406,7 @@ class GaussianProcessStabilityAgent(StabilityAgent):
         hull_distance=0.0,
         parallel=cpu_count(),
         alpha=0.5,
+        feature_labels=None
     ):
         """
         Args:
@@ -417,6 +426,7 @@ class GaussianProcessStabilityAgent(StabilityAgent):
             n_query=n_query,
             hull_distance=hull_distance,
             parallel=parallel,
+            feature_labels=feature_labels
         )
         self.multiprocessing = parallel
         self.alpha = alpha
@@ -499,6 +509,7 @@ class BaggedGaussianProcessStabilityAgent(StabilityAgent):
         n_estimators=8,
         max_samples=5000,
         bootstrap=False,
+        feature_labels=None,
     ):
         """
         Args:
@@ -518,6 +529,7 @@ class BaggedGaussianProcessStabilityAgent(StabilityAgent):
             n_query=n_query,
             hull_distance=hull_distance,
             parallel=parallel,
+            feature_labels=feature_labels
         )
 
         self.alpha = alpha
@@ -624,6 +636,7 @@ class AgentStabilityAdaBoost(StabilityAgent):
         exploit_fraction=0.5,
         diversify=False,
         dynamic_alpha=False,
+        feature_labels=None
     ):
         """
         Args:
@@ -657,6 +670,7 @@ class AgentStabilityAdaBoost(StabilityAgent):
             n_query=n_query,
             hull_distance=hull_distance,
             parallel=parallel,
+            feature_labels=feature_labels
         )
         self.model = model
         self.exploit_fraction = exploit_fraction
@@ -734,7 +748,7 @@ class AgentStabilityAdaBoost(StabilityAgent):
                 within_hull.index.tolist(),
                 n_exploitation,
                 self.candidate_data,
-                feature_filter=self.featurizer.feature_labels(),
+                feature_filter=self.feature_labels,
             )
         else:
             to_compute = within_hull.head(n_exploitation).index.tolist()
