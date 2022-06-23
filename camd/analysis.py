@@ -240,6 +240,16 @@ class AnalyzeStructures(AnalyzerBase):
         return self.structure_is_unique
 
     def analyze(self, campaign):
+        """
+        Analysis method for structures, not yet implemented
+
+        Args:
+            campaign (Campaign): campaign object to be analyzed
+
+        Returns:
+            (pd.DataFrame): summary of results from structure analysis
+
+        """
         raise NotImplementedError
 
     def analyze_vaspqmpy_jobs(self, jobs, against_icsd=False, use_energies=False):

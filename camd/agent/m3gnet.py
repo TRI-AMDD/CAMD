@@ -1,3 +1,6 @@
+"""This module defines agents and various functions
+that use megnet for candidate selection or candidate filtration
+"""
 import numpy as np
 import tensorflow as tf
 from multiprocessing import cpu_count
@@ -38,6 +41,7 @@ def reverse_calcs(retrain_data, data_screening=None):
 
 
 class M3GNetStabilityAgent(StabilityAgent):
+    """Stability agent that uses megnet for estimation of energy"""
     def __init__(
         self,
         m3gnet=None,
@@ -48,6 +52,21 @@ class M3GNetStabilityAgent(StabilityAgent):
         hull_distance=0.0,
         parallel=cpu_count(),
     ):
+        """
+
+
+        Args:
+            m3gnet (M3gnet): m3gnet object, graph CNN from m3gnet package
+                which determines energy, forces, stresses, and can do relaxation
+                etc.
+            learning_rate (float): learning rate for m3gnet fitting
+            candidate_data (pd.DataFrame): candidate data to predict on
+            seed_data (pd.DataFrame): seed data to fit on
+            n_query (int): number of candidates to select
+            hull_distance (float): hull distance to consider
+            parallel (int): number of parallel processes to use for
+                phase determination
+        """
         super(M3GNetStabilityAgent, self).__init__(
             candidate_data=candidate_data,
             seed_data=seed_data,
@@ -67,6 +86,19 @@ class M3GNetStabilityAgent(StabilityAgent):
     def get_hypotheses(
         self, candidate_data, seed_data=None, retrain_committee=False, retrain_epochs=1
     ):
+        """
+        Get hypotheses method for downselecting candidates
+
+        Args:
+            candidate_data (pd.DataFrame): candidate data to predict on and select from
+            seed_data (pd.DataFrame): seed data to fit on
+            retrain_committee (bool): whether to retrain m3gnet on each run
+            retrain_epochs (int): number of epochs for retraining
+
+        Returns:
+            (pd.DataFrame): selected candidates for experiment
+
+        """
         if "target" in candidate_data.columns:
             self.candidate_data = candidate_data.drop(columns=["target"], axis=1)
         else:
@@ -92,12 +124,13 @@ class M3GNetStabilityAgent(StabilityAgent):
     def train(self, train_data, epochs=10, kwargs={}):
         """
         Train the potential
-        Args
+        Args:
             train_data (pd.DataFrame): data for re-train,
                                         same format as seed data
                                         should contain "calcs_reversed" column
             epochs (int): number of max epoch to train
             kwargs (dict): parameters for trainer.train
+
         Returns:
             None
         """
@@ -113,7 +146,18 @@ class M3GNetStabilityAgent(StabilityAgent):
 
 
 class M3GNetHypothesisAgent(HypothesisAgent):
+    """Generic agent for AL using m3gnet"""
     def __init__(self, m3gnet=None, candidate_data=None, seed_data=None, n_query=None):
+
+        """
+        Args:
+            m3gnet (M3gnet): m3gnet object, graph CNN from m3gnet package
+                which determines energy, forces, stresses, and can do relaxation
+                etc.
+            candidate_data (pd.DataFrame): candidate data to predict on
+            seed_data (pd.DataFrame): seed data to fit on
+            n_query (int): number of candidates to select
+        """
         self.candidate_data = candidate_data
         self.seed_data = seed_data
         self.n_query = n_query if n_query else 1
@@ -129,6 +173,19 @@ class M3GNetHypothesisAgent(HypothesisAgent):
         super(M3GNetHypothesisAgent).__init__()
 
     def get_hypotheses(self, candidate_data, seed_data=None, retrain=False):
+
+        """
+        Get hypotheses method for downselecting candidates
+
+        Args:
+            candidate_data (pd.DataFrame): candidate data to predict on and select from
+            seed_data (pd.DataFrame): seed data to fit on
+            retrain (bool): whether to retrain m3gnet on each run
+
+        Returns:
+            (pd.DataFrame): selected candidates for experiment
+
+        """
         if "target" in candidate_data.columns:
             self.candidate_data = candidate_data.drop(columns=["target"], axis=1)
         else:
@@ -147,9 +204,10 @@ class M3GNetHypothesisAgent(HypothesisAgent):
         selected = np.argsort(-1.0 * np.array(t_pred))[: self.n_query]
         return candidate_data.iloc[selected]
 
-    def train(self, train_data, epochs=10, kwargs={}):
+    def train(self, train_data, epochs=10, kwargs=None):
         """
         Train the potential
+
         Args
             train_data (pd.DataFrame): data for re-train,
                                         same format as seed data
@@ -159,6 +217,8 @@ class M3GNetHypothesisAgent(HypothesisAgent):
         Returns:
             None
         """
+        if kwargs is None:
+            kwargs = {}
         X_struct, Xe, Xf, Xs = reverse_calcs(train_data["calcs_reversed"])
         self.trainer.train(
             graphs_or_structures=X_struct,
