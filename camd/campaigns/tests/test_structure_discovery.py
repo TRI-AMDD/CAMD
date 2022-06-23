@@ -71,7 +71,7 @@ class ProtoDFTCampaignTest(unittest.TestCase):
                 heuristic_stopper=5,
             )
             campaign.autorun()
-            # self.assertTrue(os.path.isfile('hull_finalized.png'))
+            self.assertTrue(os.path.isfile('hull_finalized.png'))
 
     def test_sim_m3gnet(self):
         exp_dataframe = pd.read_pickle(
@@ -118,7 +118,6 @@ class ProtoDFTCampaignTest(unittest.TestCase):
                 heuristic_stopper=5,
             )
             campaign.autorun()
-            self.assertTrue(os.path.isfile("hull_finalized.png"))
 
     @unittest.skipUnless(CAMD_DFT_TESTS, SKIP_MSG)
     def test_cached_campaign(self):

@@ -764,27 +764,26 @@ class PhaseSpaceAL(PhaseSpace):
 class GenericATFAnalyzer(AnalyzerBase):
     """
     Generic analyzer provide AL metrics analysis, including:
+
     deALM: decision efficiency metric
     anyALM: any discover from top n percentile catalyst
     allALM: fraction of top m percentile
     simALM: similarity between seed_df and new candidate
+
     This is only used in simulated discovery campaign,
     aggregated selection of candidates from one specific agent
     should be passed in
     """
 
-    def __init__(self, exploration_space_df, percentile=0.01):
+    def __init__(self, percentile=0.01):
         """
         Notice the default of SL is to maximize a value, if the target value is
         overpotential, please remember to negate the target values
 
         Args:
-            exploration_space_df (pd.DataFrame):
-                dataframe represent the whole exploration space
             percentile (float):
                 top percentile of candidates considered as "good"
         """
-        self.exploration_space_df = exploration_space_df
         self.percentile = percentile
         super(GenericATFAnalyzer, self).__init__()
 
@@ -803,172 +802,156 @@ class GenericATFAnalyzer(AnalyzerBase):
         seed_data = campaign.seed_data
         new_experimental_results = campaign.experiment.get_results()
         summary = pd.DataFrame()
-        deALM_val = self.gather_deALM(
-            new_experimental_results.copy(),
-            seed_data.copy(),
-            self.exploration_space_df.copy(),
+        unsampled_candidates = campaign.experiment.dataframe.loc[campaign.candidate_data.index]
+        all_results = unsampled_candidates.append(campaign.experiment.dataframe.loc[campaign.seed_data.index])
+        unsampled_candidates = unsampled_candidates.drop(new_experimental_results.index)
+        de_alms = self.get_de_alm(
+            new_experimental_results,
+            unsampled_candidates
         )
-        summary["deALM"] = [deALM_val]
-        anyALM_val = self.gather_anyALM(
-            new_experimental_results.copy(),
-            seed_data.copy(),
-            self.exploration_space_df.copy(),
+        summary["deALM"] = [de_alms]
+
+        any_alm = self.get_any_alm(
+            new_experimental_results,
+            all_results,
             percentile=self.percentile,
         )
-        summary["anyALM"] = [anyALM_val]
-        allALM_val = self.gather_allALM(
-            new_experimental_results.copy(),
-            seed_data.copy(),
-            self.exploration_space_df.copy(),
+        summary["anyALM"] = [any_alm]
+
+        all_sampled = seed_data.append(new_experimental_results).drop_duplicates()
+        all_alm = self.get_all_alm(
+            all_sampled,
+            all_results,
             percentile=self.percentile,
         )
-        summary["allALM"] = [allALM_val]
-        simALM_val = self.gather_simALM(
-            new_experimental_results.copy(), seed_data.copy()
-        )
-        summary["simALM"] = [simALM_val]
+        summary["allALM"] = [all_alm]
+        # simALM_val = self.gather_simALM(
+        #     new_experimental_results.copy(), seed_data.copy()
+        # )
+        # summary["simALM"] = [simALM_val]
 
         return summary
 
-    def gather_deALM(self, new_experimental_results, seed_data, exploration_space_df):
+    @staticmethod
+    def get_de_alm(samples, unsampled_results):
         """
-        compute the decision efficiency ALM for one agent
-        Args:
-            new_experimental_results (pd.DataFrame):
-                selection of candidiates in the right order
-            seed_data (pd.DataFrame):
-                seed data used before first-round CAMD selection starts
-            exploration_space_df (pd.DataFrame):
-                dataframe represent the whole exploration space
-        Returns:
-            self.deALM (np.array):
-                decision ALM for one specific agent
-        """
-        deALM = []
-        # sort df using target values
-        exploration_space_df.sort_values(by=["target"], inplace=True)
-        # take seed data away from exploration_space_df
-        exploration_space_df.drop(seed_data.index, inplace=True)
-        # go through each selected candidate, find the rank
-        for i in list(new_experimental_results.index):
-            index_list = np.array(exploration_space_df.index)
-            identified_rank_frac = (
-                2 * (np.where(index_list == i)[0][0] / exploration_space_df.shape[0])
-                - 1
-            )
-            deALM.append(identified_rank_frac)
-            # drop the candidate from work df once selected
-            exploration_space_df.drop(i, inplace=True)
-        deALM = np.array(deALM)
-        return deALM
+        Compute the decision efficiency ALM for one agent.
 
-    def gather_anyALM(
-        self, new_experimental_results, seed_data, exploration_space_df, percentile
+        de_ALM reflects the percentile of a sample relative
+        the remaining unsampled results, and is computed as
+        2*f_i - 1 in order to adopt a range from [-1, 1] which
+        can be easily compared to the random case (for which
+        de_ALM should be 0.)
+
+        If the latest sample was the "best" choice, de_ALM is 1,
+        if it was the worst, de_ALM is -1.
+
+        Args:
+            samples (pd.DataFrame): latest samples
+            unsampled_results (pd.DataFrame): not yet sampled results
+                from ATF simulation
+
+        Returns:
+            (pd.DataFrame): de_ALM
+        """
+        # go through each selected candidate, find the rank
+        de_ALMs = []
+        for idx, sample in samples.iterrows():
+            temp = unsampled_results.append(sample)
+            sample_rank_pct = temp['target'].rank(pct=True).loc[idx]
+            de_ALMs.append(2 * sample_rank_pct - 1)
+
+        return de_ALMs
+
+    @staticmethod
+    def get_any_alm(
+        samples, all_results, percentile
     ):
         """
-        compute the any ALM for one agent
+        Compute the any ALM for one agent, which is a boolean
+        describing whether or not some sample from the samples thus
+        far is present in the top n percentile of materials, e.g.
+        if some sample in samples is in the top 1% of all results
+        returns True.  Note that the any_alm from Rohr et al. is
+        the first iteration in which this is true for a given
+        random initialization of an SL campaign.
+
         Args:
-            new_experimental_results (pd.DataFrame):
+            samples (pd.DataFrame):
                 selection of candidiates in the right order
-            seed_data (pd.DataFrame):
-                seed data used before first-round CAMD selection starts
-            exploration_space_df (pd.DataFrame):
-                dataframe represent the whole exploration space
+            all_results (pd.DataFrame):
+                all_results to use for percentile determination
+            percentile (float):
+                top percentile of candidates considered as "good"
+
+        Returns:
+            (bool): True if any of the samples are in the top
+                percentile of all_results, False otherwise
+        """
+        sample_ranks = all_results['target'].rank(pct=True).loc[samples.index]
+        return (sample_ranks > 1 - percentile).any()
+
+    @staticmethod
+    def get_all_alm(
+        all_samples, all_possible_samples, percentile
+    ):
+        """
+        Compute the all ALM for one agent, defined as the fraction of
+        samples above the target percentile which are contained in
+        the samples taken up to this point. For example, if 50% of
+        the possible catalysts in the top 1% overpotential have
+        been sampled, allALM is 0.5.
+
+        Args:
+            all_samples (pd.DataFrame): all taken samples up to this point
+            all_possible_samples (pd.DataFrame): all possible samples to
+                compute percentiles from
             percentile (float):
                 top percentile of candidates considered as "good"
         Returns:
-            self.anyALM (np.array):
-                any ALM for one specific agent
+            (float): percentage of top percentile candidates contained
+                in aggregated sample set up to this point
         """
-        anyALM = np.array([0] * new_experimental_results.shape[0])
         # sort df using target values
-        exploration_space_df.sort_values(by=["target"], inplace=True)
-        target_values_list = exploration_space_df["target"].to_list()
-        threshold_target_value = target_values_list[
-            round((1 - percentile) * exploration_space_df.shape[0])
-        ]
-        # take seed data away from exploration_space_df
-        exploration_space_df.drop(seed_data.index, inplace=True)
-        # go through each selected candidate, find the rank
-        for i in range(new_experimental_results.shape[0]):
-            if (
-                new_experimental_results["target"].to_list()[i]
-                >= threshold_target_value
-            ):
-                anyALM[i:] += 1
-                break
-        return anyALM
+        ranked = all_possible_samples['target'].rank(pct=True)
+        top_percentile = ranked[ranked > 1 - percentile]
+        all_alm = len(top_percentile.index.intersection(all_samples.index)) / len(top_percentile)
+        return all_alm
 
-    def gather_allALM(
-        self, new_experimental_results, seed_data, exploration_space_df, percentile
-    ):
-        """
-        compute the all ALM for one agent
-        Args:
-            new_experimental_results (pd.DataFrame):
-                selection of candidiates in the right order
-            seed_data (pd.DataFrame):
-                seed data used before first-round CAMD selection starts
-            exploration_space_df (pd.DataFrame):
-                dataframe represent the whole exploration space
-            percentile (float):
-                top percentile of candidates considered as "good"
-        Returns:
-            self.allALM (np.array):
-                all ALM for one specific agent
-        """
-        allALM = []
-        # sort df using target values
-        exploration_space_df.sort_values(by=["target"], inplace=True)
-        target_values_list = exploration_space_df["target"].to_list()
-        threshold_target_value = target_values_list[
-            round((1 - percentile) * exploration_space_df.shape[0])
-        ]
-        # take seed data away from exploration_space_df
-        exploration_space_df.drop(seed_data.index, inplace=True)
-        # go through each selected candidate, find the rank
-        count = 0
-        for i in range(new_experimental_results.shape[0]):
-            if (
-                new_experimental_results["target"].to_list()[i]
-                >= threshold_target_value
-            ):
-                count += 1
-            allALM.append(count / (exploration_space_df.shape[0] * percentile))
-        allALM = np.array(allALM)
-        return allALM
-
-    def gather_simALM(self, new_experimental_results, seed_data):
-        """
-        compute the sim ALM for one agent
-        Args:
-            new_experimental_results (pd.DataFrame):
-                selection of candidiates in the right order
-            seed_data (pd.DataFrame):
-                seed data used before first-round CAMD selection starts
-        Returns:
-            simALM (np.array):
-                sim ALM for one specific agent
-        """
-        simALM = []
-        # drop the target values so that only features are left
-        seed_data.drop("target", inplace=True, axis=1)
-        new_experimental_results.drop("target", inplace=True, axis=1)
-        new_experimental_results.reset_index(inplace=True, drop=True)
-        # go through the new candidate one by one
-        for i in range(new_experimental_results.shape[0]):
-            decision_fecture_vector = np.array(new_experimental_results.loc[i].tolist())
-            seed_feature_vector = np.array(seed_data.values.tolist())
-            similarity = (
-                np.linalg.norm(seed_feature_vector - decision_fecture_vector)
-                / seed_data.shape[0]
-            )
-            simALM.append(similarity)
-            seed_data = pd.concat(
-                [seed_data, new_experimental_results[i: (i + 1)]], axis=0
-            )
-        simALM = np.array(simALM)
-        return simALM
+    # joseph.montoya: I don't know what this is, so I'm going to comment it for now
+    #   it looks like it might be a metric related to whether the most recent samples are
+    #   inside or outside the domain?
+    # def gather_simALM(self, new_experimental_results, seed_data):
+    #     """
+    #     compute the sim ALM for one agent
+    #     Args:
+    #         new_experimental_results (pd.DataFrame):
+    #             selection of candidiates in the right order
+    #         seed_data (pd.DataFrame):
+    #             seed data used before first-round CAMD selection starts
+    #     Returns:
+    #         simALM (np.array):
+    #             sim ALM for one specific agent
+    #     """
+    #     simALM = []
+    #     # drop the target values so that only features are left
+    #     seed_data.drop("target", inplace=True, axis=1)
+    #     new_experimental_results.drop("target", inplace=True, axis=1)
+    #     new_experimental_results.reset_index(inplace=True, drop=True)
+    #     # go through the new candidate one by one
+    #     for i in range(new_experimental_results.shape[0]):
+    #         decision_fecture_vector = np.array(new_experimental_results.loc[i].tolist())
+    #         seed_feature_vector = np.array(seed_data.values.tolist())
+    #         similarity = (
+    #             np.linalg.norm(seed_feature_vector - decision_fecture_vector)
+    #             / seed_data.shape[0]
+    #         )
+    #         simALM.append(similarity)
+    #         seed_data = pd.concat(
+    #             [seed_data, new_experimental_results[i: (i + 1)]], axis=0
+    #         )
+    #     simALM = np.array(simALM)
+    #     return simALM
 
 
 class MultiAnalyzer(AnalyzerBase):

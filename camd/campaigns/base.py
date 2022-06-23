@@ -41,7 +41,7 @@ class Campaign(MSONable):
         candidate_data,
         agent,
         experiment,
-        analyzer,
+        analyzer=None,
         seed_data=None,
         create_seed=False,
         heuristic_stopper=np.inf,
@@ -87,7 +87,10 @@ class Campaign(MSONable):
         # Object parameters
         self.agent = agent
         self.experiment = experiment
-        self.analyzer = analyzer if isinstance(analyzer, list) else [analyzer]
+        if analyzer is not None:
+            self.analyzer = analyzer if isinstance(analyzer, list) else [analyzer]
+        else:
+            self.analyzer = None
 
         # Other parameters
         # TODO: think about how to abstract this away from the loop
@@ -156,9 +159,10 @@ class Campaign(MSONable):
         # Analyze new results
         self.logger.info("{} {} state: Analyzing results".format(self.type, self.iteration))
         summary = pd.DataFrame()
-        for analyzer in self.analyzer:
-            analysis = analyzer.analyze(self, finalize=finalize)
-            summary = pd.concat([summary, analysis], axis=1)
+        if self.analyzer:
+            for analyzer in self.analyzer:
+                analysis = analyzer.analyze(self, finalize=finalize)
+                summary = pd.concat([summary, analysis], axis=1)
 
         self.history = self.history.append(summary)
         self.history = self.history.reset_index(drop=True)
