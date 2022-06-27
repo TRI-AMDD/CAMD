@@ -4,7 +4,6 @@ Module containing DFT-related experiments, typically
 to be run asynchronously with a campaign.
 """
 
-
 import os
 import json
 import re
@@ -20,6 +19,7 @@ import boto3
 from botocore.errorfactory import ClientError
 from tqdm import tqdm
 import pandas as pd
+import numpy as np
 from monty.os import cd
 from monty.tempfile import ScratchDir
 from pymatgen.io.vasp.outputs import Vasprun
@@ -28,6 +28,257 @@ from camd.experiment.base import Experiment
 from camd.utils.data import QMPY_REFERENCES, QMPY_REFERENCES_HUBBARD, \
     get_chemsys, get_common_prefixes
 
+from atomate.vasp.workflows.presets.core import wf_structure_optimization
+from atomate.vasp.database import VaspCalcDb
+
+# from fireworks import LaunchPad
+from fireworks.core.rocket_launcher import rapidfire
+
+
+class AtomateExperiment(Experiment):
+    """
+    An abstract class for brokering atomte experiments
+    TODO: 1. test
+        2. formation energy solution
+        3. cache
+        4. Better ways to record multiple fws
+    """
+
+    def __init__(self,
+                 launchpad,
+                 db_file,
+                 atomate_workflow=wf_structure_optimization,
+                 nlaunches=0,
+                 max_loops=-1,
+                 sleep_time=5,
+                 poll_time=60,
+                 current_data=None,
+                 job_status=None,
+                 history=None,
+                 ):
+        """
+        Initializes an atomate experiment.
+
+        Args:
+            launchpad (LaunchPad): launchpad
+            db_file (str): path to atomate db config file
+            atomate_workflow (): atomate workflow, default the optimziation wf
+            nlaunches (int): 0 means 'until completion', -1 or "infinite" means to loop until max_loops
+            max_loops (int): maximum number of loops (default -1 is infinite)
+            sleep_time (int): secs to sleep between rapidfire loop iterations
+            poll_time (int): time in seconds to wait in between queries of db
+            current_data (pandas.DataFrame): dataframe corresponding to
+                currently submitted experiments
+            job_status (str): status of the experiment, PENDING or COMPLETED
+            history (pandas.DataFrame): history of past experiments
+        """
+        self.current_data = current_data
+        self.job_status = job_status
+        self._history = history or []
+        self.launchpad = launchpad
+        self.nlaunches = nlaunches
+        self.max_loops = max_loops
+        self.sleep_time = sleep_time
+        self.db = VaspCalcDb.from_db_file(db_file)
+        self.wf = atomate_workflow
+        self.poll_time = poll_time
+
+    def update_current_data(self, data):
+        """
+        Updates current data with dataframe,
+        stores old data in history
+
+        Args:
+            data (DataFrame):
+
+        Returns:
+            None
+
+        """
+        if self.current_data is not None:
+            current_results = self.get_results()
+            self._history.append((self.current_data, current_results))
+        self.current_data = data
+
+    def get_results(self):
+        """
+        Gets the results from the current run.
+
+        Returns:
+            (DataFrame): dataframe corresponding to the
+                current set of results
+
+        """
+        if self.job_status != "COMPLETED":
+            self.update_results()
+        if self.job_status != "COMPLETED":
+            warnings.warn("Some calculations have not finished")
+        return self.current_data
+
+    def monitor(self):
+        """
+        Method for continuously polling for completion
+        Returns:
+            (str): calculation status string
+        """
+        while self.job_status != "COMPLETED":
+            time.sleep(self.poll_time)
+            self.update_results()
+            self.print_status()
+        return self.job_status
+
+    def update_results(self):
+        """
+        Update the current data with the latest wf, fw, launch, task information
+        """
+        for structure_id, row in self.current_data.iterrows():
+            wf_entry = self.db.workflows.find_one({"wf_name": row['wf_name']})
+            fw_entry = self.db.fireworks.find_one({"fw_id": row['fw_id']})
+            if len(fw_entry['launches']) > 0:
+                launch_id = fw_entry['launches'][-1]
+                launch_entry = self.db.launches.find_one({"launch_id": launch_id})
+                if launch_entry['action']:
+                    task_id = launch_entry['action']['stored_data']['task_id']
+                    task_entry = self.db.tasks.find_one({"task_id": task_id})
+                    task_status = task_entry['state']
+                    output = task_entry['output']
+                    input = task_entry['input']
+                    task_dir = task_entry['dir_name']
+                    calcs_reversed = task_entry['calcs_reversed']
+            update_data = {
+                "task_id": task_id if task_id else None,
+                "launch_id": launch_id if launch_id else None,
+                "wf_status": wf_entry['state'],
+                "task_status": task_status if task_status else None,
+                "output": output if output else None,
+                "input": input if input else None,
+                'task_dir': task_dir if task_dir else None,
+                "calcs_reversed": calcs_reversed if calcs_reversed else None,
+                "final_structure": output['structure'] if output else None,
+                "final_energy_per_atom": output['energy_per_atom'] if output else None
+            }
+            self.update_dataframe_row(self.current_data, structure_id, update_data)
+        self._update_job_status()
+
+    def _update_job_status(self):
+        """
+        Update the job_status flag by checking all wf status
+        job_status is "COMPLETED" only when all wf_status are COMPLETED
+        """
+        wf_status = self.current_data['wf_status']
+        if np.all(wf_status == 'COMPLETED'):
+            self.job_status = "COMPLETED"
+
+    def print_status(self):
+        """
+        Prints current status of experiment according to
+        the data in the current_data attribute
+        """
+        status_string = ""
+        for structure_id, row in self.current_data.iterrows():
+            status_string += "{}: {}\n".format(
+                structure_id, row["wf_status"]
+            )
+        print("Calc status:\n{}".format(status_string))
+        # print("Timeout is set as {}.".format(self.timeout))
+
+    def submit(self, data):
+        """
+        Args:
+            data (DataFrame): dataframe containing all necessary
+                data to conduct the experiment(s).  May be one
+                row, may be multiple rows
+
+        Returns:
+            None
+        """
+        self.update_current_data(data)
+        new_columns = ['wf_spec',
+                       'wf_name',
+                       'fw_id',
+                       'task_id',
+                       'launch_id',
+                       'wf_status',  # status of the workflow (ready, waiting, running, fizzeld, completed)
+                       'task_status',  # status of the task (successful, failed)
+                       'output',
+                       'input',
+                       'task_dir',
+                       'calcs_reversed',
+                       'final_structure',
+                       'final_energy_per_atom']
+        for new_column in new_columns:
+            self.current_data[new_column] = None
+        self.initilize_wfs()
+        self.launch()
+        self.job_status = "PENDING"
+        return self.job_status
+
+    def initilize_wfs(self):
+        """
+        Helper function to add workflows to the launchpad
+        and update the wf_name, fw_ids
+        """
+        for structure_id, row in self.current_data.iterrows():
+            wf_name = f'opt_{structure_id}'
+            wf = wf_structure_optimization(row['structure'],
+                                           name=wf_name)
+            fw_ids = self.launchpad.add_wf(wf)
+            fw_ids = sorted(list(fw_ids.values()))
+            launch_info = {
+                "wf_spec": wf,
+                "wf_name": wf_name,
+                "fw_ids": fw_ids
+            }
+            update_dataframe_row(self.current_data, structure_id, launch_info)
+
+    def launch(self):
+        """
+        Helper method for launching firework
+        """
+        rapidfire(self.launchpad,
+                  nlaunches=self.nlaunches,
+                  max_loops=self.max_loops,
+                  sleep_time=self.sleep_time)
+
+    @property
+    def agg_history(self):
+        """
+        Aggregated history, i.e. in two single dataframes
+        corresponding to "current data" attributes and
+        results
+
+        Returns:
+            (DataFrame): history of current data
+            (DataFrame): history of results
+
+        """
+        cd_list, cr_list = zip(*self._history)
+        return pd.concat(cd_list), pd.concat(cr_list)
+
+    def update_dataframe_row(dataframe, index, update_dict,
+                             add_columns=False):
+        """
+        Method to update a dataframe row via an update_dictionary
+        and an index, similarly to Dict.update()
+
+        Args:
+            dataframe (DataFrame): DataFrame for which rows should
+                be updated
+            index: index value for dataframe
+            update_dict ({}): update dictionary for dataframe
+            add_columns (bool): whether to add non-existent
+                columns to the dataframe
+
+        Returns:
+            None
+
+        """
+        for key, value in update_dict.items():
+            if add_columns and key not in dataframe.columns:
+                dataframe[key] = None
+            dataframe.loc[index, key] = value
+
+def get_mp_form_e()
 
 class OqmdDFTonMC1(Experiment):
     """
