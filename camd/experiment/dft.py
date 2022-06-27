@@ -131,6 +131,13 @@ class AtomateExperiment(Experiment):
         """
         Update the current data with the latest wf, fw, launch, task information
         """
+        task_id = None
+        launch_id = None
+        task_status = None
+        output = None
+        input = None
+        task_dir = None
+        calcs_reversed = None
         for structure_id, row in self.current_data.iterrows():
             wf_entry = self.db.workflows.find_one({"wf_name": row['wf_name']})
             fw_entry = self.db.fireworks.find_one({"fw_id": row['fw_id']})
