@@ -40,13 +40,31 @@ class AtomateTest(PymatgenTest):
                                        db_file,
                                        poll_time=30,
                                        launch_from_local=False)
-        experiment.submit(data)
+        # experiment.submit(data)
         # status = experiment.monitor()
         results = experiment.get_results()
 
         self.assertAlmostEqual(results.loc['good', 'final_energy_per_atom'], -5.420645, 5)
         self.assertIsNone(results.loc['bad', 'task_id'])
-        self.assertEqual(experiment.status, "COMPLETED")
+        self.assertEqual(experiment.job_status, "COMPLETED")
+
+    @unittest.skipUnless(ATOMATE_DFT_TESTS, SKIP_MSG)
+    def testCache(self):
+        db_file = os.path.join(TEST_DIR, "db.json")
+        lpad_file = os.path.join(TEST_DIR, "my_launchpad.yaml")
+        lpad = LaunchPad.from_file(lpad_file)
+        lpad.auto_load()
+        current_data = pd.read_pickle(os.path.join(TEST_DIR, "Si_test.p"))
+        experiment = AtomateExperiment(lpad,
+                                       db_file,
+                                       poll_time=30,
+                                       launch_from_local=False)
+        experiment.update_current_data(current_data)
+        experiment.update_results()
+        results = experiment.get_results()
+        self.assertAlmostEqual(results.loc['good', 'final_energy_per_atom'], -5.420645, 5)
+        self.assertIsNone(results.loc['bad', 'task_id'])
+        self.assertEqual(experiment.job_status, "COMPLETED")
 
 
 if __name__ == '__main__':

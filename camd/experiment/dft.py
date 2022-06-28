@@ -306,30 +306,6 @@ class AtomateExperiment(Experiment):
         return pd.concat(cd_list), pd.concat(cr_list)
 
 
-def update_dataframe_row(dataframe, index, update_dict,
-                         add_columns=False):
-    """
-    Method to update a dataframe row via an update_dictionary
-    and an index, similarly to Dict.update()
-
-    Args:
-        dataframe (DataFrame): DataFrame for which rows should
-            be updated
-        index: index value for dataframe
-        update_dict ({}): update dictionary for dataframe
-        add_columns (bool): whether to add non-existent
-            columns to the dataframe
-
-    Returns:
-        None
-
-    """
-    for key, value in update_dict.items():
-        if add_columns and key not in dataframe.columns:
-            dataframe[key] = None
-        dataframe.loc[index, key] = value
-
-
 class OqmdDFTonMC1(Experiment):
     """
     An experiment class to manage Density Functional theory
