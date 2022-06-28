@@ -70,10 +70,8 @@ def wf_structure_optimization(structure, wf_name=None, c=None):
 
 class AtomateExperiment(Experiment):
     """
-    An abstract class for brokering atomte experiments
-    TODO: 1. test
-        2. formation energy solution
-        3. cache
+    A class for brokering atomate experiments
+    TODO: 1. formation energy solution
     """
 
     def __init__(self,
@@ -89,7 +87,7 @@ class AtomateExperiment(Experiment):
                  current_data=None,
                  job_status=None,
                  history=None,
-                 launch_from_local=True
+                 launch_from_local=False
                  ):
         """
         Initializes an atomate experiment.
@@ -187,13 +185,14 @@ class AtomateExperiment(Experiment):
                 launch_id = fw_entry['launches'][-1]
                 launch_entry = self.db.launches.find_one({"launch_id": launch_id})
                 if launch_entry['action']:
-                    task_id = launch_entry['action']['stored_data']['task_id']
-                    task_entry = self.db.tasks.find_one({"task_id": task_id})
-                    task_status = task_entry['state']
-                    output = task_entry['output']
-                    input = task_entry['input']
-                    task_dir = task_entry['dir_name']
-                    calcs_reversed = task_entry['calcs_reversed']
+                    if 'task_id' in launch_entry['action']['stored_data']:
+                        task_id = launch_entry['action']['stored_data']['task_id']
+                        task_entry = self.db.tasks.find_one({"task_id": task_id})
+                        task_status = task_entry['state']
+                        output = task_entry['output']
+                        input = task_entry['input']
+                        task_dir = task_entry['dir_name']
+                        calcs_reversed = task_entry['calcs_reversed']
             update_data = {
                 "task_id": task_id if task_id else None,
                 "launch_id": launch_id if launch_id else None,
@@ -212,10 +211,10 @@ class AtomateExperiment(Experiment):
     def _update_job_status(self):
         """
         Update the job_status flag by checking all wf status
-        job_status is "COMPLETED" only when all wf_status are COMPLETED
+        job_status is "COMPLETED" only when all wf_status are COMPLETED/FIZZLED
         """
         wf_status = self.current_data['wf_status']
-        if np.all(wf_status == 'COMPLETED'):
+        if np.all([i in ['COMPLETED', 'FIZZLED'] for i in wf_status]):
             self.job_status = "COMPLETED"
 
     def print_status(self):
@@ -306,28 +305,29 @@ class AtomateExperiment(Experiment):
         cd_list, cr_list = zip(*self._history)
         return pd.concat(cd_list), pd.concat(cr_list)
 
-    def update_dataframe_row(dataframe, index, update_dict,
-                             add_columns=False):
-        """
-        Method to update a dataframe row via an update_dictionary
-        and an index, similarly to Dict.update()
 
-        Args:
-            dataframe (DataFrame): DataFrame for which rows should
-                be updated
-            index: index value for dataframe
-            update_dict ({}): update dictionary for dataframe
-            add_columns (bool): whether to add non-existent
-                columns to the dataframe
+def update_dataframe_row(dataframe, index, update_dict,
+                         add_columns=False):
+    """
+    Method to update a dataframe row via an update_dictionary
+    and an index, similarly to Dict.update()
 
-        Returns:
-            None
+    Args:
+        dataframe (DataFrame): DataFrame for which rows should
+            be updated
+        index: index value for dataframe
+        update_dict ({}): update dictionary for dataframe
+        add_columns (bool): whether to add non-existent
+            columns to the dataframe
 
-        """
-        for key, value in update_dict.items():
-            if add_columns and key not in dataframe.columns:
-                dataframe[key] = None
-            dataframe.loc[index, key] = value
+    Returns:
+        None
+
+    """
+    for key, value in update_dict.items():
+        if add_columns and key not in dataframe.columns:
+            dataframe[key] = None
+        dataframe.loc[index, key] = value
 
 
 class OqmdDFTonMC1(Experiment):
@@ -830,4 +830,7 @@ def update_dataframe_row(dataframe, index, update_dict,
     for key, value in update_dict.items():
         if add_columns and key not in dataframe.columns:
             dataframe[key] = None
-        dataframe.loc[index, key] = value
+        if isinstance(value, dict):
+            dataframe.loc[index, key] = json.dumps(value)
+        else:
+            dataframe.loc[index, key] = value
