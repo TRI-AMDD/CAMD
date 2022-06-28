@@ -24,15 +24,48 @@ from monty.os import cd
 from monty.tempfile import ScratchDir
 from pymatgen.io.vasp.outputs import Vasprun
 from pymatgen.core.composition import Composition
+from pymatgen.io.vasp.sets import MPRelaxSet
 from camd.experiment.base import Experiment
 from camd.utils.data import QMPY_REFERENCES, QMPY_REFERENCES_HUBBARD, \
     get_chemsys, get_common_prefixes
 
-from atomate.vasp.workflows.presets.core import wf_structure_optimization
 from atomate.vasp.database import VaspCalcDb
+from atomate.vasp.config import (
+    ADD_WF_METADATA,
+    DB_FILE,
+    VASP_CMD,
+)
+from atomate.vasp.powerups import (
+    add_common_powerups,
+    add_wf_metadata,
+)
+from atomate.vasp.workflows.base.core import get_wf
 
-# from fireworks import LaunchPad
 from fireworks.core.rocket_launcher import rapidfire
+
+
+def wf_structure_optimization(structure, wf_name=None, c=None):
+    c = c or {}
+    vasp_cmd = c.get("VASP_CMD", VASP_CMD)
+    db_file = c.get("DB_FILE", DB_FILE)
+    user_incar_settings = c.get("USER_INCAR_SETTINGS")
+
+    wf = get_wf(
+        structure,
+        "optimize_only.yaml",
+        vis=MPRelaxSet(
+            structure, force_gamma=True, user_incar_settings=user_incar_settings
+        ),
+        common_params={"vasp_cmd": vasp_cmd, "db_file": db_file},
+        wf_metadata={"wf_name": wf_name}
+    )
+
+    wf = add_common_powerups(wf, c)
+
+    if c.get("ADD_WF_METADATA", ADD_WF_METADATA):
+        wf = add_wf_metadata(wf, structure)
+
+    return wf
 
 
 class AtomateExperiment(Experiment):
@@ -41,20 +74,22 @@ class AtomateExperiment(Experiment):
     TODO: 1. test
         2. formation energy solution
         3. cache
-        4. Better ways to record multiple fws
     """
 
     def __init__(self,
                  launchpad,
                  db_file,
+                 fworker=None,
                  atomate_workflow=wf_structure_optimization,
                  nlaunches=0,
                  max_loops=-1,
                  sleep_time=5,
+                 m_dir=None,
                  poll_time=60,
                  current_data=None,
                  job_status=None,
                  history=None,
+                 launch_from_local=True
                  ):
         """
         Initializes an atomate experiment.
@@ -62,26 +97,32 @@ class AtomateExperiment(Experiment):
         Args:
             launchpad (LaunchPad): launchpad
             db_file (str): path to atomate db config file
+            fworker (FWorker object): fworker
             atomate_workflow (): atomate workflow, default the optimziation wf
             nlaunches (int): 0 means 'until completion', -1 or "infinite" means to loop until max_loops
             max_loops (int): maximum number of loops (default -1 is infinite)
             sleep_time (int): secs to sleep between rapidfire loop iterations
+            m_dir (str): the directory in which to loop Rocket running
             poll_time (int): time in seconds to wait in between queries of db
             current_data (pandas.DataFrame): dataframe corresponding to
                 currently submitted experiments
             job_status (str): status of the experiment, PENDING or COMPLETED
             history (pandas.DataFrame): history of past experiments
+            launch_from_local (bool): whether to launch from local
         """
         self.current_data = current_data
         self.job_status = job_status
         self._history = history or []
         self.launchpad = launchpad
+        self.fworker = fworker
         self.nlaunches = nlaunches
         self.max_loops = max_loops
         self.sleep_time = sleep_time
-        self.db = VaspCalcDb.from_db_file(db_file)
+        self.m_dir = m_dir
+        self.db = VaspCalcDb.from_db_file(db_file).db
         self.wf = atomate_workflow
         self.poll_time = poll_time
+        self.launch_from_local = launch_from_local
 
     def update_current_data(self, data):
         """
@@ -139,7 +180,8 @@ class AtomateExperiment(Experiment):
         task_dir = None
         calcs_reversed = None
         for structure_id, row in self.current_data.iterrows():
-            wf_entry = self.db.workflows.find_one({"wf_name": row['wf_name']})
+            wf_entry = self.db.workflows.find_one({"metadata.wf_name": row['wf_name'],
+                                                   "fw_states.{}".format(row['fw_id']): {"$exists": True}})
             fw_entry = self.db.fireworks.find_one({"fw_id": row['fw_id']})
             if len(fw_entry['launches']) > 0:
                 launch_id = fw_entry['launches'][-1]
@@ -164,7 +206,7 @@ class AtomateExperiment(Experiment):
                 "final_structure": output['structure'] if output else None,
                 "final_energy_per_atom": output['energy_per_atom'] if output else None
             }
-            self.update_dataframe_row(self.current_data, structure_id, update_data)
+            update_dataframe_row(self.current_data, structure_id, update_data)
         self._update_job_status()
 
     def _update_job_status(self):
@@ -215,12 +257,13 @@ class AtomateExperiment(Experiment):
                        'final_energy_per_atom']
         for new_column in new_columns:
             self.current_data[new_column] = None
-        self.initilize_wfs()
-        self.launch()
+        self.add_wfs()
+        if self.launch_from_local:
+            self.launch()
         self.job_status = "PENDING"
         return self.job_status
 
-    def initilize_wfs(self):
+    def add_wfs(self):
         """
         Helper function to add workflows to the launchpad
         and update the wf_name, fw_ids
@@ -228,13 +271,12 @@ class AtomateExperiment(Experiment):
         for structure_id, row in self.current_data.iterrows():
             wf_name = f'opt_{structure_id}'
             wf = wf_structure_optimization(row['structure'],
-                                           name=wf_name)
+                                           wf_name=wf_name)
             fw_ids = self.launchpad.add_wf(wf)
-            fw_ids = sorted(list(fw_ids.values()))
             launch_info = {
                 "wf_spec": wf,
                 "wf_name": wf_name,
-                "fw_ids": fw_ids
+                "fw_id": sorted(list(fw_ids.values()))[-1]
             }
             update_dataframe_row(self.current_data, structure_id, launch_info)
 
@@ -243,9 +285,11 @@ class AtomateExperiment(Experiment):
         Helper method for launching firework
         """
         rapidfire(self.launchpad,
+                  self.fworker,
                   nlaunches=self.nlaunches,
                   max_loops=self.max_loops,
-                  sleep_time=self.sleep_time)
+                  sleep_time=self.sleep_time,
+                  m_dir=self.m_dir)
 
     @property
     def agg_history(self):
@@ -285,7 +329,6 @@ class AtomateExperiment(Experiment):
                 dataframe[key] = None
             dataframe.loc[index, key] = value
 
-def get_mp_form_e()
 
 class OqmdDFTonMC1(Experiment):
     """
