@@ -61,7 +61,7 @@ class GenericGPUCB(HypothesisAgent):
 
         self.candidate_data = candidate_data.drop(columns=["target"], axis=1)
         self.seed_data = seed_data
-        X_seed = seed_data.drop(columns=["target"], axis=1, errors='ignore')
+        X_seed = seed_data.drop(columns=["target"], axis=1, errors="ignore")
         y_seed = seed_data["target"]
         steps = [
             ("scaler", StandardScaler()),
@@ -203,8 +203,8 @@ class GPBatchUCB(HypothesisAgent):
                         2
                         * np.log(
                             len(self.candidate_data)
-                            * _t ** 2
-                            * np.pi ** 2
+                            * _t**2
+                            * np.pi**2
                             / 6
                             / self.kwargs.get("delta", 0.1)
                         )

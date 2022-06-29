@@ -250,7 +250,7 @@ class QBCStabilityAgent(StabilityAgent):
             n_query=n_query,
             hull_distance=hull_distance,
             parallel=parallel,
-            feature_labels=feature_labels
+            feature_labels=feature_labels,
         )
 
         self.alpha = alpha
@@ -335,7 +335,7 @@ class AgentStabilityML5(StabilityAgent):
             n_query=n_query,
             hull_distance=hull_distance,
             parallel=parallel,
-            feature_labels=feature_labels
+            feature_labels=feature_labels,
         )
 
         self.model = model or LinearRegression()
@@ -406,7 +406,7 @@ class GaussianProcessStabilityAgent(StabilityAgent):
         hull_distance=0.0,
         parallel=cpu_count(),
         alpha=0.5,
-        feature_labels=None
+        feature_labels=None,
     ):
         """
         Args:
@@ -426,7 +426,7 @@ class GaussianProcessStabilityAgent(StabilityAgent):
             n_query=n_query,
             hull_distance=hull_distance,
             parallel=parallel,
-            feature_labels=feature_labels
+            feature_labels=feature_labels,
         )
         self.multiprocessing = parallel
         self.alpha = alpha
@@ -529,7 +529,7 @@ class BaggedGaussianProcessStabilityAgent(StabilityAgent):
             n_query=n_query,
             hull_distance=hull_distance,
             parallel=parallel,
-            feature_labels=feature_labels
+            feature_labels=feature_labels,
         )
 
         self.alpha = alpha
@@ -636,7 +636,7 @@ class AgentStabilityAdaBoost(StabilityAgent):
         exploit_fraction=0.5,
         diversify=False,
         dynamic_alpha=False,
-        feature_labels=None
+        feature_labels=None,
     ):
         """
         Args:
@@ -670,7 +670,7 @@ class AgentStabilityAdaBoost(StabilityAgent):
             n_query=n_query,
             hull_distance=hull_distance,
             parallel=parallel,
-            feature_labels=feature_labels
+            feature_labels=feature_labels,
         )
         self.model = model
         self.exploit_fraction = exploit_fraction

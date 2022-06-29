@@ -42,6 +42,7 @@ def reverse_calcs(retrain_data, data_screening=None):
 
 class M3GNetStabilityAgent(StabilityAgent):
     """Stability agent that uses megnet for estimation of energy"""
+
     def __init__(
         self,
         m3gnet=None,
@@ -147,6 +148,7 @@ class M3GNetStabilityAgent(StabilityAgent):
 
 class M3GNetHypothesisAgent(HypothesisAgent):
     """Generic agent for AL using m3gnet"""
+
     def __init__(self, m3gnet=None, candidate_data=None, seed_data=None, n_query=None):
 
         """
