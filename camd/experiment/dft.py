@@ -25,8 +25,10 @@ from monty.tempfile import ScratchDir
 from pymatgen.io.vasp.outputs import Vasprun
 from pymatgen.core.composition import Composition
 from pymatgen.io.vasp.sets import MPRelaxSet
+from pymatgen.entries.computed_entries import ComputedEntry
 from camd.experiment.base import Experiment
 from camd.utils.data import (
+    MP_REFERENCES,
     QMPY_REFERENCES,
     QMPY_REFERENCES_HUBBARD,
     get_chemsys,
@@ -49,6 +51,17 @@ from fireworks.core.rocket_launcher import rapidfire
 
 
 def wf_structure_optimization(structure, wf_name=None, c=None):
+    """
+    Hacking the atomate wf_structure optimization to allow
+    wf_name added to the metadata
+
+    Args:
+        structure (Structure)
+        wf_name (str)
+        c (dict)
+    Returns:
+
+    """
     c = c or {}
     vasp_cmd = c.get("VASP_CMD", VASP_CMD)
     db_file = c.get("DB_FILE", DB_FILE)
@@ -813,6 +826,28 @@ def get_qmpy_formation_energy(total_e, formula, n_atoms):
         if (element in QMPY_REFERENCES_HUBBARD) and ("O" in composition):
             energy -= QMPY_REFERENCES_HUBBARD[element] * weight
     return energy
+
+def get_mp_formation_energy(total_e, formula):
+    """
+    Helper function to computer mp-compatible formation
+    energy using reference energies extracted from MP
+
+    Args:
+        total_e (float): total energy (uncorrected)
+        formula (str): chemical formula
+        n_atoms (int): number of atoms
+
+    Returns:
+        (float): mp-compatible formation energy (eV/atom)
+
+    """
+    comp = Composition(formula)
+    entry = ComputedEntry(composition=comp, energy=total_e)
+    energy = entry.energy
+    for el, occ in comp.items():
+        energy -= MP_REFERENCES[el.name] * occ
+    return energy/comp.num_atoms
+
 
 
 def update_dataframe_row(dataframe, index, update_dict, add_columns=False):

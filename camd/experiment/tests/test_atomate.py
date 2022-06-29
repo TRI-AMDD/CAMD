@@ -3,7 +3,7 @@ import os
 import numpy as np
 
 from pymatgen.util.testing import PymatgenTest
-from camd.experiment.dft import AtomateExperiment
+from camd.experiment.dft import AtomateExperiment, get_mp_formation_energy
 import pandas as pd
 from fireworks import LaunchPad
 
@@ -67,6 +67,14 @@ class AtomateTest(PymatgenTest):
         self.assertIsNone(results.loc["bad", "task_id"])
         self.assertEqual(experiment.job_status, "COMPLETED")
 
+    def test_eform(self):
+        # SiO2 mp-546794
+        total_e = -47.4974292
+
+        formula = "Si2O4"
+        self.assertAlmostEqual(get_mp_formation_energy(total_e, formula),
+                               -3.2678,
+                               3)
 
 if __name__ == "__main__":
     unittest.main()
