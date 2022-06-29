@@ -30,7 +30,7 @@ class Campaign(MSONable):
     follows closely the "scientific method". Agent is the entity
     that suggests new Experiments.
 
-    Supporting entities are Analyzers and Finalizers. Framework
+    Supporting entities are Analyzers. Framework
     is flexible enough to implement many sequential learning or
     optimization tasks, including active-learning, bayesian optimization
     or black-box optimization with local or global optima search.
@@ -41,7 +41,7 @@ class Campaign(MSONable):
         candidate_data,
         agent,
         experiment,
-        analyzer,
+        analyzer=None,
         seed_data=None,
         create_seed=False,
         heuristic_stopper=np.inf,
@@ -59,7 +59,7 @@ class Campaign(MSONable):
                 search space for active learning
             agent (HypothesisAgent): a subclass of HypothesisAgent
             experiment (Experiment): a subclass of Experiment
-            analyzer (Analyzer): a subclass of Analyzer
+            analyzer (Analyzer): a subclass of Analyzer or a list of analyzers
             seed_data (pandas.DataFrame): Seed Data for active learning,
                 index is to be the assumed uid
             create_seed (int): an initial seed size to create from the data
@@ -87,7 +87,10 @@ class Campaign(MSONable):
         # Object parameters
         self.agent = agent
         self.experiment = experiment
-        self.analyzer = analyzer
+        if analyzer is not None:
+            self.analyzer = analyzer if isinstance(analyzer, list) else [analyzer]
+        else:
+            self.analyzer = None
 
         # Other parameters
         # TODO: think about how to abstract this away from the loop
@@ -155,14 +158,18 @@ class Campaign(MSONable):
 
         # Analyze new results
         self.logger.info("{} {} state: Analyzing results".format(self.type, self.iteration))
-        summary, new_seed_data = self.analyzer.analyze(
-            new_experimental_results, self.seed_data
-        )
+        summary = pd.DataFrame()
+        if self.analyzer:
+            for analyzer in self.analyzer:
+                analysis = analyzer.analyze(self, finalize=finalize)
+                summary = pd.concat([summary, analysis], axis=1)
 
-        # Augment summary and seed
         self.history = self.history.append(summary)
         self.history = self.history.reset_index(drop=True)
         self.save("history", method="pickle")
+
+        # Augment summary and seed
+        new_seed_data = self.seed_data.append(new_experimental_results)
         self.seed_data = new_seed_data
         self.save("seed_data", method="pickle")
 
@@ -212,6 +219,8 @@ class Campaign(MSONable):
         self.save("experiment", method="pickle")
 
         self.consumed_candidates += suggested_experiments.index.values.tolist()
+        self.logger.info("{} {} state: consumed candidates {}".format(
+            self.type, self.iteration, self.consumed_candidates))
         self.save("consumed_candidates")
 
         self.iteration += 1
@@ -251,7 +260,7 @@ class Campaign(MSONable):
             if save_iterations:
                 self.loop_backup(str(self.iteration - 1))
 
-        self.run(finalize=True)
+        # self.run(finalize=True)
         if monitor:
             self.logger.info("Monitoring experiments")
             self.experiment.monitor()
@@ -288,11 +297,13 @@ class Campaign(MSONable):
             raise ValueError(
                 "No seed data available. Either supply or ask for creation."
             )
-        self.analyzer._initial_seed_indices = self.seed_data.index.tolist()
+        # self.analyzer._initial_seed_indices = self.seed_data.index.tolist()
 
         self.logger.info("{} {} state: Running experiments".format(self.type, self.iteration))
         self.job_status = self.experiment.submit(suggested_experiments)
         self.consumed_candidates = suggested_experiments.index.values.tolist()
+        self.logger.info("{} {} state: consumed candidates {}".format(
+            self.type, self.iteration, self.consumed_candidates))
         self.create_seed = False
         self.initialized = True
 
@@ -327,8 +338,9 @@ class Campaign(MSONable):
         """
         self.logger.info("Finalizing campaign.")
         os.chdir(self.path)
-        if hasattr(self.analyzer, "finalize"):
-            self.analyzer.finalize(self.path)
+        for analyzer in self.analyzer:
+            if hasattr(analyzer, "finalize"):
+                analyzer.finalize(self)
         if self.s3_prefix:
             self.s3_sync()
 

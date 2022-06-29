@@ -1,17 +1,15 @@
 import unittest
-import os
-import pandas as pd
 from sklearn.model_selection import train_test_split
-from camd import CAMD_TEST_FILES
 from camd.agent.stability import QBCStabilityAgent, AgentStabilityML5, \
     GaussianProcessStabilityAgent, BaggedGaussianProcessStabilityAgent, \
     AgentStabilityAdaBoost
+from camd.utils.data import load_default_atf_data
 
 
 class StabilityAgentsTest(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
-        test_data = pd.read_csv(os.path.join(CAMD_TEST_FILES, 'test_df.csv'))
+        test_data = load_default_atf_data().sample(200)
         cls.seed_data, cls.candidate_data = train_test_split(
             test_data, train_size=0.2, random_state=42
         )
@@ -32,7 +30,7 @@ class StabilityAgentsTest(unittest.TestCase):
             candidate_data=self.candidate_data, seed_data=self.seed_data)
 
     def test_bagged_gp_stability_agent(self):
-        agent = BaggedGaussianProcessStabilityAgent(max_samples=100)
+        agent = BaggedGaussianProcessStabilityAgent(max_samples=30)
         hypotheses = agent.get_hypotheses(
             candidate_data=self.candidate_data, seed_data=self.seed_data)
 

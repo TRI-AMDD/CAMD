@@ -7,6 +7,7 @@ import numpy as np
 
 from sklearn.neural_network import MLPRegressor
 from sklearn.gaussian_process.kernels import RBF, ConstantKernel
+from sklearn.model_selection import train_test_split
 
 from camd.agent.stability import QBCStabilityAgent, GaussianProcessStabilityAgent, \
     BaggedGaussianProcessStabilityAgent, AgentStabilityAdaBoost
@@ -58,6 +59,13 @@ class AftLoopTestLong(unittest.TestCase):
 
 
 class AtfLoopTest(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls) -> None:
+        cls.test_data = load_default_atf_data().sample(400)
+        cls.seed_data, cls.candidate_data = train_test_split(
+            cls.test_data, train_size=0.2, random_state=42
+        )
+
     def setUp(self):
         self.pwd = os.getcwd()
         self.tempdir = tempfile.mkdtemp()
@@ -68,13 +76,11 @@ class AtfLoopTest(unittest.TestCase):
         shutil.rmtree(self.tempdir)
 
     def test_random_agent_loop(self):
-        df = load_default_atf_data()
         n_seed = 200  # Starting sample size
         agent = RandomAgent(n_query=10)
         analyzer = StabilityAnalyzer(hull_distance=0.05, parallel=False)
-        experiment = ATFSampler(dataframe=df)
-        candidate_data = df
-        new_loop = Campaign(candidate_data, agent, experiment, analyzer,
+        experiment = ATFSampler(dataframe=self.test_data)
+        new_loop = Campaign(self.test_data, agent, experiment, analyzer,
                             create_seed=n_seed)
 
         new_loop.initialize()
@@ -85,7 +91,7 @@ class AtfLoopTest(unittest.TestCase):
             self.assertTrue(True)
 
         # Testing the continuation
-        new_loop = Campaign(candidate_data, agent, experiment, analyzer,
+        new_loop = Campaign(self.candidate_data, agent, experiment, analyzer,
                             create_seed=n_seed)
         self.assertTrue(new_loop.initialized)
         self.assertEqual(new_loop.iteration, 6)
@@ -99,8 +105,9 @@ class AtfLoopTest(unittest.TestCase):
         df = pd.read_csv(os.path.join(CAMD_TEST_FILES, 'test_df.csv'))
         df_sub = df[df['N_species'] <= 3]
         n_seed = 200  # Starting sample size
-        agent = QBCStabilityAgent(model=MLPRegressor(hidden_layer_sizes=(84, 50)),
-                                  n_query=10, hull_distance=0.05, alpha=0.5)
+        agent = QBCStabilityAgent(
+            model=MLPRegressor(hidden_layer_sizes=(40, )),
+            n_query=10, hull_distance=0.05, alpha=0.5, feature_labels=df.columns[3:274])
         analyzer = StabilityAnalyzer(hull_distance=0.05, parallel=False)
         experiment = ATFSampler(dataframe=df_sub)
         candidate_data = df_sub
@@ -118,7 +125,10 @@ class AtfLoopTest(unittest.TestCase):
         df_sub = df[df['N_species'] <= 3]
         n_seed = 200  # Starting sample size
         n_query = 10  # This many new candidates are "calculated with DFT" (i.e. requested from Oracle -- DFT)
-        agent = GaussianProcessStabilityAgent(n_query=n_query, hull_distance=0.05, alpha=0.5, parallel=False)
+        agent = GaussianProcessStabilityAgent(
+            n_query=n_query, hull_distance=0.05, alpha=0.5, parallel=False,
+            feature_labels=df.columns[3:274]
+        )
         analyzer = StabilityAnalyzer(hull_distance=0.05, parallel=False)
         experiment = ATFSampler(dataframe=df_sub)
         candidate_data = df_sub
@@ -141,7 +151,8 @@ class AtfLoopTest(unittest.TestCase):
             alpha=0.5,  # Fraction of std to include in expected improvement
             n_estimators=2,
             max_samples=195,
-            parallel=False
+            parallel=False,
+            feature_labels=df.columns[3:274]
         )
         analyzer = StabilityAnalyzer(hull_distance=0.05, parallel=False)
         experiment = ATFSampler(df_sub)
@@ -161,7 +172,7 @@ class AtfLoopTest(unittest.TestCase):
         n_seed = 200  # Starting sample size
         agent = AgentStabilityAdaBoost(model=MLPRegressor(hidden_layer_sizes=(84, 50)),
                                        n_query=10, exploit_fraction=1.0, alpha=0.5,
-                                       n_estimators=10)
+                                       n_estimators=10, feature_labels=df.columns[3:274])
         analyzer = StabilityAnalyzer(hull_distance=0.05, parallel=False)
         experiment = ATFSampler(df_sub)
         candidate_data = df_sub
@@ -211,7 +222,7 @@ class AtfLoopTest(unittest.TestCase):
         self.assertEqual(new_loop.iteration, 7)
 
 
-class GPBatchUCBAgent(unittest.TestCase):
+class GPBatchUCBAgentTest(unittest.TestCase):
     def setUp(self):
         self.pwd = os.getcwd()
         self.tempdir = tempfile.mkdtemp()

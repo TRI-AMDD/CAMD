@@ -14,6 +14,20 @@ import numpy as np
 from pymatgen.core.composition import Composition
 from pymatgen.core.structure import Structure
 from monty.os import makedirs_p
+from matminer.featurizers.base import MultipleFeaturizer
+from matminer.featurizers.composition import (
+    ElementProperty,
+    Stoichiometry,
+    ValenceOrbital,
+    IonProperty,
+)
+from matminer.featurizers.structure import (
+    SiteStatsFingerprint,
+    StructuralHeterogeneity,
+    ChemicalOrdering,
+    StructureComposition,
+    MaximumPackingEfficiency,
+)
 from camd import CAMD_CACHE, tqdm
 
 
@@ -519,3 +533,30 @@ def get_common_prefixes(bucket, prefix):
     return [common_prefix['Prefix'].split('/')[-2]
             for common_prefix in result.search("CommonPrefixes")
             if common_prefix]
+
+
+def get_default_featurizer():
+    """
+    Utility function to get CAMD's default featurizer from Ward et al. (2017)
+
+    Returns:
+        (Featurizer): default CAMD featurizer
+
+    """
+    return MultipleFeaturizer(
+        [
+            SiteStatsFingerprint.from_preset(
+                "CoordinationNumber_ward-prb-2017"
+            ),
+            StructuralHeterogeneity(),
+            ChemicalOrdering(),
+            MaximumPackingEfficiency(),
+            SiteStatsFingerprint.from_preset(
+                "LocalPropertyDifference_ward-prb-2017"
+            ),
+            StructureComposition(Stoichiometry()),
+            StructureComposition(ElementProperty.from_preset("magpie")),
+            StructureComposition(ValenceOrbital(props=["frac"])),
+            StructureComposition(IonProperty(fast=True)),
+        ]
+    )

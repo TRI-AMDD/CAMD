@@ -50,7 +50,8 @@ class MultiFidelityInTandemCampaignTest(unittest.TestCase):
                                                          296  # bad theory
                                                          ]]
         analyzer = MultiAnalyzer(target_prop='bandgap', prop_range=[1.6, 2.0])
-        summary, new_seed = analyzer.analyze(new_experimental_results=sample_candidate_data, seed_data=self.seed_data)
+        summary = analyzer._analyze_results(
+            new_experimental_results=sample_candidate_data, seed_data=self.seed_data)
         self.assertEqual(
                          (summary['expt_queried'].values[0],
                           summary['total_expt_discovery'].values[0],

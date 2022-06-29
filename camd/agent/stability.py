@@ -15,7 +15,7 @@ import numpy as np
 from qmpy.analysis.thermodynamics.phase import Phase, PhaseData
 from camd.analysis import PhaseSpaceAL, ELEMENTS
 from camd.agent.base import HypothesisAgent, QBC
-from camd.utils.data import filter_dataframe_by_composition
+from camd.utils.data import filter_dataframe_by_composition, get_default_featurizer
 from pymatgen.core.composition import Composition
 
 from sklearn.gaussian_process.kernels import RBF, ConstantKernel
@@ -45,6 +45,7 @@ class StabilityAgent(HypothesisAgent, metaclass=abc.ABCMeta):
         seed_data=None,
         n_query=1,
         hull_distance=0.0,
+        feature_labels=None,
         parallel=cpu_count(),
     ):
         """
@@ -54,6 +55,7 @@ class StabilityAgent(HypothesisAgent, metaclass=abc.ABCMeta):
             n_query (int): number of hypotheses to generate
             hull_distance (float): hull distance as a criteria for
                 which to deem a given material as "stable"
+            feature_labels ([str]): list of columns to filter for features in ML
             parallel (bool, int): whether to use multiprocessing
                 for phase stability analysis, if an int, sets the n_jobs
                 parameter as well.  If a bool, sets n_jobs to cpu_count()
@@ -66,6 +68,10 @@ class StabilityAgent(HypothesisAgent, metaclass=abc.ABCMeta):
         self.hull_distance = hull_distance
         self.pd = None
         self.parallel = parallel
+        if feature_labels is not None:
+            self.feature_labels = feature_labels
+        else:
+            self.feature_labels = get_default_featurizer().feature_labels()
 
         # These might be able to go into the base class
         self.cv_score = np.nan
@@ -84,9 +90,8 @@ class StabilityAgent(HypothesisAgent, metaclass=abc.ABCMeta):
         self.pd = PhaseData()
         # Filter seed data by relevant chemsys
         if chemsys:
-            total_comp = Composition(chemsys.replace('-', ''))
-            filtered = filter_dataframe_by_composition(
-                self.seed_data, total_comp)
+            total_comp = Composition(chemsys.replace("-", ""))
+            filtered = filter_dataframe_by_composition(self.seed_data, total_comp)
         else:
             filtered = self.seed_data
 
@@ -123,24 +128,16 @@ class StabilityAgent(HypothesisAgent, metaclass=abc.ABCMeta):
         # Note: In the drop command, we're ignoring errors for
         #   brevity.  We should watch this, because we may not
         #   drop everything we intend to.
-        drop_columns = [
-            "Composition",
-            "N_species",
-            "delta_e",
-            "pred_delta_e",
-            "pred_stability",
-            "stability",
-            "is_stable",
-            "structure",
-        ]
         if candidate_data is not None:
             self.candidate_data = candidate_data
-            X_cand = candidate_data.drop(drop_columns, axis=1, errors="ignore")
+            X_cand = self.get_features(self.candidate_data)
         else:
             X_cand = None
         if seed_data is not None:
-            self.seed_data = seed_data
-            X_seed = self.seed_data.drop(drop_columns, axis=1, errors="ignore")
+            # Filter seed data with No delta_e, indicates a failure
+            # TODO: probably worth considering putting this somewhere else
+            self.seed_data = seed_data.dropna(subset=["delta_e"])
+            X_seed = self.get_features(self.seed_data)
             y_seed = self.seed_data["delta_e"]
         else:
             X_seed, y_seed = None, None
@@ -183,7 +180,7 @@ class StabilityAgent(HypothesisAgent, metaclass=abc.ABCMeta):
         ]
 
         # Refresh and copy seed PD filtered by candidates
-        all_comp = self.candidate_data['Composition'].sum()
+        all_comp = self.candidate_data["Composition"].sum()
         pd_ml = deepcopy(self.get_pd(all_comp))
         pd_ml.add_phases(candidate_phases)
         space_ml = PhaseSpaceAL(bounds=ELEMENTS, data=pd_ml)
@@ -199,11 +196,24 @@ class StabilityAgent(HypothesisAgent, metaclass=abc.ABCMeta):
 
         return self.candidate_data
 
+    def get_features(self, dataframe):
+        """
+        Gets features of a dataframe
+
+        Returns:
+            (pd.DataFrame): dataframe filtered to include only features
+        """
+        return dataframe[self.feature_labels]
+
+
+()
+
 
 class QBCStabilityAgent(StabilityAgent):
     """
     Agent which uses QBC to determine optimal hypotheses
     """
+
     def __init__(
         self,
         candidate_data=None,
@@ -215,6 +225,7 @@ class QBCStabilityAgent(StabilityAgent):
         training_fraction=0.5,
         model=None,
         n_members=10,
+        feature_labels=None,
     ):
         """
         Args:
@@ -239,13 +250,16 @@ class QBCStabilityAgent(StabilityAgent):
             n_query=n_query,
             hull_distance=hull_distance,
             parallel=parallel,
+            feature_labels=feature_labels
         )
 
         self.alpha = alpha
         self.model = model
         self.n_members = n_members
         self.qbc = QBC(
-            n_members=n_members, training_fraction=training_fraction, model=model,
+            n_members=n_members,
+            training_fraction=training_fraction,
+            model=model,
         )
 
     def get_hypotheses(self, candidate_data, seed_data=None, retrain_committee=True):
@@ -300,6 +314,7 @@ class AgentStabilityML5(StabilityAgent):
         parallel=cpu_count(),
         model=None,
         exploit_fraction=0.5,
+        feature_labels=None,
     ):
         """
         Args:
@@ -320,6 +335,7 @@ class AgentStabilityML5(StabilityAgent):
             n_query=n_query,
             hull_distance=hull_distance,
             parallel=parallel,
+            feature_labels=feature_labels
         )
 
         self.model = model or LinearRegression()
@@ -346,12 +362,12 @@ class AgentStabilityML5(StabilityAgent):
         cv_score = cross_val_score(
             pipeline,
             X_seed,
-            self.seed_data["delta_e"],
+            y_seed,
             cv=KFold(5, shuffle=True),
             scoring="neg_mean_absolute_error",
         )
         self.cv_score = np.mean(cv_score) * -1
-        pipeline.fit(X_seed, self.seed_data["delta_e"])
+        pipeline.fit(X_seed, y_seed)
 
         expected = pipeline.predict(X_cand)
 
@@ -390,6 +406,7 @@ class GaussianProcessStabilityAgent(StabilityAgent):
         hull_distance=0.0,
         parallel=cpu_count(),
         alpha=0.5,
+        feature_labels=None
     ):
         """
         Args:
@@ -409,6 +426,7 @@ class GaussianProcessStabilityAgent(StabilityAgent):
             n_query=n_query,
             hull_distance=hull_distance,
             parallel=parallel,
+            feature_labels=feature_labels
         )
         self.multiprocessing = parallel
         self.alpha = alpha
@@ -491,6 +509,7 @@ class BaggedGaussianProcessStabilityAgent(StabilityAgent):
         n_estimators=8,
         max_samples=5000,
         bootstrap=False,
+        feature_labels=None,
     ):
         """
         Args:
@@ -510,6 +529,7 @@ class BaggedGaussianProcessStabilityAgent(StabilityAgent):
             n_query=n_query,
             hull_distance=hull_distance,
             parallel=parallel,
+            feature_labels=feature_labels
         )
 
         self.alpha = alpha
@@ -616,6 +636,7 @@ class AgentStabilityAdaBoost(StabilityAgent):
         exploit_fraction=0.5,
         diversify=False,
         dynamic_alpha=False,
+        feature_labels=None
     ):
         """
         Args:
@@ -649,6 +670,7 @@ class AgentStabilityAdaBoost(StabilityAgent):
             n_query=n_query,
             hull_distance=hull_distance,
             parallel=parallel,
+            feature_labels=feature_labels
         )
         self.model = model
         self.exploit_fraction = exploit_fraction
@@ -673,15 +695,14 @@ class AgentStabilityAdaBoost(StabilityAgent):
         """
         X_cand, X_seed, y_seed = self.update_data(candidate_data, seed_data)
 
-        steps = [("scaler", StandardScaler()), ("ML", self.model)]
+        adaboost = AdaBoostRegressor(
+            base_estimator=self.model, n_estimators=self.n_estimators
+        )
+        steps = [("scaler", StandardScaler()), ("ML", adaboost)]
         pipeline = Pipeline(steps)
 
-        adaboost = AdaBoostRegressor(
-            base_estimator=pipeline, n_estimators=self.n_estimators
-        )
-
         cv_score = cross_val_score(
-            adaboost,
+            pipeline,
             X_seed,
             y_seed,
             cv=KFold(3, shuffle=True),
@@ -697,7 +718,7 @@ class AgentStabilityAdaBoost(StabilityAgent):
         overall_adaboost = AdaBoostRegressor(
             base_estimator=self.model, n_estimators=self.n_estimators
         )
-        overall_adaboost.fit(X_scaled, self.seed_data["delta_e"])
+        overall_adaboost.fit(X_scaled, y_seed)
 
         X_cand = scaler.transform(X_cand)
         expected = overall_adaboost.predict(X_cand)
@@ -724,7 +745,10 @@ class AgentStabilityAdaBoost(StabilityAgent):
         n_exploitation = int(self.n_query * self.exploit_fraction)
         if self.diversify:
             to_compute = diverse_quant(
-                within_hull.index.tolist(), n_exploitation, self.candidate_data
+                within_hull.index.tolist(),
+                n_exploitation,
+                self.candidate_data,
+                feature_filter=self.feature_labels,
             )
         else:
             to_compute = within_hull.head(n_exploitation).index.tolist()
@@ -757,7 +781,7 @@ class AgentStabilityAdaBoost(StabilityAgent):
         return np.array(stds)
 
 
-def diverse_quant(points, target_length, df, quantiles=None):
+def diverse_quant(points, target_length, df, quantiles=None, feature_filter=None):
     """
     Diversify a sublist by eliminating entries based on comparisons
     with quantiles threshold and Euclidean distance.
@@ -807,20 +831,16 @@ def diverse_quant(points, target_length, df, quantiles=None):
         _df = df.sample(6000)
     else:
         _df = df
-    drop_columns = [
-        "Composition",
-        "N_species",
-        "delta_e",
-        "pred_delta_e",
-        "pred_stability",
-        "structure"
-    ]
+    if feature_filter is not None:
+        _df = _df[feature_filter]
     scaler = StandardScaler()
-    X = scaler.fit_transform(_df.drop(drop_columns, axis=1, errors="ignore"))
+    X = scaler.fit_transform(_df)
     flatD = pairwise_distances(X).flatten()
 
     _df2 = df.loc[points]
-    X = scaler.transform(_df2.drop(drop_columns, axis=1, errors="ignore"))
+    if feature_filter is not None:
+        _df2 = _df2[feature_filter]
+    X = scaler.transform(_df2)
     D = pairwise_distances(X)
 
     remove_len = len(points) - target_length
