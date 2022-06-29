@@ -26,8 +26,12 @@ from pymatgen.io.vasp.outputs import Vasprun
 from pymatgen.core.composition import Composition
 from pymatgen.io.vasp.sets import MPRelaxSet
 from camd.experiment.base import Experiment
-from camd.utils.data import QMPY_REFERENCES, QMPY_REFERENCES_HUBBARD, \
-    get_chemsys, get_common_prefixes
+from camd.utils.data import (
+    QMPY_REFERENCES,
+    QMPY_REFERENCES_HUBBARD,
+    get_chemsys,
+    get_common_prefixes,
+)
 
 from atomate.vasp.database import VaspCalcDb
 from atomate.vasp.config import (
@@ -57,7 +61,7 @@ def wf_structure_optimization(structure, wf_name=None, c=None):
             structure, force_gamma=True, user_incar_settings=user_incar_settings
         ),
         common_params={"vasp_cmd": vasp_cmd, "db_file": db_file},
-        wf_metadata={"wf_name": wf_name}
+        wf_metadata={"wf_name": wf_name},
     )
 
     wf = add_common_powerups(wf, c)
@@ -74,21 +78,22 @@ class AtomateExperiment(Experiment):
     TODO: 1. formation energy solution
     """
 
-    def __init__(self,
-                 launchpad,
-                 db_file,
-                 fworker=None,
-                 atomate_workflow=wf_structure_optimization,
-                 nlaunches=0,
-                 max_loops=-1,
-                 sleep_time=5,
-                 m_dir=None,
-                 poll_time=60,
-                 current_data=None,
-                 job_status=None,
-                 history=None,
-                 launch_from_local=False
-                 ):
+    def __init__(
+        self,
+        launchpad,
+        db_file,
+        fworker=None,
+        atomate_workflow=wf_structure_optimization,
+        nlaunches=0,
+        max_loops=-1,
+        sleep_time=5,
+        m_dir=None,
+        poll_time=60,
+        current_data=None,
+        job_status=None,
+        history=None,
+        launch_from_local=False,
+    ):
         """
         Initializes an atomate experiment.
 
@@ -178,32 +183,36 @@ class AtomateExperiment(Experiment):
         task_dir = None
         calcs_reversed = None
         for structure_id, row in self.current_data.iterrows():
-            wf_entry = self.db.workflows.find_one({"metadata.wf_name": row['wf_name'],
-                                                   "fw_states.{}".format(row['fw_id']): {"$exists": True}})
-            fw_entry = self.db.fireworks.find_one({"fw_id": row['fw_id']})
-            if len(fw_entry['launches']) > 0:
-                launch_id = fw_entry['launches'][-1]
+            wf_entry = self.db.workflows.find_one(
+                {
+                    "metadata.wf_name": row["wf_name"],
+                    "fw_states.{}".format(row["fw_id"]): {"$exists": True},
+                }
+            )
+            fw_entry = self.db.fireworks.find_one({"fw_id": row["fw_id"]})
+            if len(fw_entry["launches"]) > 0:
+                launch_id = fw_entry["launches"][-1]
                 launch_entry = self.db.launches.find_one({"launch_id": launch_id})
-                if launch_entry['action']:
-                    if 'task_id' in launch_entry['action']['stored_data']:
-                        task_id = launch_entry['action']['stored_data']['task_id']
+                if launch_entry["action"]:
+                    if "task_id" in launch_entry["action"]["stored_data"]:
+                        task_id = launch_entry["action"]["stored_data"]["task_id"]
                         task_entry = self.db.tasks.find_one({"task_id": task_id})
-                        task_status = task_entry['state']
-                        output = task_entry['output']
-                        input = task_entry['input']
-                        task_dir = task_entry['dir_name']
-                        calcs_reversed = task_entry['calcs_reversed']
+                        task_status = task_entry["state"]
+                        output = task_entry["output"]
+                        input = task_entry["input"]
+                        task_dir = task_entry["dir_name"]
+                        calcs_reversed = task_entry["calcs_reversed"]
             update_data = {
                 "task_id": task_id if task_id else None,
                 "launch_id": launch_id if launch_id else None,
-                "wf_status": wf_entry['state'],
+                "wf_status": wf_entry["state"],
                 "task_status": task_status if task_status else None,
                 "output": output if output else None,
                 "input": input if input else None,
-                'task_dir': task_dir if task_dir else None,
+                "task_dir": task_dir if task_dir else None,
                 "calcs_reversed": calcs_reversed if calcs_reversed else None,
-                "final_structure": output['structure'] if output else None,
-                "final_energy_per_atom": output['energy_per_atom'] if output else None
+                "final_structure": output["structure"] if output else None,
+                "final_energy_per_atom": output["energy_per_atom"] if output else None,
             }
             update_dataframe_row(self.current_data, structure_id, update_data)
         self._update_job_status()
@@ -213,8 +222,8 @@ class AtomateExperiment(Experiment):
         Update the job_status flag by checking all wf status
         job_status is "COMPLETED" only when all wf_status are COMPLETED/FIZZLED
         """
-        wf_status = self.current_data['wf_status']
-        if np.all([i in ['COMPLETED', 'FIZZLED'] for i in wf_status]):
+        wf_status = self.current_data["wf_status"]
+        if np.all([i in ["COMPLETED", "FIZZLED"] for i in wf_status]):
             self.job_status = "COMPLETED"
 
     def print_status(self):
@@ -224,9 +233,7 @@ class AtomateExperiment(Experiment):
         """
         status_string = ""
         for structure_id, row in self.current_data.iterrows():
-            status_string += "{}: {}\n".format(
-                structure_id, row["wf_status"]
-            )
+            status_string += "{}: {}\n".format(structure_id, row["wf_status"])
         print("Calc status:\n{}".format(status_string))
         # print("Timeout is set as {}.".format(self.timeout))
 
@@ -241,19 +248,21 @@ class AtomateExperiment(Experiment):
             None
         """
         self.update_current_data(data)
-        new_columns = ['wf_spec',
-                       'wf_name',
-                       'fw_id',
-                       'task_id',
-                       'launch_id',
-                       'wf_status',  # status of the workflow (ready, waiting, running, fizzeld, completed)
-                       'task_status',  # status of the task (successful, failed)
-                       'output',
-                       'input',
-                       'task_dir',
-                       'calcs_reversed',
-                       'final_structure',
-                       'final_energy_per_atom']
+        new_columns = [
+            "wf_spec",
+            "wf_name",
+            "fw_id",
+            "task_id",
+            "launch_id",
+            "wf_status",  # status of the workflow (ready, waiting, running, fizzeld, completed)
+            "task_status",  # status of the task (successful, failed)
+            "output",
+            "input",
+            "task_dir",
+            "calcs_reversed",
+            "final_structure",
+            "final_energy_per_atom",
+        ]
         for new_column in new_columns:
             self.current_data[new_column] = None
         self.add_wfs()
@@ -268,14 +277,13 @@ class AtomateExperiment(Experiment):
         and update the wf_name, fw_ids
         """
         for structure_id, row in self.current_data.iterrows():
-            wf_name = f'opt_{structure_id}'
-            wf = wf_structure_optimization(row['structure'],
-                                           wf_name=wf_name)
+            wf_name = f"opt_{structure_id}"
+            wf = wf_structure_optimization(row["structure"], wf_name=wf_name)
             fw_ids = self.launchpad.add_wf(wf)
             launch_info = {
                 "wf_spec": wf,
                 "wf_name": wf_name,
-                "fw_id": sorted(list(fw_ids.values()))[-1]
+                "fw_id": sorted(list(fw_ids.values()))[-1],
             }
             update_dataframe_row(self.current_data, structure_id, launch_info)
 
@@ -283,12 +291,14 @@ class AtomateExperiment(Experiment):
         """
         Helper method for launching firework
         """
-        rapidfire(self.launchpad,
-                  self.fworker,
-                  nlaunches=self.nlaunches,
-                  max_loops=self.max_loops,
-                  sleep_time=self.sleep_time,
-                  m_dir=self.m_dir)
+        rapidfire(
+            self.launchpad,
+            self.fworker,
+            nlaunches=self.nlaunches,
+            max_loops=self.max_loops,
+            sleep_time=self.sleep_time,
+            m_dir=self.m_dir,
+        )
 
     @property
     def agg_history(self):
@@ -313,10 +323,18 @@ class OqmdDFTonMC1(Experiment):
     system.
     """
 
-    def __init__(self, poll_time=60, timeout=7200, current_data=None, job_status=None,
-                 cleanup_directories=True, container_version="oqmdvasp/3",
-                 batch_queue="oqmd_test_queue", use_cached=False,
-                 prefix_append=None):
+    def __init__(
+        self,
+        poll_time=60,
+        timeout=7200,
+        current_data=None,
+        job_status=None,
+        cleanup_directories=True,
+        container_version="oqmdvasp/3",
+        batch_queue="oqmd_test_queue",
+        use_cached=False,
+        prefix_append=None,
+    ):
         """
         Initializes an OqmdDFTonMC1 instance
 
@@ -349,7 +367,7 @@ class OqmdDFTonMC1(Experiment):
                 "variable to use camd MC1 interface"
             )
 
-        container, version = container_version.split('/')
+        container, version = container_version.split("/")
         parent_dir = os.path.join(
             tri_path,
             "model",
@@ -359,8 +377,10 @@ class OqmdDFTonMC1(Experiment):
             "camd",
         )
         if prefix_append is not None:
-            if '_' in prefix_append:
-                raise ValueError("Prefix cannot contain underscores for mc1 compatibility")
+            if "_" in prefix_append:
+                raise ValueError(
+                    "Prefix cannot contain underscores for mc1 compatibility"
+                )
             parent_dir = os.path.join(parent_dir, prefix_append)
         self.parent_dir = parent_dir
 
@@ -461,7 +481,7 @@ class OqmdDFTonMC1(Experiment):
         """
         for idx, row in self.current_data.iterrows():
             # Clean simulation directories
-            sim_path = row['path'].replace("model", "simulation")
+            sim_path = row["path"].replace("model", "simulation")
             if os.path.exists(sim_path):
                 shutil.rmtree(sim_path)
 
@@ -515,25 +535,29 @@ class OqmdDFTonMC1(Experiment):
         s3_client = boto3.client("s3")
         # Scrub tri_path and replace model with simulation
         # to get s3 key
-        s3_parent = self.parent_dir.replace('model', 'simulation')
-        s3_parent = s3_parent.replace(tri_path + '/', "")
+        s3_parent = self.parent_dir.replace("model", "simulation")
+        s3_parent = s3_parent.replace(tri_path + "/", "")
         cached_experiments = pd.DataFrame()
         # Get all experiment folders
-        chemsyses = set([get_chemsys(s) for s in candidate_data['structure']])
+        chemsyses = set([get_chemsys(s) for s in candidate_data["structure"]])
         experiment_dirs = []
         for chemsys in chemsyses:
             chemsys_dirs = get_common_prefixes(
-                tri_bucket,
-                os.path.join(s3_parent, chemsys)
+                tri_bucket, os.path.join(s3_parent, chemsys)
             )
             experiment_dirs.extend(chemsys_dirs)
-        for structure_id, row in tqdm(candidate_data.iterrows(), total=len(candidate_data)):
-            if not structure_id.replace('-', '') in experiment_dirs:
+        for structure_id, row in tqdm(
+            candidate_data.iterrows(), total=len(candidate_data)
+        ):
+            if not structure_id.replace("-", "") in experiment_dirs:
                 continue
             calc_path = os.path.join(
-                s3_parent, get_chemsys(row['structure']),
-                structure_id.replace('-', ''), "_1/")
-            with ScratchDir('.'):
+                s3_parent,
+                get_chemsys(row["structure"]),
+                structure_id.replace("-", ""),
+                "_1/",
+            )
+            with ScratchDir("."):
                 # Figure out whether prior submission exists
                 cached_experiments = cached_experiments.append(row)
                 # TODO: figure out whether file exists in s3
@@ -560,13 +584,12 @@ class OqmdDFTonMC1(Experiment):
                     error_doc = {}
                     try:
                         err_obj = s3_client.get_object(
-                            Bucket=tri_bucket, Key=os.path.join(calc_path, 'err'))
-                        errtxt = err_obj['Body'].read().decode('utf-8')
-                        error_doc.update(
-                            {"mc1_stderr": errtxt}
+                            Bucket=tri_bucket, Key=os.path.join(calc_path, "err")
                         )
+                        errtxt = err_obj["Body"].read().decode("utf-8")
+                        error_doc.update({"mc1_stderr": errtxt})
                     except ClientError:
-                        print('No error file for {}'.format(calc_path))
+                        print("No error file for {}".format(calc_path))
                     error_doc.update(
                         {
                             "camd_exception": "{}".format(e),
@@ -575,7 +598,9 @@ class OqmdDFTonMC1(Experiment):
                     )
                     # Dump error docs to avoid Pandas issues with dict values
                     data = {"status": "FAILED", "error": json.dumps(error_doc)}
-                update_dataframe_row(cached_experiments, structure_id, data, add_columns=True)
+                update_dataframe_row(
+                    cached_experiments, structure_id, data, add_columns=True
+                )
         return cached_experiments
 
     def submit_dft_calcs_to_mc1(self):
@@ -594,8 +619,11 @@ class OqmdDFTonMC1(Experiment):
         for structure_id, row in self.current_data.iterrows():
             # Replace structure id in path to avoid confusing mc1
             calc_path = os.path.join(
-                self.parent_dir, get_chemsys(row['structure']),
-                structure_id.replace('-', ''), "_1")
+                self.parent_dir,
+                get_chemsys(row["structure"]),
+                structure_id.replace("-", ""),
+                "_1",
+            )
             os.makedirs(calc_path, exist_ok=True)
             with cd(calc_path):
                 # Write input cif file and python model file
@@ -632,9 +660,11 @@ class OqmdDFTonMC1(Experiment):
                     )
                 except subprocess.CalledProcessError as e:
                     print(e.output)
-                    data = {"path": os.getcwd(),
-                            "status": "FAILED",
-                            "error": "failed submission {}".format(e.output)}
+                    data = {
+                        "path": os.getcwd(),
+                        "status": "FAILED",
+                        "error": "failed submission {}".format(e.output),
+                    }
 
                 update_dataframe_row(self.current_data, structure_id, data)
 
@@ -785,8 +815,7 @@ def get_qmpy_formation_energy(total_e, formula, n_atoms):
     return energy
 
 
-def update_dataframe_row(dataframe, index, update_dict,
-                         add_columns=False):
+def update_dataframe_row(dataframe, index, update_dict, add_columns=False):
     """
     Method to update a dataframe row via an update_dictionary
     and an index, similarly to Dict.update()

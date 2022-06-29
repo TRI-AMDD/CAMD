@@ -13,8 +13,16 @@ class LocalAgentSimulation(Experiment):
     Class that runs Agent simulations synchronously and
     sequentially for testing in meta-agent campaigns.
     """
-    def __init__(self, atf_candidate_data, seed_data, analyzer, iterations,
-                 current_data=None, job_status=None):
+
+    def __init__(
+        self,
+        atf_candidate_data,
+        seed_data,
+        analyzer,
+        iterations,
+        current_data=None,
+        job_status=None,
+    ):
         """
         Args:
             atf_candidate_data (DataFrame): dataframe corresponding to after
@@ -32,7 +40,8 @@ class LocalAgentSimulation(Experiment):
         self.analyzer = analyzer
         self.seed_data = seed_data
         super(LocalAgentSimulation, self).__init__(
-            current_data=current_data, job_status=job_status)
+            current_data=current_data, job_status=job_status
+        )
 
     def submit(self, data):
         """
@@ -44,7 +53,7 @@ class LocalAgentSimulation(Experiment):
 
         """
         self.update_current_data(data)
-        self.job_status = 'PENDING'
+        self.job_status = "PENDING"
 
     def monitor(self):
         """
@@ -58,12 +67,12 @@ class LocalAgentSimulation(Experiment):
         if self.job_status == "PENDING":
             campaigns = []
             for index, row in self.current_data.iterrows():
-                agent = row.pop('agent')
+                agent = row.pop("agent")
                 path = str(index)
                 os.mkdir(path)
                 with cd(path):
                     campaigns.append(self.test_agent(agent))
-            self.current_data['campaign'] = campaigns
+            self.current_data["campaign"] = campaigns
             self.job_status = "COMPLETED"
 
     def test_agent(self, agent):
@@ -79,14 +88,12 @@ class LocalAgentSimulation(Experiment):
 
         """
         campaign = Campaign(
-                candidate_data=self.atf_dataframe,
-                seed_data=self.seed_data,
-                agent=agent,
-                analyzer=self.analyzer,
-                experiment=ATFSampler(
-                    dataframe=self.atf_dataframe
-                ),
-            )
+            candidate_data=self.atf_dataframe,
+            seed_data=self.seed_data,
+            agent=agent,
+            analyzer=self.analyzer,
+            experiment=ATFSampler(dataframe=self.atf_dataframe),
+        )
         campaign.auto_loop(n_iterations=self.iterations, initialize=True)
         return campaign
 
