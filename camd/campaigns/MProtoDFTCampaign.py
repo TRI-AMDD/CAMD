@@ -4,7 +4,6 @@ Script test of MProtoDFTCampagin
 from monty.tempfile import ScratchDir
 from fireworks import LaunchPad
 from sklearn.neural_network import MLPRegressor
-from camd import __version__
 from camd.domain import StructureDomain, heuristic_setup
 from camd.agent.m3gnet import M3GNetStabilityAgent
 from camd.agent.stability import AgentStabilityAdaBoost

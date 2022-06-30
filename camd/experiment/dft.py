@@ -26,7 +26,6 @@ from pymatgen.io.vasp.outputs import Vasprun
 from pymatgen.core import Composition, Structure
 from pymatgen.io.vasp.sets import MPRelaxSet
 from pymatgen.entries.computed_entries import ComputedEntry
-from pymatgen.apps.borg.hive import VaspToComputedEntryDrone
 from pymatgen.entries.compatibility import MaterialsProjectCompatibility
 from camd.experiment.base import Experiment
 from camd.utils.data import (
