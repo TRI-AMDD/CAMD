@@ -23,9 +23,11 @@ import numpy as np
 from monty.os import cd
 from monty.tempfile import ScratchDir
 from pymatgen.io.vasp.outputs import Vasprun
-from pymatgen.core.composition import Composition
+from pymatgen.core import Composition, Structure
 from pymatgen.io.vasp.sets import MPRelaxSet
 from pymatgen.entries.computed_entries import ComputedEntry
+from pymatgen.apps.borg.hive import VaspToComputedEntryDrone
+from pymatgen.entries.compatibility import MaterialsProjectCompatibility
 from camd.experiment.base import Experiment
 from camd.utils.data import (
     MP_REFERENCES,
@@ -195,6 +197,7 @@ class AtomateExperiment(Experiment):
         input = None
         task_dir = None
         calcs_reversed = None
+        delta_e = None
         for structure_id, row in self.current_data.iterrows():
             wf_entry = self.db.workflows.find_one(
                 {
@@ -215,6 +218,8 @@ class AtomateExperiment(Experiment):
                         input = task_entry["input"]
                         task_dir = task_entry["dir_name"]
                         calcs_reversed = task_entry["calcs_reversed"]
+                        if task_status == "successful":
+                            delta_e = self.get_delta_e(task_entry)
             update_data = {
                 "task_id": task_id if task_id else None,
                 "launch_id": launch_id if launch_id else None,
@@ -223,9 +228,12 @@ class AtomateExperiment(Experiment):
                 "output": output if output else None,
                 "input": input if input else None,
                 "task_dir": task_dir if task_dir else None,
-                "calcs_reversed": calcs_reversed if calcs_reversed else None,
+                "calcs_reversed": json.dumps(calcs_reversed)
+                if calcs_reversed
+                else None,
                 "final_structure": output["structure"] if output else None,
                 "final_energy_per_atom": output["energy_per_atom"] if output else None,
+                "delta_e": delta_e,
             }
             update_dataframe_row(self.current_data, structure_id, update_data)
         self._update_job_status()
@@ -275,6 +283,7 @@ class AtomateExperiment(Experiment):
             "calcs_reversed",
             "final_structure",
             "final_energy_per_atom",
+            "delta_e",  # formation energy per atom
         ]
         for new_column in new_columns:
             self.current_data[new_column] = None
@@ -327,6 +336,25 @@ class AtomateExperiment(Experiment):
         """
         cd_list, cr_list = zip(*self._history)
         return pd.concat(cd_list), pd.concat(cr_list)
+
+    def get_delta_e(self, task_entry):
+        """
+        Helper function to get the formation energy from task entry
+        Args:
+            task_entry (dict): tasks entry
+        Returns:
+            formation energy (float)
+        """
+        total_e = task_entry["output"]["energy"]
+        composition = Structure.from_dict(task_entry["output"]["structure"]).composition
+        psp = task_entry["input"]["pseudo_potential"]
+        functional = psp["functional"].capitalize()
+        labels = psp["labels"]
+        potcar_symbols = [" ".join([functional, i]) for i in labels]
+        hubbards = task_entry["input"]["hubbards"]
+        return get_mp_formation_energy(
+            total_e, composition.__str__(), potcar_symbols, hubbards
+        )
 
 
 class OqmdDFTonMC1(Experiment):
@@ -827,7 +855,10 @@ def get_qmpy_formation_energy(total_e, formula, n_atoms):
             energy -= QMPY_REFERENCES_HUBBARD[element] * weight
     return energy
 
-def get_mp_formation_energy(total_e, formula):
+
+def get_mp_formation_energy(
+    total_e, formula, potcar_symbols, hubbards={}, explain=False
+):
     """
     Helper function to computer mp-compatible formation
     energy using reference energies extracted from MP
@@ -835,19 +866,38 @@ def get_mp_formation_energy(total_e, formula):
     Args:
         total_e (float): total energy (uncorrected)
         formula (str): chemical formula
-        n_atoms (int): number of atoms
+        potcar_symbols (list): list of potcar symbols
+        hubbards (dict): hubbard value, if none, the
+                        run_type = 'GGA'
+                        else run_type = 'GGA+U'
+        explain (bool): whether to print out the explanation
+                        of the correction
 
     Returns:
         (float): mp-compatible formation energy (eV/atom)
 
     """
+    compatibility = MaterialsProjectCompatibility()
     comp = Composition(formula)
-    entry = ComputedEntry(composition=comp, energy=total_e)
+    run_type = "GGA+U" if hubbards else "GGA"
+    is_hubbard = True if hubbards else False
+    entry = ComputedEntry(
+        composition=comp,
+        energy=total_e,
+        parameters={
+            "potcar_symbols": potcar_symbols,
+            "run_type": run_type,
+            "hubbards": hubbards,
+            "is_hubbard": is_hubbard,
+        },
+    )
+    entry = compatibility.process_entry(entry)
+    if explain:
+        print(compatibility.explain(entry))
     energy = entry.energy
     for el, occ in comp.items():
         energy -= MP_REFERENCES[el.name] * occ
-    return energy/comp.num_atoms
-
+    return energy / comp.num_atoms
 
 
 def update_dataframe_row(dataframe, index, update_dict, add_columns=False):
