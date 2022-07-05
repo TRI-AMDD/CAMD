@@ -22,4 +22,4 @@ RUN source /opt/conda/bin/activate camd && \
     pip install -r requirements.txt
 
 COPY camd /home/camd/camd
-RUN pip install -e .[proto_dft,m3gnet]
+RUN pip install -e .[proto_dft,m3gnet,atomate]
