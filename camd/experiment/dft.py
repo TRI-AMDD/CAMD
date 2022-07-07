@@ -136,10 +136,22 @@ class AtomateExperiment(Experiment):
         self.max_loops = max_loops
         self.sleep_time = sleep_time
         self.m_dir = m_dir
-        self.db = VaspCalcDb.from_db_file(db_file).db
+        self.db_file = db_file
         self.wf = atomate_workflow
         self.poll_time = poll_time
         self.launch_from_local = launch_from_local
+
+    @property
+    def db(self):
+        """
+        Define the db attribute as a property so that the experiment 
+        object is picklable. Without this, the SSLContext associated
+        with the DB is not picklable.
+        """
+        return VaspCalcDb.from_db_file(self.db_file).db
+
+    # def save(self, path):
+    #     pass
 
     def update_current_data(self, data):
         """

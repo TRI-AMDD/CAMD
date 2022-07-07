@@ -104,7 +104,8 @@ class M3GNetStabilityAgent(StabilityAgent):
             self.candidate_data = candidate_data.drop(columns=["target"], axis=1)
         else:
             self.candidate_data = candidate_data
-        self.seed_data = seed_data
+        # TODO: handle this here for now, should move later, as in stability agents
+        self.seed_data = seed_data.dropna(subset=['delta_e'])
         X_seed = seed_data.drop(columns=["target"], axis=1, errors="ignore")
         # y_seed = seed_data["target"]
         if retrain_committee and "calcs_reversed" in X_seed.columns:

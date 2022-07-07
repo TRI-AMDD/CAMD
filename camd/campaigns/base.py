@@ -216,7 +216,10 @@ class Campaign(MSONable):
         self.job_status = self.experiment.submit(suggested_experiments)
         self.save("job_status")
 
-        self.save("experiment", method="pickle")
+        if hasattr(self.experiment, "save"):
+            experiment.save(self.path)
+        else:
+            self.save("experiment", method="pickle")
 
         self.consumed_candidates += suggested_experiments.index.values.tolist()
         self.logger.info("{} {} state: consumed candidates {}".format(
