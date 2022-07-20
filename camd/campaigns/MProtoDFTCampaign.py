@@ -1,8 +1,9 @@
 """
-Script test of MProtoDFTCampagin
+Script test of MProtoDFTCampaign
 """
 from monty.tempfile import ScratchDir
 from datetime import datetime
+import logging
 from fireworks import LaunchPad
 from sklearn.neural_network import MLPRegressor
 from camd.domain import StructureDomain, heuristic_setup
@@ -57,32 +58,41 @@ def load_seed():
     return data
 
 if __name__ == "__main__":
+    # Params for experiment
     DB_FILE = "/mnt/efs/fw_config/db.json"
     LPAD_FILE = "/mnt/efs/fw_config/my_launchpad.yaml"
+    # Parameter
     CHEMSYS = "Si"
     NOW = datetime.now().isoformat()
     seed_data = load_seed()
     exp_data = load_candidate(CHEMSYS)
     model = M3GNet(is_intensive=False)
-    m3gnetagent = M3GNetStabilityAgent(m3gnet=model, hull_distance=2.0)
+    m3gnetagent = M3GNetStabilityAgent(m3gnet=model, hull_distance=1.0, n_query=5)
     adagent = AgentStabilityAdaBoost(
-        model=MLPRegressor(hidden_layer_sizes=(20,)),
-        n_query=8,
-        hull_distance=100.0,
+        model=MLPRegressor(hidden_layer_sizes=(84, 50)),
+        n_query=5,
+        hull_distance=0.3,
         exploit_fraction=1.0,
         uncertainty=True,
         alpha=0.5,
         diversify=True,
-        n_estimators=4,
+        n_estimators=20,
     )
     agent = SequentialAgent(agents=[adagent, m3gnetagent])
     analyzer = StabilityAnalyzer(hull_distance=0.2)
     lpad = LaunchPad.from_file(LPAD_FILE)
     lpad.auto_load()
-    experiment = AtomateExperiment(lpad, DB_FILE, poll_time=30, launch_from_local=False)
+    experiment = AtomateExperiment(lpad, DB_FILE, poll_time=60, launch_from_local=False)
 
     path = "campaigns/{}".format(NOW)
     makedirs_p(path)
+    logger = logging.Logger("camd")
+    logger.setLevel("INFO")
+    log_file = "{}/log.txt".format(path)
+    file_handler = logging.FileHandler(log_file)
+    logger.addHandler(file_handler)
+    logger.addHandler(logging.StreamHandler())
+
     with cd(path):
         campaign = ProtoDFTCampaign(
             candidate_data=exp_data,
@@ -91,5 +101,8 @@ if __name__ == "__main__":
             analyzer=analyzer,
             seed_data=seed_data,
             heuristic_stopper=5,
+            logger=logger
         )
         campaign.autorun()
+        with open("done", "w") as f:
+            f.write(datetime.now().isoformat())
