@@ -42,7 +42,7 @@ setup(
                       "taburu==2020.5.9",
                       "GPy==1.10.0",
                       "watchtower==2.1.1",
-                      "qmpy-tri>=2021.6.11"
+                      "qmpy-tri>=2021.7.21"
                       ],
     extras_require={
         "proto_dft": ["protosearch==2020.5.10"],
