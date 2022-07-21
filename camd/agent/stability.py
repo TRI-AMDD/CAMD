@@ -206,9 +206,6 @@ class StabilityAgent(HypothesisAgent, metaclass=abc.ABCMeta):
         return dataframe[self.feature_labels]
 
 
-()
-
-
 class QBCStabilityAgent(StabilityAgent):
     """
     Agent which uses QBC to determine optimal hypotheses
