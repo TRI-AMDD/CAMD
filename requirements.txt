@@ -16,4 +16,4 @@ spglib==1.16.3
 scipy==1.7.3
 
 # Temporary qmpy3 dependency
-qmpy-tri>=2021.6.11
+qmpy-tri>=2021.7.21
