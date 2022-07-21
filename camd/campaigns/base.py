@@ -126,7 +126,7 @@ class Campaign(MSONable):
             self.loop_state = "UNSTARTED"
 
         if logger is None:
-            self.logger = logging.Logger("camd")
+            self.logger = logging.Logger("camd", level=logging.INFO)
             self.logger.addHandler(logging.StreamHandler())
         else:
             self.logger = logger
@@ -216,13 +216,13 @@ class Campaign(MSONable):
         self.job_status = self.experiment.submit(suggested_experiments)
         self.save("job_status")
 
-        if hasattr(self.experiment, "save"):
-            experiment.save(self.path)
-        else:
-            self.save("experiment", method="pickle")
+        # if hasattr(self.experiment, "save"):
+        #     experiment.save(self.path)
+        # else:
+        #     self.save("experiment", method="pickle")
 
         self.consumed_candidates += suggested_experiments.index.values.tolist()
-        self.logger.info("{} {} state: consumed candidates {}".format(
+        self.logger.debug("{} {} state: consumed candidates {}".format(
             self.type, self.iteration, self.consumed_candidates))
         self.save("consumed_candidates")
 
@@ -305,7 +305,7 @@ class Campaign(MSONable):
         self.logger.info("{} {} state: Running experiments".format(self.type, self.iteration))
         self.job_status = self.experiment.submit(suggested_experiments)
         self.consumed_candidates = suggested_experiments.index.values.tolist()
-        self.logger.info("{} {} state: consumed candidates {}".format(
+        self.logger.debug("{} {} state: consumed candidates {}".format(
             self.type, self.iteration, self.consumed_candidates))
         self.create_seed = False
         self.initialized = True
