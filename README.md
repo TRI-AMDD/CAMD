@@ -13,7 +13,10 @@ CAMD provides a flexible software framework for sequential / Bayesian optimizati
 
 A more in-depth description of the scientific framework can be found in [this recent open-access article](https://doi.org/10.1039/D0SC01101K), which demonstrates  an end-to-end CAMD-based framework for autonomous inorganic materials discovery using cloud-based density functional theory calculations.
 
-To get started with CAMD, we recommend exploring the tutorial from the recent TRI-AMDD hackathon event [available here](https://github.com/TRI-AMDD/tri-hackathon-2020).
+## Getting started
+For a quick start, explore the tutorial with [binder](https://mybinder.org/v2/gh/TRI-AMDD/camd/binder?labpath=examples%2Fmain_tutorial.ipynb).
+If you want to install locally, following the instructions
+below and explore the [examples](github.com/TRI-AMDD/camd/examples).
 
 ## Installation
 
