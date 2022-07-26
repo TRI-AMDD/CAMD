@@ -41,7 +41,7 @@ setup(
                       "docopt==0.6.2",
                       "taburu==2020.5.9",
                       "GPy==1.10.0",
-                      "watchtower==2.1.1",
+                      "watchtower==3.0.0",
                       "qmpy-tri>=2021.7.21"
                       ],
     extras_require={
