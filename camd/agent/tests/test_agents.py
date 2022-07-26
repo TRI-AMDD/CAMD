@@ -2,7 +2,7 @@ import unittest
 import pandas
 import numpy as np
 
-from camd.agent.generic import LinearAgent
+from camd.agent.generic import RegressorAgent
 from camd.agent.base import SequentialAgent
 
 
@@ -23,14 +23,17 @@ class GenericAgentsTest(unittest.TestCase):
         Verify that linear agent can fit a linear
         function and recover the minimizing argument to new data.
         """
-        agent = LinearAgent(n_query=10)
+        agent = RegressorAgent.from_linear(n_query=10)
         predictions = agent.get_hypotheses(
             seed_data=self.seed_data, candidate_data=self.candidate_data
         )
         self.assertEqual(predictions["domain"][9], 10)
 
     def test_sequential_agent(self):
-        agents = [LinearAgent(n_query=10), LinearAgent(n_query=5)]
+        agents = [
+            RegressorAgent.from_linear(n_query=10),
+            RegressorAgent.from_linear(n_query=5)
+        ]
         agent = SequentialAgent(agents=agents)
         hypotheses = agent.get_hypotheses(self.candidate_data, self.seed_data)
         self.assertEqual(len(hypotheses), 5)
