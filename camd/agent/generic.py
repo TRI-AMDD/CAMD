@@ -330,6 +330,7 @@ class RegressorAgent(HypothesisAgent):
         n_query: int = None,
         **kwargs
     ):
+        """Preset factory method for a Linear Agent"""
         linear_reg = LinearRegression(**kwargs)
         return cls(
             model=linear_reg,
@@ -350,6 +351,7 @@ class RegressorAgent(HypothesisAgent):
         n_query: int = None,
         **kwargs
     ):
+        """Preset factory method for a RandomForestRegressor-based Agent"""
         rf = RandomForestRegressor(**kwargs)
         return cls(
             model=rf,
@@ -370,6 +372,7 @@ class RegressorAgent(HypothesisAgent):
         n_query: int = None,
         **kwargs
     ):
+        """Preset factory method for an MLP-based Agent"""
         mlp = MLPRegressor(**kwargs)
         return cls(
             model=mlp,
