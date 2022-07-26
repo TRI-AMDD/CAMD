@@ -1,7 +1,6 @@
 """
 Script test of MProtoDFTCampaign
 """
-from monty.tempfile import ScratchDir
 from datetime import datetime
 import logging
 from fireworks import LaunchPad
@@ -16,7 +15,6 @@ from camd.analysis import StabilityAnalyzer
 import pandas as pd
 from monty.os import cd, makedirs_p
 
-from pymatgen.ext.matproj import MPRester
 from m3gnet.models import M3GNet
 
 
