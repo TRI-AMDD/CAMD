@@ -32,7 +32,7 @@ jobs:
       env:
         MPLBACKEND: "Agg"
       run: |
-        pytest camd --color=yes --cov=camd --cov-report html:coverage_reports
+        pytest camd --color=yes --cov=camd --log-level=DEBUG --cov-report html:coverage_reports
     - name: Coveralls
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
