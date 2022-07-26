@@ -15,7 +15,7 @@ A more in-depth description of the scientific framework can be found in [this re
 
 ## Getting started
 For a quick start, explore the tutorial with [binder](https://mybinder.org/v2/gh/TRI-AMDD/camd/binder?labpath=examples%2Fmain_tutorial.ipynb).
-If you want to install locally, following the instructions
+If you want to install locally, follow the instructions
 below and explore the [examples](github.com/TRI-AMDD/camd/examples).
 
 ## Installation
