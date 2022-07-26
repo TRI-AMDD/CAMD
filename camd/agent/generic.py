@@ -311,7 +311,7 @@ class RegressorAgent(HypothesisAgent):
         else:
             X_seed = seed_data.drop(columns=[self.target], axis=1)
             X_cand = candidate_data.drop(
-                columns=[self.target], axis=1, ignore_errors=True
+                columns=[self.target], axis=1, errors="ignore"
             )
         y_seed = seed_data[self.target]
         self.model.fit(X_seed, y_seed)
