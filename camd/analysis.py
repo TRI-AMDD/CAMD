@@ -64,13 +64,14 @@ class GenericMaxAnalyzer(AnalyzerBase):
     Generic analyzer that checks new data with a target column against a threshold to be crossed.
     """
 
-    def __init__(self, threshold=0):
+    def __init__(self, threshold=0, target='target'):
         """
         Args:
             threshold (int or float): The target values of new acquisitions are compared to find if they are above this
             threshold, to keep track of the performance in sequential framework.
         """
         self.threshold = threshold
+        self.target = target
         self.score = []
         self.best_examples = []
         super(GenericMaxAnalyzer, self).__init__()
@@ -88,8 +89,8 @@ class GenericMaxAnalyzer(AnalyzerBase):
 
         """
         new_seed = campaign.seed_data.append(campaign.experiment.get_results())
-        self.score.append(np.sum(new_seed["target"] > self.threshold))
-        self.best_examples.append(new_seed.loc[new_seed.target.idxmax()])
+        self.score.append(np.sum(new_seed[self.target] > self.threshold))
+        self.best_examples.append(new_seed.loc[new_seed[self.target].idxmax()])
         new_discovery = (
             [self.score[-1] - self.score[-2]]
             if len(self.score) > 1
