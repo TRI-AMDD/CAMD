@@ -64,7 +64,7 @@ class GenericMaxAnalyzer(AnalyzerBase):
     Generic analyzer that checks new data with a target column against a threshold to be crossed.
     """
 
-    def __init__(self, threshold=0, target='target'):
+    def __init__(self, threshold=0, target="target"):
         """
         Args:
             threshold (int or float): The target values of new acquisitions are compared to find if they are above this
@@ -813,13 +813,14 @@ class GenericATFAnalyzer(AnalyzerBase):
         seed_data = campaign.seed_data
         new_experimental_results = campaign.experiment.get_results()
         summary = pd.DataFrame()
-        unsampled_candidates = campaign.experiment.dataframe.loc[campaign.candidate_data.index]
-        all_results = unsampled_candidates.append(campaign.experiment.dataframe.loc[campaign.seed_data.index])
-        unsampled_candidates = unsampled_candidates.drop(new_experimental_results.index)
-        de_alms = self.get_de_alm(
-            new_experimental_results,
-            unsampled_candidates
+        unsampled_candidates = campaign.experiment.dataframe.loc[
+            campaign.candidate_data.index
+        ]
+        all_results = unsampled_candidates.append(
+            campaign.experiment.dataframe.loc[campaign.seed_data.index]
         )
+        unsampled_candidates = unsampled_candidates.drop(new_experimental_results.index)
+        de_alms = self.get_de_alm(new_experimental_results, unsampled_candidates)
         summary["deALM"] = [de_alms]
 
         any_alm = self.get_any_alm(
@@ -869,15 +870,13 @@ class GenericATFAnalyzer(AnalyzerBase):
         de_ALMs = []
         for idx, sample in samples.iterrows():
             temp = unsampled_results.append(sample)
-            sample_rank_pct = temp['target'].rank(pct=True).loc[idx]
+            sample_rank_pct = temp["target"].rank(pct=True).loc[idx]
             de_ALMs.append(2 * sample_rank_pct - 1)
 
         return de_ALMs
 
     @staticmethod
-    def get_any_alm(
-        samples, all_results, percentile
-    ):
+    def get_any_alm(samples, all_results, percentile):
         """
         Compute the any ALM for one agent, which is a boolean
         describing whether or not some sample from the samples thus
@@ -899,13 +898,11 @@ class GenericATFAnalyzer(AnalyzerBase):
             (bool): True if any of the samples are in the top
                 percentile of all_results, False otherwise
         """
-        sample_ranks = all_results['target'].rank(pct=True).loc[samples.index]
+        sample_ranks = all_results["target"].rank(pct=True).loc[samples.index]
         return (sample_ranks > 1 - percentile).any()
 
     @staticmethod
-    def get_all_alm(
-        all_samples, all_possible_samples, percentile
-    ):
+    def get_all_alm(all_samples, all_possible_samples, percentile):
         """
         Compute the all ALM for one agent, defined as the fraction of
         samples above the target percentile which are contained in
@@ -924,9 +921,11 @@ class GenericATFAnalyzer(AnalyzerBase):
                 in aggregated sample set up to this point
         """
         # sort df using target values
-        ranked = all_possible_samples['target'].rank(pct=True)
+        ranked = all_possible_samples["target"].rank(pct=True)
         top_percentile = ranked[ranked > 1 - percentile]
-        all_alm = len(top_percentile.index.intersection(all_samples.index)) / len(top_percentile)
+        all_alm = len(top_percentile.index.intersection(all_samples.index)) / len(
+            top_percentile
+        )
         return all_alm
 
     # joseph.montoya: I don't know what this is, so I'm going to comment it for now

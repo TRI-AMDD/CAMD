@@ -50,12 +50,15 @@ def load_seed():
     #     entries = mpr.get_entries_in_chemsys(chemsys, inc_structure=True)
     # return entries
     data = pd.read_pickle("mp_binary.pickle")
-    data = data.rename(columns={
-        "formation_energy_per_atom": "delta_e",
-        "pretty_formula": "Composition"
-        })
+    data = data.rename(
+        columns={
+            "formation_energy_per_atom": "delta_e",
+            "pretty_formula": "Composition",
+        }
+    )
     data = data.dropna()
     return data
+
 
 if __name__ == "__main__":
     # Params for experiment
@@ -101,7 +104,7 @@ if __name__ == "__main__":
             analyzer=analyzer,
             seed_data=seed_data,
             heuristic_stopper=5,
-            logger=logger
+            logger=logger,
         )
         campaign.autorun()
         with open("done", "w") as f:

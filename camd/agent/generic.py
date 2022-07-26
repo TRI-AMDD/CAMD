@@ -254,11 +254,12 @@ class RegressorAgent(HypothesisAgent):
     Linear regression based agent that tries to maximize a target.
     Best for simple checks and benchmarks.
     """
+
     def __init__(
         self,
         model,
         features=None,
-        target='target',
+        target="target",
         candidate_data=None,
         seed_data=None,
         n_query: int = None,
@@ -309,7 +310,9 @@ class RegressorAgent(HypothesisAgent):
             X_cand = candidate_data[self.features]
         else:
             X_seed = seed_data.drop(columns=[self.target], axis=1)
-            X_cand = candidate_data.drop(columns=[self.target], axis=1, ignore_errors=True)
+            X_cand = candidate_data.drop(
+                columns=[self.target], axis=1, ignore_errors=True
+            )
         y_seed = seed_data[self.target]
         self.model.fit(X_seed, y_seed)
         output = self.model.predict(X_cand)
@@ -318,14 +321,15 @@ class RegressorAgent(HypothesisAgent):
         return candidate_data.iloc[selected]
 
     @classmethod
-    def from_linear(cls,
-               features=None,
-               target='target',
-               candidate_data=None,
-               seed_data=None,
-               n_query: int = None,
-               **kwargs
-               ):
+    def from_linear(
+        cls,
+        features=None,
+        target="target",
+        candidate_data=None,
+        seed_data=None,
+        n_query: int = None,
+        **kwargs
+    ):
         linear_reg = LinearRegression(**kwargs)
         return cls(
             model=linear_reg,
@@ -333,18 +337,19 @@ class RegressorAgent(HypothesisAgent):
             target=target,
             candidate_data=candidate_data,
             seed_data=seed_data,
-            n_query=n_query
+            n_query=n_query,
         )
 
     @classmethod
-    def from_random_forest(cls,
-                      features=None,
-                      target='target',
-                      candidate_data=None,
-                      seed_data=None,
-                      n_query: int = None,
-                      **kwargs
-                      ):
+    def from_random_forest(
+        cls,
+        features=None,
+        target="target",
+        candidate_data=None,
+        seed_data=None,
+        n_query: int = None,
+        **kwargs
+    ):
         rf = RandomForestRegressor(**kwargs)
         return cls(
             model=rf,
@@ -352,18 +357,19 @@ class RegressorAgent(HypothesisAgent):
             target=target,
             candidate_data=candidate_data,
             seed_data=seed_data,
-            n_query=n_query
+            n_query=n_query,
         )
 
     @classmethod
-    def from_mlp(cls,
-            features=None,
-            target='target',
-            candidate_data=None,
-            seed_data=None,
-            n_query: int = None,
-            **kwargs
-            ):
+    def from_mlp(
+        cls,
+        features=None,
+        target="target",
+        candidate_data=None,
+        seed_data=None,
+        n_query: int = None,
+        **kwargs
+    ):
         mlp = MLPRegressor(**kwargs)
         return cls(
             model=mlp,
@@ -371,5 +377,5 @@ class RegressorAgent(HypothesisAgent):
             target=target,
             candidate_data=candidate_data,
             seed_data=seed_data,
-            n_query=n_query
+            n_query=n_query,
         )
