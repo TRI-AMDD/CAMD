@@ -1,0 +1,4 @@
+name: CAMD binder env
+dependencies:
+  - python=3.9
+  - camd=7.26.2022
