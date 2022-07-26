@@ -80,7 +80,6 @@ class ProtoDFTCampaignTest(unittest.TestCase):
         seed_data = pd.read_pickle(
             os.path.join(CAMD_TEST_FILES, "mp_test_data.pickle")
         )
-
         seed_data = seed_data.rename(
             columns={
                 "formation_energy_per_atom": "delta_e",
