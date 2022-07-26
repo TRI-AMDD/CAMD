@@ -27,7 +27,7 @@ after the fact sampling of known data.
 setup(
     name='camd',
     url="https://github.com/TRI-AMDD/CAMD",
-    version="2022.1.24",
+    version="2022.7.21",
     packages=find_packages(),
     description=DESCRIPTION,
     long_description=LONG_DESCRIPTION,
@@ -35,17 +35,19 @@ setup(
     install_requires=["python-dateutil==2.8.2",
                       "networkx==2.5.1",
                       "matplotlib==3.5.2",
-                      "matminer==0.7.4",
+                      "matminer==0.7.8",
                       "awscli",
                       "boto3==1.24.12",
                       "docopt==0.6.2",
                       "taburu==2020.5.9",
                       "GPy==1.10.0",
                       "watchtower==2.1.1",
-                      "qmpy-tri>=2021.6.11"
+                      "qmpy-tri>=2021.7.21"
                       ],
     extras_require={
         "proto_dft": ["protosearch==2020.5.10"],
+        "m3gnet": ["m3gnet"],
+        "atomate": ["atomate"],
         "tests": ["pytest",
                   "pytest-cov",
                   "coveralls"

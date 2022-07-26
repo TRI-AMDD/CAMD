@@ -13,6 +13,8 @@ from sklearn.pipeline import Pipeline
 from sklearn.gaussian_process import GaussianProcessRegressor
 from sklearn.gaussian_process.kernels import RBF, ConstantKernel
 from sklearn.linear_model import LinearRegression
+from sklearn.ensemble import RandomForestRegressor
+from sklearn.neural_network import MLPRegressor
 
 from camd.agent.base import HypothesisAgent
 
@@ -61,7 +63,7 @@ class GenericGPUCB(HypothesisAgent):
 
         self.candidate_data = candidate_data.drop(columns=["target"], axis=1)
         self.seed_data = seed_data
-        X_seed = seed_data.drop(columns=["target"], axis=1, errors='ignore')
+        X_seed = seed_data.drop(columns=["target"], axis=1, errors="ignore")
         y_seed = seed_data["target"]
         steps = [
             ("scaler", StandardScaler()),
@@ -203,8 +205,8 @@ class GPBatchUCB(HypothesisAgent):
                         2
                         * np.log(
                             len(self.candidate_data)
-                            * _t ** 2
-                            * np.pi ** 2
+                            * _t**2
+                            * np.pi**2
                             / 6
                             / self.kwargs.get("delta", 0.1)
                         )
@@ -247,7 +249,7 @@ class GPBatchUCB(HypothesisAgent):
         return self.candidate_data.loc[batch]
 
 
-class LinearAgent(HypothesisAgent):
+class RegressorAgent(HypothesisAgent):
     """
     Linear regression based agent that tries to maximize a target.
     Best for simple checks and benchmarks.
@@ -255,28 +257,29 @@ class LinearAgent(HypothesisAgent):
 
     def __init__(
         self,
+        model,
+        features=None,
+        target="target",
         candidate_data=None,
         seed_data=None,
         n_query: int = None,
-        fit_intercept: bool = True,
-        positive: bool = False,
     ):
 
         """
         Args:
+            model (sklearn.RegressorMixin): some regressor with "fit" method
             candidate_data (pandas.DataFrame): data about the candidates to search over. Must have a "target" column,
                     and at least one additional column that can be used as descriptors.
             seed_data (pandas.DataFrame):  data which to fit the Agent to.
             n_query (int): number of queries in allowed. Defaults to 1.
-            fit_intercept (bool): if the intercept is fit for the linear regression
-            positive (bool): if true, constraint coefficients to be positive for the linear regression
         """
+        self.model = model
+        self.features = features
+        self.target = target
         self.candidate_data = candidate_data
         self.seed_data = seed_data
         self.n_query = n_query if n_query else 1
-        self.fit_intercept = fit_intercept
-        self.positive = positive
-        super(LinearAgent).__init__()
+        super(RegressorAgent).__init__()
 
     def get_hypotheses(self, candidate_data, seed_data=None):
         """
@@ -291,31 +294,91 @@ class LinearAgent(HypothesisAgent):
 
         """
         # Fit on known data
-        self.candidate_data = candidate_data.drop(
-            columns=["target"], axis=1, errors="ignore"
-        )
+        self.candidate_data = candidate_data
 
         if seed_data is not None:
             self.seed_data = seed_data
         else:
             raise ValueError(
-                "Linear Agent requires a finite seed as input. "
+                "RegressorAgent requires a finite seed as input. "
                 "If you are using this as part of a Campaign, consider "
                 "the create_seed option."
             )
 
-        X_seed = seed_data.drop(columns=["target"], axis=1)
-        y_seed = seed_data["target"]
-        steps = [
-            ("scaler", StandardScaler()),
-            (
-                "linear",
-                LinearRegression(),
-            ),
-        ]
-        self.pipeline = Pipeline(steps)
-        self.pipeline.fit(X_seed, y_seed)
-        output = self.pipeline.predict(self.candidate_data)
+        if self.features is not None:
+            X_seed = seed_data[self.features]
+            X_cand = candidate_data[self.features]
+        else:
+            X_seed = seed_data.drop(columns=[self.target], axis=1)
+            X_cand = candidate_data.drop(
+                columns=[self.target], axis=1, errors="ignore"
+            )
+        y_seed = seed_data[self.target]
+        self.model.fit(X_seed, y_seed)
+        output = self.model.predict(X_cand)
         sorted_output = np.argsort(output)[::-1]
         selected = sorted_output[: self.n_query]
         return candidate_data.iloc[selected]
+
+    @classmethod
+    def from_linear(
+        cls,
+        features=None,
+        target="target",
+        candidate_data=None,
+        seed_data=None,
+        n_query: int = None,
+        **kwargs
+    ):
+        """Preset factory method for a Linear Agent"""
+        linear_reg = LinearRegression(**kwargs)
+        return cls(
+            model=linear_reg,
+            features=features,
+            target=target,
+            candidate_data=candidate_data,
+            seed_data=seed_data,
+            n_query=n_query,
+        )
+
+    @classmethod
+    def from_random_forest(
+        cls,
+        features=None,
+        target="target",
+        candidate_data=None,
+        seed_data=None,
+        n_query: int = None,
+        **kwargs
+    ):
+        """Preset factory method for a RandomForestRegressor-based Agent"""
+        rf = RandomForestRegressor(**kwargs)
+        return cls(
+            model=rf,
+            features=features,
+            target=target,
+            candidate_data=candidate_data,
+            seed_data=seed_data,
+            n_query=n_query,
+        )
+
+    @classmethod
+    def from_mlp(
+        cls,
+        features=None,
+        target="target",
+        candidate_data=None,
+        seed_data=None,
+        n_query: int = None,
+        **kwargs
+    ):
+        """Preset factory method for an MLP-based Agent"""
+        mlp = MLPRegressor(**kwargs)
+        return cls(
+            model=mlp,
+            features=features,
+            target=target,
+            candidate_data=candidate_data,
+            seed_data=seed_data,
+            n_query=n_query,
+        )

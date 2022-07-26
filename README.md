@@ -2,6 +2,7 @@
 ![Testing - main](https://github.com/TRI-AMDD/CAMD/workflows/Testing%20-%20main/badge.svg)
 ![Linting](https://github.com/TRI-AMDD/CAMD/workflows/Linting/badge.svg)
 [![Coverage Status](https://coveralls.io/repos/github/TRI-AMDD/CAMD/badge.svg)](https://coveralls.io/github/TRI-AMDD/CAMD)
+[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/TRI-AMDD/camd/blob/master/examples/main_tutorial.ipynb)
 
 CAMD provides a flexible software framework for sequential / Bayesian optimization type campaigns for materials discovery. Its key features include:
 * **Agents**: Decision making entities which select experiments to run from pre-determined candidate sets. Agents can combine machine learning with physical or chemical constructs, logic, heuristics, exploration-exploitation strategies and so on. CAMD comes with several generic and structure-discovery focused agents, which can be used by the users as templates to derive new ones.

@@ -34,7 +34,9 @@ def get_features_from_df(df, features):
     return feature_df
 
 
-def process_data(candidate_data, seed_data, features, label, y_reshape=False, preprocessor=None):
+def process_data(
+    candidate_data, seed_data, features, label, y_reshape=False, preprocessor=None
+):
     """
     Helper function that process data for ML model and returns
     np.ndarray of training features, training labels,
@@ -60,10 +62,23 @@ class EpsilonGreedyMultiAgent(HypothesisAgent):
     A multi-fidelity agent that allocates the desired budget for high fidelity versus
     low fidelity candidate data, and acquires candidates in each fidelity via exploitation
     """
-    def __init__(self, candidate_data=None, seed_data=None, features=None, fidelities=('theory_data', 'expt_data'),
-                 target_prop=None, target_prop_val=None, preprocessor=StandardScaler(), model=None,
-                 ranking_method='minimize', total_budget=None, highFi_query_frac=None, similarity_thres=300.,
-                 lowFi_per_highFi=1):
+
+    def __init__(
+        self,
+        candidate_data=None,
+        seed_data=None,
+        features=None,
+        fidelities=("theory_data", "expt_data"),
+        target_prop=None,
+        target_prop_val=None,
+        preprocessor=StandardScaler(),
+        model=None,
+        ranking_method="minimize",
+        total_budget=None,
+        highFi_query_frac=None,
+        similarity_thres=300.0,
+        lowFi_per_highFi=1,
+    ):
         """
         Args:
             candidate_data (df)      Candidate search space for the campaign.
@@ -116,7 +131,7 @@ class EpsilonGreedyMultiAgent(HypothesisAgent):
             comp(pd.core.series):    A specific composition represented by Magpie.
             seed_comps (df):         Compostions in seed represented by Magpie.
         """
-        l2_norm = np.linalg.norm(comp.values - seed_comps.values,  axis=1)
+        l2_norm = np.linalg.norm(comp.values - seed_comps.values, axis=1)
         return l2_norm
 
     def _query_hypotheses(self, candidate_data, seed_data):
@@ -124,8 +139,12 @@ class EpsilonGreedyMultiAgent(HypothesisAgent):
         Query hypotheses given candidate and seed data via exploitation.
         """
         # separate the candidate space into high and low fidelity candidates
-        high_fidelity_candidates = candidate_data.loc[candidate_data[self.fidelities[1]] == 1]
-        low_fidelity_candidates = candidate_data.loc[candidate_data[self.fidelities[0]] == 1]
+        high_fidelity_candidates = candidate_data.loc[
+            candidate_data[self.fidelities[1]] == 1
+        ]
+        low_fidelity_candidates = candidate_data.loc[
+            candidate_data[self.fidelities[0]] == 1
+        ]
 
         # edge cases: end campaign if there are no high fidelity candidate
         # use the entire query budget if there are only high fidelity candidate
@@ -141,25 +160,40 @@ class EpsilonGreedyMultiAgent(HypothesisAgent):
             # Query high fidelity candidates first
             highFi_budget = int(self.total_budget * self.highFi_query_frac)
             seed_data_fea = get_features_from_df(seed_data, self.features)
-            highFi_cands_fea = get_features_from_df(high_fidelity_candidates, self.features)
+            highFi_cands_fea = get_features_from_df(
+                high_fidelity_candidates, self.features
+            )
 
             for idx, cand_fea in highFi_cands_fea.iterrows():
                 if len(selected_hypotheses) < highFi_budget:
                     normdiff = self._calculate_similarity(cand_fea, seed_data_fea)
                     if len(normdiff[(normdiff <= self.similarity_thres)]) >= 1:
-                        selected_hypotheses = selected_hypotheses.append(high_fidelity_candidates.loc[idx])
+                        selected_hypotheses = selected_hypotheses.append(
+                            high_fidelity_candidates.loc[idx]
+                        )
 
             # query low fidelity candidate for remaining budget
             remained_highFi_cands_fea = highFi_cands_fea.drop(selected_hypotheses.index)
             lowFi_candidates_copy = low_fidelity_candidates.copy()
             for idx, cand_fea in remained_highFi_cands_fea.iterrows():
-                if (len(selected_hypotheses) < self.total_budget) & (len(lowFi_candidates_copy) != 0):
-                    lowFi_cands_fea = get_features_from_df(lowFi_candidates_copy, self.features)
-                    lowFi_candidates_copy['normdiff'] = self._calculate_similarity(cand_fea, lowFi_cands_fea)
-                    lowFi_candidates_copy = lowFi_candidates_copy.sort_values('normdiff')
-                    selected_hypotheses = selected_hypotheses.append(lowFi_candidates_copy.head(self.lowFi_per_highFi))
+                if (len(selected_hypotheses) < self.total_budget) & (
+                    len(lowFi_candidates_copy) != 0
+                ):
+                    lowFi_cands_fea = get_features_from_df(
+                        lowFi_candidates_copy, self.features
+                    )
+                    lowFi_candidates_copy["normdiff"] = self._calculate_similarity(
+                        cand_fea, lowFi_cands_fea
+                    )
+                    lowFi_candidates_copy = lowFi_candidates_copy.sort_values(
+                        "normdiff"
+                    )
+                    selected_hypotheses = selected_hypotheses.append(
+                        lowFi_candidates_copy.head(self.lowFi_per_highFi)
+                    )
                     lowFi_candidates_copy = lowFi_candidates_copy.drop(
-                                            lowFi_candidates_copy.head(self.lowFi_per_highFi).index)
+                        lowFi_candidates_copy.head(self.lowFi_per_highFi).index
+                    )
         return selected_hypotheses
 
     def get_hypotheses(self, candidate_data, seed_data):
@@ -176,21 +210,32 @@ class EpsilonGreedyMultiAgent(HypothesisAgent):
         """
         features_columns = self.features + list(self.fidelities)
         X_train, y_train, X_test, y_test = process_data(
-            candidate_data, seed_data, features_columns, self.target_prop, preprocessor=self.preprocessor)
+            candidate_data,
+            seed_data,
+            features_columns,
+            self.target_prop,
+            preprocessor=self.preprocessor,
+        )
         self.model.fit(X_train, y_train)
         y_pred = self.model.predict(X_test)
 
         # Make a copy of the candidate data so the original one
         # does not get modified during hypotheses generation
         candidate_data_copy = candidate_data.copy()
-        candidate_data_copy['distance_to_ideal'] = np.abs(self.target_prop_val - y_pred)
+        candidate_data_copy["distance_to_ideal"] = np.abs(self.target_prop_val - y_pred)
 
-        if self.ranking_method == 'minimize':
-            candidate_data_copy = candidate_data_copy.sort_values(by=['distance_to_ideal'])
-        elif self.ranking_method == 'ascending':
-            candidate_data_copy = candidate_data_copy.sort_values(by=y_pred, ascending=True)
-        elif self.ranking_method == 'descending':
-            candidate_data_copy = candidate_data_copy.sort_values(by=y_pred, ascending=False)
+        if self.ranking_method == "minimize":
+            candidate_data_copy = candidate_data_copy.sort_values(
+                by=["distance_to_ideal"]
+            )
+        elif self.ranking_method == "ascending":
+            candidate_data_copy = candidate_data_copy.sort_values(
+                by=y_pred, ascending=True
+            )
+        elif self.ranking_method == "descending":
+            candidate_data_copy = candidate_data_copy.sort_values(
+                by=y_pred, ascending=False
+            )
 
         hypotheses = self._query_hypotheses(candidate_data_copy, seed_data)
         return hypotheses
@@ -206,9 +251,23 @@ class GPMultiAgent(HypothesisAgent):
     prioritizing exploitation primarily with high-fidelity experimental measurements,
     offloading exploratory (higher risk) acquisitions first to lower-fidelity computations.
     """
-    def __init__(self, candidate_data=None, seed_data=None, chemsys_col='reduced_formula', features=None,
-                 fidelities=('theory_data', 'expt_data'), target_prop=None, target_prop_val=1.8, total_budget=None,
-                 preprocessor=StandardScaler(), gp_max_iter=200, alpha=1.0, rank_thres=10, unc_percentile=5):
+
+    def __init__(
+        self,
+        candidate_data=None,
+        seed_data=None,
+        chemsys_col="reduced_formula",
+        features=None,
+        fidelities=("theory_data", "expt_data"),
+        target_prop=None,
+        target_prop_val=1.8,
+        total_budget=None,
+        preprocessor=StandardScaler(),
+        gp_max_iter=200,
+        alpha=1.0,
+        rank_thres=10,
+        unc_percentile=5,
+    ):
         """
         Args:
             candidate_data (df)      Candidate search space for the campaign.
@@ -251,28 +310,38 @@ class GPMultiAgent(HypothesisAgent):
         new_candidate_data = candidate_data.copy()
         low_fidelity = low_fidelity_data.copy()
 
-        low_fidelity[self.target_prop] = low_fidelity_data['y_pred']
-        low_fidelity = low_fidelity.drop(columns=['y_pred'])
+        low_fidelity[self.target_prop] = low_fidelity_data["y_pred"]
+        low_fidelity = low_fidelity.drop(columns=["y_pred"])
         new_seed_data = pd.concat([seed_data, low_fidelity])
         new_candidate_data = new_candidate_data.drop(low_fidelity.index)
         pred_candidate_data = self._train_and_predict(new_candidate_data, new_seed_data)
         return pred_candidate_data
 
-    def _get_rank_after_hallucination(self, seed_data, candidate_data, orig_idx, low_fidelity):
-        halluciated_candidates = self._halluciate_lower_fidelity(seed_data, candidate_data, low_fidelity)
-        halluciated_candidates = halluciated_candidates.loc[halluciated_candidates[self.fidelities[1]] == 1]
-        halluciated_candidates = halluciated_candidates.sort_values('pred_lcb')
+    def _get_rank_after_hallucination(
+        self, seed_data, candidate_data, orig_idx, low_fidelity
+    ):
+        halluciated_candidates = self._halluciate_lower_fidelity(
+            seed_data, candidate_data, low_fidelity
+        )
+        halluciated_candidates = halluciated_candidates.loc[
+            halluciated_candidates[self.fidelities[1]] == 1
+        ]
+        halluciated_candidates = halluciated_candidates.sort_values("pred_lcb")
         rank_after_hallucination = halluciated_candidates.index.get_loc(orig_idx)
         return rank_after_hallucination
 
     def _train_and_predict(self, candidate_data, seed_data):
         features_columns = self.features + list(self.fidelities)
         X_train, y_train, X_test, y_test = process_data(
-            candidate_data, seed_data, features_columns,
-            self.target_prop, y_reshape=True, preprocessor=self.preprocessor
+            candidate_data,
+            seed_data,
+            features_columns,
+            self.target_prop,
+            y_reshape=True,
+            preprocessor=self.preprocessor,
         )
         gp = GPy.models.GPRegression(X_train, y_train)
-        gp.optimize('bfgs', max_iters=self.gp_max_iter)
+        gp.optimize("bfgs", max_iters=self.gp_max_iter)
         y_pred, var = gp.predict(X_test)
 
         # Make a copy of the candidate data so the original one
@@ -280,14 +349,16 @@ class GPMultiAgent(HypothesisAgent):
         candidate_data_copy = candidate_data.copy()
         dist_to_ideal = np.abs(self.target_prop_val - y_pred)
         pred_lcb = dist_to_ideal - self.alpha * var**0.5
-        candidate_data_copy['pred_lcb'] = pred_lcb
-        candidate_data_copy['pred_unc'] = var**0.5
-        candidate_data_copy['y_pred'] = y_pred
+        candidate_data_copy["pred_lcb"] = pred_lcb
+        candidate_data_copy["pred_unc"] = var**0.5
+        candidate_data_copy["y_pred"] = y_pred
         return candidate_data_copy
 
     def _query_hypotheses(self, candidate_data, seed_data):
-        high_fidelity_candidates = candidate_data.loc[candidate_data[self.fidelities[1]] == 1]
-        high_fidelity_candidates = high_fidelity_candidates.sort_values('pred_lcb')
+        high_fidelity_candidates = candidate_data.loc[
+            candidate_data[self.fidelities[1]] == 1
+        ]
+        high_fidelity_candidates = high_fidelity_candidates.sort_values("pred_lcb")
 
         # edge case: top the campaign if there are no high fidelity candidates
         if len(high_fidelity_candidates) == 0:
@@ -295,14 +366,18 @@ class GPMultiAgent(HypothesisAgent):
 
         else:
             selected_hypotheses = pd.DataFrame(columns=candidate_data.columns)
-            unc_thres = np.percentile(np.array(high_fidelity_candidates.pred_unc), self.unc_percentile)
+            unc_thres = np.percentile(
+                np.array(high_fidelity_candidates.pred_unc), self.unc_percentile
+            )
 
             # query hypothesis
             for idx, candidate in high_fidelity_candidates.iterrows():
                 if len(selected_hypotheses) < self.total_budget:
                     chemsys = candidate[self.chemsys_col]
-                    low_fidelity = candidate_data.loc[(candidate_data[self.chemsys_col] == chemsys) &
-                                                      (candidate_data[self.fidelities[0]] == 1)]
+                    low_fidelity = candidate_data.loc[
+                        (candidate_data[self.chemsys_col] == chemsys)
+                        & (candidate_data[self.fidelities[0]] == 1)
+                    ]
 
                     # exploit if uncertainty is low or the low fidelity data is not available
                     if (candidate.pred_unc <= unc_thres) or (len(low_fidelity) == 0):
@@ -310,13 +385,17 @@ class GPMultiAgent(HypothesisAgent):
                     # explore
                     else:
                         orig_rank = high_fidelity_candidates.index.get_loc(idx)
-                        new_rank = self._get_rank_after_hallucination(seed_data, candidate_data, idx, low_fidelity)
+                        new_rank = self._get_rank_after_hallucination(
+                            seed_data, candidate_data, idx, low_fidelity
+                        )
 
                         delta_rank = new_rank - orig_rank
                         if delta_rank <= self.rank_thres:
                             selected_hypotheses = selected_hypotheses.append(candidate)
                         else:
-                            selected_hypotheses = selected_hypotheses.append(low_fidelity)
+                            selected_hypotheses = selected_hypotheses.append(
+                                low_fidelity
+                            )
         return selected_hypotheses
 
     def get_hypotheses(self, candidate_data, seed_data):

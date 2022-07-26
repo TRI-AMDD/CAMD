@@ -204,37 +204,33 @@ class StabilityCampaignAnalyzer(AnalyzerBase):
         """
         self.checkpoint_indices = checkpoint_indices
 
-    def analyze(self, new_experimental_results, seed_data):
+    def analyze(self, campaign, finalize=False):
         """
-        Beta method for analyzing camapaign results
+        Beta method for analyzing campaign results
 
         Args:
-            new_experimental_results (pandas.DataFrame): new experimental
-                results from Experiment class
-            seed_data (pandas.DataFrame): seed_data from prior to last
-                experiment
+            campaign (Campaign): campaign object to
+                be analyzed at the end of an iteration
 
         Returns:
             summary (DataFrame): dataframe to be appended to "history"
                 that summarizes results
-            seed_data (DataFrame): new seed data to be carried forward
-                in campaign
 
         """
+        new_experimental_results = campaign.experiment.get_results()
         for key, row in new_experimental_results.iterrows():
             history = row.campaign.history
             for index in self.checkpoint_indices:
                 new_experimental_results.loc[
                     key, "discovered_{}".format(index)
                 ] = history.loc[index, "total_discovery"]
-        seed_data = seed_data.append(new_experimental_results)
         summary = new_experimental_results.loc[
             "discovered_{}".format(self.checkpoint_indices[0]): "discovered_{}".format(
                 self.checkpoint_indices[-1]
             )
         ]
 
-        return summary, seed_data
+        return summary
 
     def _plot(self, campaign_data):
         fig = plt.figure(figsize=(10, 5))
