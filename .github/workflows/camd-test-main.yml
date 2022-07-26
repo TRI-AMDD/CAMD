@@ -27,7 +27,7 @@ jobs:
       run: |
         python -m pip install --upgrade pip
         pip install -r requirements.txt
-        pip install -e .[tests,m3gnet,atomate]
+        pip install -e .[tests,m3gnet,atomate,proto_dft]
     - name: pytest
       env:
         MPLBACKEND: "Agg"
