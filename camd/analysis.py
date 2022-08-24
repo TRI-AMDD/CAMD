@@ -328,6 +328,7 @@ class StabilityAnalyzer(AnalyzerBase):
         self.space = None
         self.plot = plot
         self.initial_seed_indices = initial_seed_indices
+        self.current_analysis = None
         super(StabilityAnalyzer, self).__init__()
 
     @staticmethod
@@ -436,7 +437,7 @@ class StabilityAnalyzer(AnalyzerBase):
             self.plot_hull(
                 filtered, new_experimental_results.index, filename="hull.png"
             )
-
+        self.current_analysis = new_data
         # Compute summary metrics
         summary = self.get_summary(
             new_seed,

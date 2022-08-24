@@ -868,7 +868,11 @@ def get_qmpy_formation_energy(total_e, formula, n_atoms):
 
 
 def get_mp_formation_energy(
-    total_e, formula, potcar_symbols, hubbards={}, explain=False
+    total_e,
+    formula,
+    potcar_symbols,
+    hubbards={},
+    explain=False
 ):
     """
     Helper function to computer mp-compatible formation
@@ -902,13 +906,40 @@ def get_mp_formation_energy(
             "is_hubbard": is_hubbard,
         },
     )
-    entry = compatibility.process_entry(entry)
+    # process_entry has a bad try/except block that makes it difficult to catch errors,
+    # use this instead
+    entry = compatibility.process_entries([entry])[0]
     if explain:
         print(compatibility.explain(entry))
     energy = entry.energy
     for el, occ in comp.items():
         energy -= MP_REFERENCES[el.name] * occ
     return energy / comp.num_atoms
+
+
+def get_mp_formation_energy_from_m3gnet(total_e, structure, explain=False):
+    """
+    Hack to get materials-project compatible formation energy from m3gnet
+    by overriding potcar/hubbard values with default values from MPRelaxSet
+    """
+    vaspset = MPRelaxSet(structure)
+    potcar_symbols = ["PBE {}".format(sym) for sym in vaspset.potcar_symbols]
+    symbols = [s.split()[1] for s in potcar_symbols]
+    symbols = [re.split(r"_", s)[0] for s in symbols]
+    if not vaspset.incar.get("LDAU", False):
+        hubbards = {}
+    else:
+        us = vaspset.incar.get("LDAUU")
+        js = vaspset.incar.get("LDAUJ")
+        if len(js) != len(us):
+            js = [0] * len(us)
+        if len(us) == len(symbols):
+            hubbards = {symbols[i]: us[i] - js[i] for i in range(len(symbols))}
+        elif sum(us) == 0 and sum(js) == 0:
+            hubbards = {}
+    return get_mp_formation_energy(
+        total_e, structure.composition.formula, potcar_symbols=potcar_symbols,
+        hubbards=hubbards, explain=explain)
 
 
 def update_dataframe_row(dataframe, index, update_dict, add_columns=False):
