@@ -27,7 +27,7 @@ after the fact sampling of known data.
 setup(
     name='camd',
     url="https://github.com/TRI-AMDD/CAMD",
-    version="2022.7.26",
+    version="2022.8.24",
     packages=find_packages(),
     description=DESCRIPTION,
     long_description=LONG_DESCRIPTION,
