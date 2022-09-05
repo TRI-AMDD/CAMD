@@ -12,7 +12,7 @@ awscli
 
 # Pinned dependencies to help pip
 sqlparse==0.4.2
-spglib==2.0.0
+spglib==2.0.1
 scipy==1.9.1
 
 # Temporary qmpy3 dependency
