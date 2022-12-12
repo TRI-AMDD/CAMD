@@ -1,4 +1,4 @@
-Django==3.1.14
+Django==4.1.4
 python-dateutil==2.8.2
 networkx==2.8.7
 matminer==0.7.8
