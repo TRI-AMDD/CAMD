@@ -35,7 +35,7 @@ setup(
     install_requires=["python-dateutil==2.8.2",
                       "networkx==2.8.8",
                       "matplotlib==3.6.2",
-                      "matminer==0.7.8",
+                      "matminer==0.8.0",
                       "awscli",
                       "boto3==1.26.8",
                       "docopt==0.6.2",
