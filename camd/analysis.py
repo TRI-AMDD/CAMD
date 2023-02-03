@@ -555,7 +555,7 @@ class StabilityAnalyzer(AnalyzerBase):
         if finalize:
             # If finalize, we'll reset pd to all entries at this point to
             # measure stabilities wrt. the ultimate hull.
-            pd = PhaseDiagram(filtered["entry"].values, elements=pg_elements)
+            pd = PhaseDiagram(filtered["entry"].tolist(), elements=pg_elements)
             plotter = PDPlotter(
                 pd,
                 backend="matplotlib",
