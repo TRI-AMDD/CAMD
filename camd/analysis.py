@@ -530,7 +530,7 @@ class StabilityAnalyzer(AnalyzerBase):
 
         # Filter for nans by checking if it's a computed entry
         pg_elements = sorted(total_comp.keys())
-        pd = PhaseDiagram(entries, elements=pg_elements)
+        pd = PhaseDiagram(entries.tolist(), elements=pg_elements)
         plotkwargs = {
             "markerfacecolor": "white",
             "markersize": 7,
