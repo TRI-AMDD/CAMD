@@ -5,7 +5,7 @@ SHELL ["/bin/bash", "-c"]
 ENV PATH="/opt/conda/bin/:$PATH"
 
 RUN mkdir -p /home/camd && \
-    conda create -n camd python=3.8 && \
+    conda create -y -n camd python=3.9 && \
     apt-get update && \
     apt-get -y install gcc g++
 
