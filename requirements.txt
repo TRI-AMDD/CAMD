@@ -11,7 +11,7 @@ watchtower==3.0.0
 awscli
 
 # Pinned dependencies to help pip
-sqlparse==0.4.3
+sqlparse==0.4.4
 spglib==2.0.2
 scipy==1.9.3
 
