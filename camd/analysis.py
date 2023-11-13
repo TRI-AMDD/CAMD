@@ -526,7 +526,7 @@ class StabilityAnalyzer(AnalyzerBase):
             return None
 
         # Create phase diagram based on everything prior to current run
-        entries = filtered.loc[ids_prior_to_run]["entry"].dropna()
+        entries = filtered.loc[ids_prior_to_run]["entry"].dropna().tolist()
 
         # Filter for nans by checking if it's a computed entry
         pg_elements = sorted(total_comp.keys())

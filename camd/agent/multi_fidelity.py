@@ -11,11 +11,12 @@ is a preprint and has not been peer-reviewed.
 """
 
 
-import GPy
 import numpy as np
 import pandas as pd
 
 from sklearn.preprocessing import StandardScaler
+from sklearn.gaussian_process import GaussianProcessRegressor
+from sklearn.gaussian_process.kernels import RBF
 from camd.agent.base import HypothesisAgent
 
 
@@ -340,17 +341,17 @@ class GPMultiAgent(HypothesisAgent):
             y_reshape=True,
             preprocessor=self.preprocessor,
         )
-        gp = GPy.models.GPRegression(X_train, y_train)
-        gp.optimize("bfgs", max_iters=self.gp_max_iter)
-        y_pred, var = gp.predict(X_test)
+        gp = GaussianProcessRegressor(kernel=RBF(1.0))  # TODO: default hyperparams?
+        gp.fit(X_train, y_train)
+        y_pred, std = gp.predict(X_test, return_std=True)
 
         # Make a copy of the candidate data so the original one
         # does not get modified during hypotheses generation
         candidate_data_copy = candidate_data.copy()
         dist_to_ideal = np.abs(self.target_prop_val - y_pred)
-        pred_lcb = dist_to_ideal - self.alpha * var**0.5
+        pred_lcb = dist_to_ideal - self.alpha * std**0.5
         candidate_data_copy["pred_lcb"] = pred_lcb
-        candidate_data_copy["pred_unc"] = var**0.5
+        candidate_data_copy["pred_unc"] = std
         candidate_data_copy["y_pred"] = y_pred
         return candidate_data_copy
 

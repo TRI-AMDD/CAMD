@@ -33,8 +33,8 @@ jobs:
         MPLBACKEND: "Agg"
       run: |
         pytest camd --color=yes --cov=camd --log-level=DEBUG --cov-report html:coverage_reports
-    - name: Coveralls
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      run: |
-        coveralls --service=github
+    # - name: Coveralls
+    #   env:
+    #     GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    #   run: |
+    #     coveralls --service=github
