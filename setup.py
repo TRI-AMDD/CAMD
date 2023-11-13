@@ -41,7 +41,8 @@ setup(
                       "docopt==0.6.2",
                       "taburu==2020.5.9",
                       "watchtower==3.0.0",
-                      "qmpy-tri>=2021.7.21"
+                      "qmpy-tri>=2021.7.21",
+                      "pymatgen==2023.10.11"
                       ],
     extras_require={
         "proto_dft": ["protosearch==2020.5.10"],
