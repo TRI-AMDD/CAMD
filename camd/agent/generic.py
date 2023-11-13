@@ -161,7 +161,7 @@ class GPBatchUCB(HypothesisAgent):
         fb_start = max(len(self.seed_data), 1)
 
         if self.kernel is None:
-            self.kernel = RBF(input_dim=self.candidate_data.shape[1])
+            self.kernel = RBF()
 
         X_seed = self.seed_data.drop(columns=["target"], axis=1)
         y_seed = self.seed_data["target"].to_numpy().reshape(-1, 1)
