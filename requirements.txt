@@ -2,7 +2,7 @@ Django==3.1.14
 python-dateutil==2.8.2
 networkx==2.8.8
 matminer==0.7.8
-boto3==1.26.8
+boto3==1.28.1
 docopt==0.6.2
 taburu==2020.5.9
 protosearch==2020.5.10
@@ -11,7 +11,7 @@ pymatgen==2023.10.11
 awscli
 
 # Pinned dependencies to help pip
-sqlparse==0.4.3
+sqlparse==0.4.4
 spglib==2.0.2
 scipy==1.9.3
 

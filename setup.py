@@ -37,7 +37,7 @@ setup(
                       "matplotlib==3.6.2",
                       "matminer==0.9.0",
                       "awscli",
-                      "boto3==1.26.8",
+                      "boto3==1.28.1",
                       "docopt==0.6.2",
                       "taburu==2020.5.9",
                       "watchtower==3.0.0",
