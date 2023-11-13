@@ -530,7 +530,7 @@ class StabilityAnalyzer(AnalyzerBase):
 
         # Filter for nans by checking if it's a computed entry
         pg_elements = sorted(total_comp.keys())
-        pd = PhaseDiagram(entries, elements=pg_elements)
+        pd = PhaseDiagram(entries.tolist(), elements=pg_elements)
         plotkwargs = {
             "markerfacecolor": "white",
             "markersize": 7,
@@ -555,7 +555,7 @@ class StabilityAnalyzer(AnalyzerBase):
         if finalize:
             # If finalize, we'll reset pd to all entries at this point to
             # measure stabilities wrt. the ultimate hull.
-            pd = PhaseDiagram(filtered["entry"].values, elements=pg_elements)
+            pd = PhaseDiagram(filtered["entry"].tolist(), elements=pg_elements)
             plotter = PDPlotter(
                 pd,
                 backend="matplotlib",
