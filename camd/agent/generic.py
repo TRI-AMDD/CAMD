@@ -162,7 +162,7 @@ class GPBatchUCB(HypothesisAgent):
         fb_start = max(len(self.seed_data), 1)
 
         if self.kernel is None:
-            self.kernel = GPy.kern.RBF(input_dim=self.candidate_data.shape[1])
+            self.kernel = RBF(input_dim=self.candidate_data.shape[1])
 
         X_seed = self.seed_data.drop(columns=["target"], axis=1)
         y_seed = self.seed_data["target"].to_numpy().reshape(-1, 1)
@@ -181,23 +181,19 @@ class GPBatchUCB(HypothesisAgent):
                 x = scaler.transform(r_seed).astype(np.float64)
                 y = r_y.astype(np.float64).reshape(-1, 1)
 
-                m = GPy.models.GPRegression(
-                    x,
-                    y,
+                m = GaussianProcessRegressor(
                     kernel=self.kernel,
-                    noise_var=self.kwargs.get("noise_var", 1.0),
+                    # alpha=self.kwargs.get("noise_var", 1.0)
+                    # TODO: figure out noise_var
                 )
-                m.optimize(
-                    optimizer=self.kwargs.get("optimizer", "bfgs"),
-                    max_iters=self.kwargs.get("max_iters", 1000),
-                )
-                self.kernel = m.kern
+                m.fit(x, y)
 
-                y_pred, var = m.predict(
-                    scaler.transform(r_candidates.to_numpy().astype(np.float64))
+                y_pred, y_pred_std = m.predict(
+                    scaler.transform(r_candidates.to_numpy().astype(np.float64)),
+                    return_std=True
                 )
                 t_pred = y_pred * y_std + y_m
-                unc = np.sqrt(var) * y_std + y_m
+                unc = y_pred_std * y_std + y_m
 
                 if self.alpha == "auto":
                     _t = i + fb_start
