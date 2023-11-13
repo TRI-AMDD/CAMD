@@ -5,7 +5,8 @@ import numpy as np
 import tensorflow as tf
 from multiprocessing import cpu_count
 
-import matgl
+from m3gnet.models import M3GNet, Potential, Relaxer
+from m3gnet.trainers import PotentialTrainer
 
 from camd.agent.stability import StabilityAgent
 from camd.agent.base import HypothesisAgent
@@ -75,8 +76,7 @@ class M3GNetStabilityAgent(StabilityAgent):
             parallel=parallel,
         )
         if not m3gnet:
-            # self.m3gnet = M3GNet(is_intensive=False)
-            self.m3gnet = matgl.load_model("M3GNet-MP-2021.2.8-PES")
+            self.m3gnet = M3GNet(is_intensive=False)
         else:
             self.m3gnet = m3gnet
         self.potential = Potential(model=self.m3gnet)
